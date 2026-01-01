@@ -1,59 +1,22 @@
 import { useState, useEffect } from "react"
-import { ScrollArea } from "@/components/ui/scroll-area"
-
-interface Tunnel {
-  id: number
-  name: string
-  localip: string
-  type: string
-  nport: number
-  dorp: string
-  node: string
-  ap: string
-  uptime: string | null
-  client_version: string | null
-  today_traffic_in: number | null
-  today_traffic_out: number | null
-  cur_conns: number | null
-  nodestate: string
-  ip: string
-}
+import { ScrollArea } from "../ui/scroll-area"
+import { fetchTunnels, type Tunnel } from "../../services/api"
 
 export function TunnelList() {
   const [tunnels, setTunnels] = useState<Tunnel[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
 
-  const fetchTunnels = async () => {
+  const loadTunnels = async () => {
+    setLoading(true)
+    setError("")
     try {
-      const stored = localStorage.getItem("chmlfrp_user")
-      if (!stored) {
-        setError("请先登录")
-        setLoading(false)
-        return
-      }
-      const user = JSON.parse(stored)
-      const token = user?.usertoken
-
-      if (!token) {
-        setError("登录信息已过期，请重新登录")
-        localStorage.removeItem("chmlfrp_user")
-        setLoading(false)
-        return
-      }
-
-      const res = await fetch("https://cf-v2.uapis.cn/tunnel", {
-        headers: { authorization: `Bearer ${token}` },
-      })
-      const data = await res.json()
-      if (data?.code === 200 && Array.isArray(data.data)) {
-        setTunnels(data.data)
-        setError("")
-      } else {
-        setError(data?.msg || "获取隧道列表失败")
-      }
+      const data = await fetchTunnels()
+      setTunnels(data)
     } catch (err) {
-      setError("网络异常")
+      setTunnels([])
+      const message = err instanceof Error ? err.message : "获取隧道列表失败"
+      setError(message)
       console.error("获取隧道列表错误:", err)
     } finally {
       setLoading(false)
@@ -61,20 +24,12 @@ export function TunnelList() {
   }
 
   useEffect(() => {
-    fetchTunnels()
+    loadTunnels()
   }, [])
 
   const handleToggle = (tunnel: Tunnel, enabled: boolean) => {
     console.log(`${enabled ? "启动" : "停止"}隧道: ${tunnel.name}`)
     // TODO: 调用启动/停止 API
-  }
-
-  const formatTraffic = (bytes: number | null) => {
-    if (bytes == null) return "-"
-    if (bytes < 1024) return `${bytes}B`
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)}KB`
-    if (bytes < 1024 * 1024 * 1024) return `${(bytes / 1024 / 1024).toFixed(1)}MB`
-    return `${(bytes / 1024 / 1024 / 1024).toFixed(2)}GB`
   }
 
   return (
@@ -142,29 +97,6 @@ export function TunnelList() {
                         <span className={tunnel.nodestate === "online" ? "text-foreground" : "text-muted-foreground"}>
                           {tunnel.nodestate === "online" ? "在线" : "离线"}
                         </span>
-                      </div>
-                    )}
-
-                    {(tunnel.today_traffic_in != null || tunnel.today_traffic_out != null) && (
-                      <div className="flex items-center justify-between">
-                        <span className="text-muted-foreground">今日流量</span>
-                        <span className="font-mono">
-                          ↓{formatTraffic(tunnel.today_traffic_in)} ↑{formatTraffic(tunnel.today_traffic_out)}
-                        </span>
-                      </div>
-                    )}
-
-                    {tunnel.cur_conns != null && (
-                      <div className="flex items-center justify-between">
-                        <span className="text-muted-foreground">连接数</span>
-                        <span>{tunnel.cur_conns}</span>
-                      </div>
-                    )}
-
-                    {tunnel.uptime && (
-                      <div className="flex items-center justify-between">
-                        <span className="text-muted-foreground">运行时间</span>
-                        <span>{tunnel.uptime}</span>
                       </div>
                     )}
                   </div>

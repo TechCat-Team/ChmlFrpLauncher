@@ -1,14 +1,17 @@
 import { useState } from "react"
 import { Sidebar } from "./components/Sidebar"
+import { Home } from "./components/pages/Home"
 import { TunnelList } from "./components/pages/TunnelList"
 import { Logs } from "./components/pages/Logs"
 import { Settings } from "./components/pages/Settings"
 
 function App() {
-  const [activeTab, setActiveTab] = useState("tunnels")
+  const [activeTab, setActiveTab] = useState("home")
 
   const renderContent = () => {
     switch (activeTab) {
+      case "home":
+        return <Home onNavigate={setActiveTab} />
       case "tunnels":
         return <TunnelList />
       case "logs":
@@ -16,7 +19,7 @@ function App() {
       case "settings":
         return <Settings />
       default:
-        return <TunnelList />
+        return <Home onNavigate={setActiveTab} />
     }
   }
 

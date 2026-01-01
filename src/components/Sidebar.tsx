@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react"
-import { cn } from "@/lib/utils"
-import { List, ScrollText, Settings as SettingsIcon } from "lucide-react"
+import { cn } from "../lib/utils"
+import { Home as HomeIcon, List, ScrollText, Settings as SettingsIcon } from "lucide-react"
+import { clearStoredUser, getStoredUser, login, saveStoredUser, type StoredUser } from "../services/api"
 
 interface SidebarProps {
   activeTab: string
@@ -13,19 +14,14 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
   const [password, setPassword] = useState("")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
-  const [userInfo, setUserInfo] = useState<{ username: string; usergroup: string; userimg?: string | null; usertoken?: string } | null>(null)
+  const [userInfo, setUserInfo] = useState<StoredUser | null>(null)
   const [userMenuOpen, setUserMenuOpen] = useState(false)
 
   // 初始化从本地读取登录信息
   useEffect(() => {
-    const saved = localStorage.getItem("chmlfrp_user")
+    const saved = getStoredUser()
     if (saved) {
-      try {
-        const parsed = JSON.parse(saved)
-        setUserInfo(parsed)
-      } catch {
-        localStorage.removeItem("chmlfrp_user")
-      }
+      setUserInfo(saved)
     }
   }, [])
 
@@ -34,42 +30,21 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
     setLoading(true)
     setError("")
     try {
-      const res = await fetch("https://cf-v2.uapis.cn/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, password }),
-      })
-      const data = await res.json()
-      if (data?.code === 200) {
-        setUserInfo({
-          username: data.data?.username ?? username,
-          usergroup: data.data?.usergroup ?? "",
-          userimg: data.data?.userimg ?? "",
-          usertoken: data.data?.usertoken ?? "",
-        })
-        localStorage.setItem(
-          "chmlfrp_user",
-          JSON.stringify({
-            username: data.data?.username ?? username,
-            usergroup: data.data?.usergroup ?? "",
-            userimg: data.data?.userimg ?? "",
-            usertoken: data.data?.usertoken ?? "",
-          })
-        )
-        setLoginOpen(false)
-        setUserMenuOpen(false)
-        setPassword("")
-      } else {
-        setError(data?.msg || "登录失败")
-      }
-    } catch {
-      setError("网络异常，请稍后再试")
+      const user = await login(username, password)
+      setUserInfo(user)
+      saveStoredUser(user)
+      setLoginOpen(false)
+      setUserMenuOpen(false)
+      setPassword("")
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "登录失败")
     } finally {
       setLoading(false)
     }
   }
 
   const menuItems = [
+    { id: "home", label: "首页", icon: HomeIcon },
     { id: "tunnels", label: "隧道", icon: List },
     { id: "logs", label: "日志", icon: ScrollText },
     { id: "settings", label: "设置", icon: SettingsIcon },
@@ -116,7 +91,7 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
               onClick={() => {
                 setUserInfo(null)
                 setUserMenuOpen(false)
-                localStorage.removeItem("chmlfrp_user")
+                clearStoredUser()
               }}
             >
               退出登录
