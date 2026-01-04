@@ -1,22 +1,22 @@
-use std::fs;
-use std::process::{Command as StdCommand, Child, Stdio};
-use std::sync::Mutex;
+use futures_util::StreamExt;
 use std::collections::HashMap;
+use std::fs;
 use std::io::{BufRead, BufReader};
+use std::process::{Child, Command as StdCommand, Stdio};
+use std::sync::Mutex;
 use std::thread;
 use tauri::{Emitter, Manager, State};
-use futures_util::StreamExt;
 
 // 隐藏用户日志里面的token
 fn sanitize_log(message: &str, user_token: &str) -> String {
     let mut result = message.to_string();
-    
+
     result = result.replace(user_token, "***TOKEN***");
-    
+
     if let Some(dot_pos) = user_token.find('.') {
         let first_part = &user_token[..dot_pos];
         let second_part = &user_token[dot_pos + 1..];
-        
+
         if first_part.len() >= 6 {
             result = result.replace(first_part, "***");
         }
@@ -24,7 +24,7 @@ fn sanitize_log(message: &str, user_token: &str) -> String {
             result = result.replace(second_part, "***");
         }
     }
-    
+
     if user_token.len() >= 10 {
         for window_size in (8..=user_token.len()).rev() {
             if window_size <= user_token.len() {
@@ -35,7 +35,7 @@ fn sanitize_log(message: &str, user_token: &str) -> String {
             }
         }
     }
-    
+
     result
 }
 
@@ -65,13 +65,13 @@ async fn check_frpc_exists(app_handle: tauri::AppHandle) -> Result<bool, String>
         .path()
         .app_data_dir()
         .map_err(|e| e.to_string())?;
-    
+
     let frpc_path = if cfg!(target_os = "windows") {
         app_dir.join("frpc.exe")
     } else {
         app_dir.join("frpc")
     };
-    
+
     Ok(frpc_path.exists())
 }
 
@@ -79,7 +79,7 @@ async fn check_frpc_exists(app_handle: tauri::AppHandle) -> Result<bool, String>
 async fn get_download_url() -> Result<String, String> {
     let os = std::env::consts::OS;
     let arch = std::env::consts::ARCH;
-    
+
     let platform = match (os, arch) {
         ("windows", "x86_64") => "win_amd64.exe",
         ("windows", "x86") => "win_386.exe",
@@ -95,28 +95,28 @@ async fn get_download_url() -> Result<String, String> {
         ("macos", "aarch64") => "darwin_arm64",
         _ => return Err(format!("Unsupported platform: {} {}", os, arch)),
     };
-    
+
     Ok(format!("https://cf-v1.uapis.cn/download/frpc/{}", platform))
 }
 
 #[tauri::command]
 async fn download_frpc(app_handle: tauri::AppHandle) -> Result<String, String> {
     let url = get_download_url().await?;
-    
+
     let app_dir = app_handle
         .path()
         .app_data_dir()
         .map_err(|e| e.to_string())?;
-    
+
     // 确保目录存在
     fs::create_dir_all(&app_dir).map_err(|e| e.to_string())?;
-    
+
     let frpc_path = if cfg!(target_os = "windows") {
         app_dir.join("frpc.exe")
     } else {
         app_dir.join("frpc")
     };
-    
+
     // 下载文件
     let client = reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(600))
@@ -126,22 +126,22 @@ async fn download_frpc(app_handle: tauri::AppHandle) -> Result<String, String> {
         .user_agent("ChmlFrpLauncher/1.0")
         .build()
         .map_err(|e| format!("Failed to create client: {}", e))?;
-    
+
     // 获取文件总大小
     let mut total_size: u64 = 0;
-    
+
     // 先尝试 HEAD 请求
     if let Ok(head_response) = client.head(&url).send().await {
         if let Some(len) = head_response.content_length() {
             total_size = len;
         }
     }
-    
+
     // 如果 HEAD 失败，将通过第一次 GET 请求的 Range 响应获取
     if total_size == 0 {
         eprintln!("HEAD 请求未获取文件大小，将从 GET 响应头获取");
     }
-    
+
     // 创建或打开文件
     use std::fs::OpenOptions;
     let mut file = OpenOptions::new()
@@ -150,16 +150,16 @@ async fn download_frpc(app_handle: tauri::AppHandle) -> Result<String, String> {
         .truncate(true)
         .open(&frpc_path)
         .map_err(|e| e.to_string())?;
-    
+
     let mut downloaded: u64 = 0;
     let mut retry_count = 0;
     const MAX_RETRIES: u32 = 5;
     const CHUNK_SIZE: u64 = 1024 * 1024; // 1MB 分块
-    
+
     // 断点续传
     loop {
         let mut request = client.get(&url);
-        
+
         if downloaded == 0 && total_size == 0 {
             request = request.header("Range", format!("bytes=0-{}", CHUNK_SIZE - 1));
         } else if downloaded > 0 {
@@ -173,7 +173,7 @@ async fn download_frpc(app_handle: tauri::AppHandle) -> Result<String, String> {
             let end = std::cmp::min(CHUNK_SIZE - 1, total_size - 1);
             request = request.header("Range", format!("bytes=0-{}", end));
         }
-        
+
         let response = match request.send().await {
             Ok(resp) => resp,
             Err(e) => {
@@ -185,13 +185,13 @@ async fn download_frpc(app_handle: tauri::AppHandle) -> Result<String, String> {
                 continue;
             }
         };
-        
+
         let status = response.status();
         let is_success = status.is_success() || status.as_u16() == 206; // 206 = Partial Content
         if !is_success {
             return Err(format!("下载失败，HTTP 状态码: {}", status));
         }
-        
+
         if status.as_u16() == 206 {
             if let Some(content_range) = response.headers().get("content-range") {
                 if let Ok(range_str) = content_range.to_str() {
@@ -210,36 +210,40 @@ async fn download_frpc(app_handle: tauri::AppHandle) -> Result<String, String> {
                 total_size = content_len;
             }
         }
-        
+
         retry_count = 0;
-        
+
         let mut stream = response.bytes_stream();
         let mut chunk_error = false;
         let mut this_chunk_size: u64 = 0;
-        
+
         while let Some(item) = stream.next().await {
             match item {
                 Ok(chunk) => {
                     use std::io::Write;
-                    file.write_all(&chunk).map_err(|e| format!("写入文件失败: {}", e))?;
-                    
+                    file.write_all(&chunk)
+                        .map_err(|e| format!("写入文件失败: {}", e))?;
+
                     let chunk_len = chunk.len() as u64;
                     downloaded += chunk_len;
                     this_chunk_size += chunk_len;
-                    
+
                     let percentage = if total_size > 0 {
                         (downloaded as f64 / total_size as f64) * 100.0
                     } else {
                         0.0
                     };
-                    
+
                     // 发送进度更新（每 100KB 发送一次）
                     if this_chunk_size >= 100 * 1024 {
-                        let _ = app_handle.emit("download-progress", DownloadProgress {
-                            downloaded,
-                            total: total_size,
-                            percentage,
-                        });
+                        let _ = app_handle.emit(
+                            "download-progress",
+                            DownloadProgress {
+                                downloaded,
+                                total: total_size,
+                                percentage,
+                            },
+                        );
                         this_chunk_size = 0;
                     }
                 }
@@ -249,7 +253,7 @@ async fn download_frpc(app_handle: tauri::AppHandle) -> Result<String, String> {
                 }
             }
         }
-        
+
         // 如果没有错误(END，此逻辑容易出现安全问题，API开发完成后会从API获取HASH和文件大小)
         if !chunk_error {
             // 检查是否已下载完成
@@ -265,7 +269,7 @@ async fn download_frpc(app_handle: tauri::AppHandle) -> Result<String, String> {
                 break;
             }
         }
-        
+
         // 如果有错误，等待后重试
         if chunk_error {
             retry_count += 1;
@@ -275,28 +279,34 @@ async fn download_frpc(app_handle: tauri::AppHandle) -> Result<String, String> {
             tokio::time::sleep(std::time::Duration::from_secs(2)).await;
         }
     }
-    
+
     // 确保文件已完全写入
     use std::io::Write;
     file.flush().map_err(|e| format!("刷新文件失败: {}", e))?;
-    
+
     // 发送最终进度（100%）
-    let _ = app_handle.emit("download-progress", DownloadProgress {
-        downloaded,
-        total: total_size,
-        percentage: 100.0,
-    });
-    
+    let _ = app_handle.emit(
+        "download-progress",
+        DownloadProgress {
+            downloaded,
+            total: total_size,
+            percentage: 100.0,
+        },
+    );
+
     // 验证下载的文件大小（如果知道预期大小）
     if total_size > 0 && downloaded < total_size {
-        return Err(format!("下载不完整: 预期 {} bytes, 实际下载 {} bytes", total_size, downloaded));
+        return Err(format!(
+            "下载不完整: 预期 {} bytes, 实际下载 {} bytes",
+            total_size, downloaded
+        ));
     }
-    
+
     // 确保至少下载了一些数据
     if downloaded == 0 {
         return Err("下载失败: 没有接收到任何数据".to_string());
     }
-    
+
     // 在 Unix 系统上设置执行权限
     #[cfg(unix)]
     {
@@ -307,7 +317,7 @@ async fn download_frpc(app_handle: tauri::AppHandle) -> Result<String, String> {
         perms.set_mode(0o755);
         fs::set_permissions(&frpc_path, perms).map_err(|e| e.to_string())?;
     }
-    
+
     Ok(frpc_path.to_string_lossy().to_string())
 }
 
@@ -327,14 +337,13 @@ async fn start_frpc(
 ) -> Result<String, String> {
     eprintln!("========================================");
     eprintln!("[隧道 {}] 开始启动 frpc", tunnel_id);
-    
+
     // 检查是否已经在运行
     {
-        let procs = processes.processes.lock()
-            .map_err(|e| {
-                eprintln!("[隧道 {}] 获取进程锁失败: {}", tunnel_id, e);
-                format!("获取进程锁失败: {}", e)
-            })?;
+        let procs = processes.processes.lock().map_err(|e| {
+            eprintln!("[隧道 {}] 获取进程锁失败: {}", tunnel_id, e);
+            format!("获取进程锁失败: {}", e)
+        })?;
         if procs.contains_key(&tunnel_id) {
             eprintln!("[隧道 {}] 该隧道已在运行中", tunnel_id);
             return Err("该隧道已在运行中".to_string());
@@ -346,7 +355,7 @@ async fn start_frpc(
         .path()
         .app_data_dir()
         .map_err(|e| e.to_string())?;
-    
+
     let frpc_path = if cfg!(target_os = "windows") {
         app_dir.join("frpc.exe")
     } else {
@@ -377,7 +386,7 @@ async fn start_frpc(
     eprintln!("[隧道 {}] 准备启动进程...", tunnel_id);
     eprintln!("[隧道 {}] 工作目录: {:?}", tunnel_id, app_dir);
     let mut child = StdCommand::new(&frpc_path)
-        .current_dir(&app_dir)  // 设置工作目录，避免在 src-tauri 目录生成文件
+        .current_dir(&app_dir) // 设置工作目录，避免在 src-tauri 目录生成文件
         .arg("-u")
         .arg(&user_token)
         .arg("-p")
@@ -392,15 +401,18 @@ async fn start_frpc(
 
     let pid = child.id();
     eprintln!("[隧道 {}] 进程已启动，PID: {}", tunnel_id, pid);
-    
+
     // 发送启动日志（不包含敏感信息）
     let timestamp = chrono::Local::now().format("%H:%M:%S").to_string();
     eprintln!("[隧道 {}] 发送启动日志事件", tunnel_id);
-    match app_handle.emit("frpc-log", LogMessage {
-        tunnel_id,
-        message: format!("frpc 进程已启动 (PID: {}), 开始连接服务器...", pid),
-        timestamp: timestamp.clone(),
-    }) {
+    match app_handle.emit(
+        "frpc-log",
+        LogMessage {
+            tunnel_id,
+            message: format!("frpc 进程已启动 (PID: {}), 开始连接服务器...", pid),
+            timestamp: timestamp.clone(),
+        },
+    ) {
         Ok(_) => eprintln!("[隧道 {}] 启动日志事件已发送", tunnel_id),
         Err(e) => eprintln!("[隧道 {}] 发送启动日志事件失败: {}", tunnel_id, e),
     }
@@ -418,16 +430,19 @@ async fn start_frpc(
                 for line in reader.lines().flatten() {
                     // 去除 ANSI 颜色代码
                     let clean_line = strip_ansi_escapes::strip_str(&line);
-                    
+
                     // 隐藏用户 token
                     let sanitized_line = sanitize_log(&clean_line, &user_token_clone);
-                    
+
                     let timestamp = chrono::Local::now().format("%H:%M:%S").to_string();
-                    if let Err(e) = app_handle_clone.emit("frpc-log", LogMessage {
-                        tunnel_id: tunnel_id_clone,
-                        message: sanitized_line,
-                        timestamp,
-                    }) {
+                    if let Err(e) = app_handle_clone.emit(
+                        "frpc-log",
+                        LogMessage {
+                            tunnel_id: tunnel_id_clone,
+                            message: sanitized_line,
+                            timestamp,
+                        },
+                    ) {
                         eprintln!("[线程 stdout-{}] 发送日志事件失败: {}", tunnel_id_clone, e);
                         break; // 如果事件发送失败，停止监听
                     }
@@ -452,16 +467,19 @@ async fn start_frpc(
                 for line in reader.lines().flatten() {
                     // 去除 ANSI 颜色代码
                     let clean_line = strip_ansi_escapes::strip_str(&line);
-                    
+
                     // 隐藏用户 token
                     let sanitized_line = sanitize_log(&clean_line, &user_token_clone);
-                    
+
                     let timestamp = chrono::Local::now().format("%H:%M:%S").to_string();
-                    if let Err(e) = app_handle_clone.emit("frpc-log", LogMessage {
-                        tunnel_id: tunnel_id_clone,
-                        message: format!("[ERR] {}", sanitized_line),
-                        timestamp,
-                    }) {
+                    if let Err(e) = app_handle_clone.emit(
+                        "frpc-log",
+                        LogMessage {
+                            tunnel_id: tunnel_id_clone,
+                            message: format!("[ERR] {}", sanitized_line),
+                            timestamp,
+                        },
+                    ) {
                         eprintln!("[线程 stderr-{}] 发送日志事件失败: {}", tunnel_id_clone, e);
                         break;
                     }
@@ -472,14 +490,20 @@ async fn start_frpc(
             Err(e) => eprintln!("[隧道 {}] 创建 stderr 监听线程失败: {}", tunnel_id, e),
         }
     }
-    
+
     // 存储进程
     {
-        let mut procs = processes.processes.lock()
+        let mut procs = processes
+            .processes
+            .lock()
             .map_err(|e| format!("获取进程锁失败: {}", e))?;
         eprintln!("[隧道 {}] 将进程 PID {} 存储到管理器", tunnel_id, pid);
         procs.insert(tunnel_id, child);
-        eprintln!("[隧道 {}] 进程存储成功，当前管理的进程数: {}", tunnel_id, procs.len());
+        eprintln!(
+            "[隧道 {}] 进程存储成功，当前管理的进程数: {}",
+            tunnel_id,
+            procs.len()
+        );
     }
 
     eprintln!("[隧道 {}] frpc 启动完成", tunnel_id);
@@ -487,15 +511,14 @@ async fn start_frpc(
 }
 
 #[tauri::command]
-async fn stop_frpc(
-    tunnel_id: i32,
-    processes: State<'_, FrpcProcesses>,
-) -> Result<String, String> {
+async fn stop_frpc(tunnel_id: i32, processes: State<'_, FrpcProcesses>) -> Result<String, String> {
     eprintln!("[隧道 {}] 请求停止进程", tunnel_id);
-    
-    let mut procs = processes.processes.lock()
+
+    let mut procs = processes
+        .processes
+        .lock()
         .map_err(|e| format!("获取进程锁失败: {}", e))?;
-    
+
     if let Some(mut child) = procs.remove(&tunnel_id) {
         eprintln!("[隧道 {}] 找到进程，准备停止", tunnel_id);
         // 尝试优雅地终止进程
@@ -532,12 +555,11 @@ async fn is_frpc_running(
     tunnel_id: i32,
     processes: State<'_, FrpcProcesses>,
 ) -> Result<bool, String> {
-    let mut procs = processes.processes.lock()
-        .map_err(|e| {
-            eprintln!("[隧道 {}] 检查状态时获取锁失败: {}", tunnel_id, e);
-            format!("获取进程锁失败: {}", e)
-        })?;
-    
+    let mut procs = processes.processes.lock().map_err(|e| {
+        eprintln!("[隧道 {}] 检查状态时获取锁失败: {}", tunnel_id, e);
+        format!("获取进程锁失败: {}", e)
+    })?;
+
     if let Some(child) = procs.get_mut(&tunnel_id) {
         // 检查进程是否还在运行
         match child.try_wait() {
@@ -564,18 +586,18 @@ async fn is_frpc_running(
 }
 
 #[tauri::command]
-async fn test_log_event(
-    app_handle: tauri::AppHandle,
-    tunnel_id: i32,
-) -> Result<String, String> {
+async fn test_log_event(app_handle: tauri::AppHandle, tunnel_id: i32) -> Result<String, String> {
     eprintln!("[测试] 发送测试日志事件");
     let timestamp = chrono::Local::now().format("%H:%M:%S").to_string();
-    
-    match app_handle.emit("frpc-log", LogMessage {
-        tunnel_id,
-        message: "这是一条测试日志".to_string(),
-        timestamp,
-    }) {
+
+    match app_handle.emit(
+        "frpc-log",
+        LogMessage {
+            tunnel_id,
+            message: "这是一条测试日志".to_string(),
+            timestamp,
+        },
+    ) {
         Ok(_) => {
             eprintln!("[测试] 测试日志事件发送成功");
             Ok("测试日志已发送".to_string())
@@ -588,15 +610,15 @@ async fn test_log_event(
 }
 
 #[tauri::command]
-async fn get_running_tunnels(
-    processes: State<'_, FrpcProcesses>,
-) -> Result<Vec<i32>, String> {
-    let mut procs = processes.processes.lock()
+async fn get_running_tunnels(processes: State<'_, FrpcProcesses>) -> Result<Vec<i32>, String> {
+    let mut procs = processes
+        .processes
+        .lock()
         .map_err(|e| format!("获取进程锁失败: {}", e))?;
-    
+
     let mut running_tunnels = Vec::new();
     let mut stopped_tunnels = Vec::new();
-    
+
     // 检查所有进程
     for (tunnel_id, child) in procs.iter_mut() {
         match child.try_wait() {
@@ -614,42 +636,42 @@ async fn get_running_tunnels(
             }
         }
     }
-    
+
     // 清理已停止的进程
     for tunnel_id in stopped_tunnels {
         procs.remove(&tunnel_id);
     }
-    
+
     Ok(running_tunnels)
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-  tauri::Builder::default()
-    .plugin(tauri_plugin_dialog::init())
-    .plugin(tauri_plugin_fs::init())
-    .setup(|app| {
-      if cfg!(debug_assertions) {
-        app.handle().plugin(
-          tauri_plugin_log::Builder::default()
-            .level(log::LevelFilter::Info)
-            .build(),
-        )?;
-      }
-      Ok(())
-    })
-    .manage(FrpcProcesses::new())
-    .invoke_handler(tauri::generate_handler![
-      check_frpc_exists,
-      get_download_url,
-      download_frpc,
-      start_frpc,
-      stop_frpc,
-      is_frpc_running,
-      get_running_tunnels,
-      test_log_event
-    ])
-    .run(tauri::generate_context!())
-    .expect("error while running tauri application");
+    tauri::Builder::default()
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_fs::init())
+        .setup(|app| {
+            if cfg!(debug_assertions) {
+                app.handle().plugin(
+                    tauri_plugin_log::Builder::default()
+                        .level(log::LevelFilter::Info)
+                        .build(),
+                )?;
+            }
+            Ok(())
+        })
+        .manage(FrpcProcesses::new())
+        .invoke_handler(tauri::generate_handler![
+            check_frpc_exists,
+            get_download_url,
+            download_frpc,
+            start_frpc,
+            stop_frpc,
+            is_frpc_running,
+            get_running_tunnels,
+            test_log_event
+        ])
+        .run(tauri::generate_context!())
+        .expect("error while running tauri application");
 }
-
