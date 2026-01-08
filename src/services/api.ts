@@ -72,6 +72,50 @@ interface ApiResponse<T> {
 
 const isBrowser = typeof window !== "undefined"
 
+// 简单的请求去重（针对短时间内重复发起相同请求的场景）
+const pendingRequests = new Map<string, Promise<any>>();
+
+function normalizeHeaders(h?: HeadersInit): Record<string, string> {
+  if (!h) return {};
+  if (h instanceof Headers) {
+    const obj: Record<string, string> = {};
+    h.forEach((v, k) => (obj[k] = v));
+    return obj;
+  }
+  if (Array.isArray(h)) {
+    const obj: Record<string, string> = {};
+    h.forEach(([k, v]) => (obj[k] = v));
+    return obj;
+  }
+  return h as Record<string, string>;
+}
+
+async function request<T>(endpoint: string, options?: RequestInit): Promise<T> {
+  const headersObj = normalizeHeaders(options?.headers);
+  const key = JSON.stringify({ endpoint, method: options?.method ?? "GET", body: options?.body ?? null, headers: headersObj });
+
+  if (pendingRequests.has(key)) {
+    return pendingRequests.get(key) as Promise<T>;
+  }
+
+  const promise = (async () => {
+    try {
+      const url = endpoint.startsWith("/") ? `${API_BASE_URL}${endpoint}` : `${API_BASE_URL}/${endpoint}`;
+      const res = await fetch(url, options);
+      const data = (await res.json()) as ApiResponse<T>;
+      if (data?.code === 200) {
+        return data.data as T;
+      }
+      throw new Error(data?.msg || "请求失败");
+    } finally {
+      pendingRequests.delete(key);
+    }
+  })();
+
+  pendingRequests.set(key, promise);
+  return promise;
+}
+
 export const getStoredUser = (): StoredUser | null => {
   if (!isBrowser) return null
   const saved = localStorage.getItem("chmlfrp_user")
@@ -94,26 +138,20 @@ export const clearStoredUser = () => {
 }
 
 export async function login(username: string, password: string): Promise<StoredUser> {
-  const res = await fetch(`${API_BASE_URL}/login`, {
+  const data = await request<StoredUser>("/login", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ username, password }),
   })
 
-  const data = (await res.json()) as ApiResponse<StoredUser>
-
-  if (data?.code === 200) {
-    return {
-      username: data.data?.username ?? username,
-      usergroup: data.data?.usergroup ?? "",
-      userimg: data.data?.userimg ?? "",
-      usertoken: data.data?.usertoken ?? "",
-      tunnelCount: data.data?.tunnelCount ?? 0,
-      tunnel: data.data?.tunnel ?? 0,
-    }
+  return {
+    username: data?.username ?? username,
+    usergroup: data?.usergroup ?? "",
+    userimg: data?.userimg ?? "",
+    usertoken: data?.usertoken ?? "",
+    tunnelCount: data?.tunnelCount ?? 0,
+    tunnel: data?.tunnel ?? 0,
   }
-
-  throw new Error(data?.msg || "登录失败")
 }
 
 export async function fetchTunnels(token?: string): Promise<Tunnel[]> {
@@ -124,17 +162,12 @@ export async function fetchTunnels(token?: string): Promise<Tunnel[]> {
     throw new Error("登录信息已过期，请重新登录")
   }
 
-  const res = await fetch(`${API_BASE_URL}/tunnel`, {
+  const data = await request<Tunnel[]>("/tunnel", {
     headers: { authorization: `Bearer ${bearer}` },
   })
 
-  const data = (await res.json()) as ApiResponse<Tunnel[]>
-
-  if (data?.code === 200 && Array.isArray(data.data)) {
-    return data.data
-  }
-
-  throw new Error(data?.msg || "获取隧道列表失败")
+  if (Array.isArray(data)) return data
+  throw new Error("获取隧道列表失败")
 }
 
 export async function fetchFlowLast7Days(token?: string): Promise<FlowPoint[]> {
@@ -145,17 +178,12 @@ export async function fetchFlowLast7Days(token?: string): Promise<FlowPoint[]> {
     throw new Error("登录信息已过期，请重新登录")
   }
 
-  const res = await fetch(`${API_BASE_URL}/flow_last_7_days`, {
+  const data = await request<FlowPoint[]>("/flow_last_7_days", {
     headers: { authorization: `Bearer ${bearer}` },
   })
 
-  const data = (await res.json()) as ApiResponse<FlowPoint[]>
-
-  if (data?.code === 200 && Array.isArray(data.data)) {
-    return data.data
-  }
-
-  throw new Error(data?.msg || "获取近7日流量失败")
+  if (Array.isArray(data)) return data
+  throw new Error("获取近7日流量失败")
 }
 
 export async function fetchUserInfo(token?: string): Promise<UserInfo> {
@@ -166,23 +194,17 @@ export async function fetchUserInfo(token?: string): Promise<UserInfo> {
     throw new Error("登录信息已过期，请重新登录")
   }
 
-  const res = await fetch(`${API_BASE_URL}/userinfo`, {
-    headers: { authorization: bearer },
-  })
+  try {
+    const data = await request<UserInfo>("/userinfo", {
+      headers: { authorization: bearer },
+    })
 
-  const data = (await res.json()) as ApiResponse<UserInfo>
-
-  if (data?.code === 200 && data.data) {
-    return data.data
-  }
-
-  // 如果 token 无效，清除本地信息
-  if (data?.code !== 200) {
+    if (data) return data as UserInfo
+    throw new Error("获取用户信息失败")
+  } catch (err) {
     clearStoredUser()
-    throw new Error(data?.msg || "获取用户信息失败，请重新登录")
+    throw err
   }
-
-  throw new Error(data?.msg || "获取用户信息失败")
 }
 
 export async function fetchSignInInfo(token?: string): Promise<SignInInfo> {
@@ -193,17 +215,12 @@ export async function fetchSignInInfo(token?: string): Promise<SignInInfo> {
     throw new Error("登录信息已过期，请重新登录")
   }
 
-  const res = await fetch(`${API_BASE_URL}/qiandao_info`, {
+  const data = await request<SignInInfo>("/qiandao_info", {
     headers: { authorization: bearer },
   })
 
-  const data = (await res.json()) as ApiResponse<SignInInfo>
-
-  if (data?.code === 200 && data.data) {
-    return data.data
-  }
-
-  throw new Error(data?.msg || "获取签到信息失败")
+  if (data) return data
+  throw new Error("获取签到信息失败")
 }
 
 
