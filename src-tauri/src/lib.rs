@@ -118,12 +118,24 @@ async fn download_frpc(app_handle: tauri::AppHandle) -> Result<String, String> {
     };
 
     // 下载文件
-    let client = reqwest::Client::builder()
+    let mut client_builder = reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(600))
         .connect_timeout(std::time::Duration::from_secs(30))
         .pool_idle_timeout(std::time::Duration::from_secs(90))
         .tcp_keepalive(std::time::Duration::from_secs(60))
-        .user_agent("ChmlFrpLauncher/1.0")
+        .user_agent("ChmlFrpLauncher/1.0");
+    
+    // 检查是否需要绕过代理
+    let bypass_proxy = std::env::var("BYPASS_PROXY")
+        .unwrap_or_else(|_| "true".to_string())
+        .parse::<bool>()
+        .unwrap_or(true);
+    
+    if bypass_proxy {
+        client_builder = client_builder.no_proxy();
+    }
+    
+    let client = client_builder
         .build()
         .map_err(|e| format!("Failed to create client: {}", e))?;
 
@@ -670,6 +682,71 @@ async fn set_autostart(
     }
 }
 
+#[derive(serde::Deserialize)]
+struct HttpRequestOptions {
+    url: String,
+    method: String,
+    headers: Option<std::collections::HashMap<String, String>>,
+    body: Option<String>,
+    bypass_proxy: Option<bool>,
+}
+
+#[tauri::command]
+async fn http_request(options: HttpRequestOptions) -> Result<String, String> {
+    let bypass_proxy = options.bypass_proxy.unwrap_or(true);
+    
+    let mut client_builder = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(30))
+        .user_agent("ChmlFrpLauncher/1.0");
+    
+    // 如果绕过代理，使用自定义代理函数返回 None 来禁用代理
+    if bypass_proxy {
+        client_builder = client_builder.proxy(
+            reqwest::Proxy::custom(move |_url| -> Option<reqwest::Url> { None })
+        );
+    }
+    
+    let client = client_builder
+        .build()
+        .map_err(|e| format!("Failed to create client: {}", e))?;
+    
+    let mut request = match options.method.as_str() {
+        "GET" => client.get(&options.url),
+        "POST" => client.post(&options.url),
+        "PUT" => client.put(&options.url),
+        "DELETE" => client.delete(&options.url),
+        "PATCH" => client.patch(&options.url),
+        _ => return Err(format!("Unsupported method: {}", options.method)),
+    };
+    
+    if let Some(headers) = options.headers {
+        for (key, value) in headers {
+            request = request.header(&key, &value);
+        }
+    }
+    
+    if let Some(body) = options.body {
+        request = request.body(body);
+    }
+    
+    let response = request
+        .send()
+        .await
+        .map_err(|e| format!("Request failed: {}", e))?;
+    
+    let status = response.status();
+    let text = response
+        .text()
+        .await
+        .map_err(|e| format!("Failed to read response: {}", e))?;
+    
+    if !status.is_success() {
+        return Err(format!("HTTP {}: {}", status.as_u16(), text));
+    }
+    
+    Ok(text)
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -698,7 +775,8 @@ pub fn run() {
             get_running_tunnels,
             test_log_event,
             is_autostart_enabled,
-            set_autostart
+            set_autostart,
+            http_request
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

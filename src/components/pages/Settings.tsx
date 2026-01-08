@@ -16,12 +16,22 @@ import { readFile } from "@tauri-apps/plugin-fs";
 
 type ThemeMode = "light" | "dark";
 
+const getInitialFollowSystem = (): boolean => {
+  if (typeof window === "undefined") return true;
+  const stored = localStorage.getItem("themeFollowSystem");
+  return stored !== "false";
+};
+
 const getInitialTheme = (): ThemeMode => {
   if (typeof window === "undefined") return "light";
+  const followSystem = getInitialFollowSystem();
+  if (followSystem) {
+    const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+    return prefersDark ? "dark" : "light";
+  }
   const stored = localStorage.getItem("theme") as ThemeMode | null;
   if (stored === "light" || stored === "dark") return stored;
-  const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-  return prefersDark ? "dark" : "light";
+  return "light";
 };
 
 const getInitialBackgroundImage = (): string | null => {
@@ -41,7 +51,16 @@ const getInitialBackgroundBlur = (): number => {
   return stored ? parseInt(stored, 10) : 4;
 };
 
+const getInitialBypassProxy = (): boolean => {
+  if (typeof window === "undefined") return true;
+  const stored = localStorage.getItem("bypassProxy");
+  return stored !== "false";
+};
+
 export function Settings() {
+  const [followSystem, setFollowSystem] = useState<boolean>(() =>
+    getInitialFollowSystem(),
+  );
   const [theme, setTheme] = useState<ThemeMode>(() => getInitialTheme());
   const [isDownloading, setIsDownloading] = useState(false);
   const [autostartEnabled, setAutostartEnabled] = useState(false);
@@ -59,6 +78,39 @@ export function Settings() {
     getInitialBackgroundOverlayOpacity(),
   );
   const [blur, setBlur] = useState<number>(() => getInitialBackgroundBlur());
+  const [bypassProxy, setBypassProxy] = useState<boolean>(() =>
+    getInitialBypassProxy(),
+  );
+
+  useEffect(() => {
+    localStorage.setItem("themeFollowSystem", followSystem.toString());
+  }, [followSystem]);
+
+  useEffect(() => {
+    if (followSystem) {
+      const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+      const handleSystemThemeChange = (e: MediaQueryListEvent) => {
+        const newTheme = e.matches ? "dark" : "light";
+        setTheme(newTheme);
+      };
+
+      const initialTheme = mediaQuery.matches ? "dark" : "light";
+      setTheme(initialTheme);
+
+      mediaQuery.addEventListener("change", handleSystemThemeChange);
+      return () => {
+        mediaQuery.removeEventListener("change", handleSystemThemeChange);
+      };
+    } else {
+      const stored = localStorage.getItem("theme") as ThemeMode | null;
+      if (stored === "light" || stored === "dark") {
+        setTheme(stored);
+      } else {
+        const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+        setTheme(prefersDark ? "dark" : "light");
+      }
+    }
+  }, [followSystem]);
 
   useEffect(() => {
     const root = document.documentElement;
@@ -67,9 +119,11 @@ export function Settings() {
     } else {
       root.classList.remove("dark");
     }
-    localStorage.setItem("theme", theme);
+    if (!followSystem) {
+      localStorage.setItem("theme", theme);
+    }
     window.dispatchEvent(new Event("themeChanged"));
-  }, [theme]);
+  }, [theme, followSystem]);
 
   useEffect(() => {
     localStorage.setItem("backgroundImage", backgroundImage || "");
@@ -85,6 +139,10 @@ export function Settings() {
     localStorage.setItem("backgroundBlur", blur.toString());
     window.dispatchEvent(new Event("backgroundOverlayChanged"));
   }, [blur]);
+
+  useEffect(() => {
+    localStorage.setItem("bypassProxy", bypassProxy.toString());
+  }, [bypassProxy]);
 
   useEffect(() => {
     const checkAutostart = async () => {
@@ -318,34 +376,92 @@ export function Settings() {
         className="border border-border/60 rounded-lg bg-card"
       >
         <ItemContent>
-          <ItemTitle>主题</ItemTitle>
+          <ItemTitle>跟随系统</ItemTitle>
           <ItemDescription className="text-xs">
-            选择界面配色方案
+            自动跟随系统主题设置
           </ItemDescription>
         </ItemContent>
         <ItemActions>
-          <div className="flex gap-2">
-            <button
-              onClick={() => setTheme("light")}
-              className={`px-3 py-1.5 text-xs rounded transition-colors ${
-                theme === "light"
-                  ? "bg-foreground text-background"
-                  : "border border-border/60 hover:bg-muted/40"
+          <button
+            onClick={() => setFollowSystem(!followSystem)}
+            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+              followSystem ? "bg-foreground" : "bg-muted"
+            } cursor-pointer`}
+            role="switch"
+            aria-checked={followSystem}
+          >
+            <span
+              className={`inline-block h-4 w-4 transform rounded-full bg-background transition-transform ${
+                followSystem ? "translate-x-6" : "translate-x-1"
               }`}
-            >
-              浅色
-            </button>
-            <button
-              onClick={() => setTheme("dark")}
-              className={`px-3 py-1.5 text-xs rounded transition-colors ${
-                theme === "dark"
-                  ? "bg-foreground text-background"
-                  : "border border-border/60 hover:bg-muted/40"
+            />
+          </button>
+        </ItemActions>
+      </Item>
+
+      {!followSystem && (
+        <Item
+          variant="outline"
+          className="border border-border/60 rounded-lg bg-card"
+        >
+          <ItemContent>
+            <ItemTitle>主题</ItemTitle>
+            <ItemDescription className="text-xs">
+              选择界面配色方案
+            </ItemDescription>
+          </ItemContent>
+          <ItemActions>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setTheme("light")}
+                className={`px-3 py-1.5 text-xs rounded transition-colors ${
+                  theme === "light"
+                    ? "bg-foreground text-background"
+                    : "border border-border/60 hover:bg-muted/40"
+                }`}
+              >
+                浅色
+              </button>
+              <button
+                onClick={() => setTheme("dark")}
+                className={`px-3 py-1.5 text-xs rounded transition-colors ${
+                  theme === "dark"
+                    ? "bg-foreground text-background"
+                    : "border border-border/60 hover:bg-muted/40"
+                }`}
+              >
+                深色
+              </button>
+            </div>
+          </ItemActions>
+        </Item>
+      )}
+
+      <Item
+        variant="outline"
+        className="border border-border/60 rounded-lg bg-card"
+      >
+        <ItemContent>
+          <ItemTitle>绕过代理</ItemTitle>
+          <ItemDescription className="text-xs">
+            网络请求绕过系统代理设置
+          </ItemDescription>
+        </ItemContent>
+        <ItemActions>
+          <button
+            onClick={() => setBypassProxy(!bypassProxy)}
+            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+              bypassProxy ? "bg-foreground" : "bg-muted"
+            } cursor-pointer`}
+            role="switch"
+            aria-checked={bypassProxy}
+          >
+            <span
+              className={`inline-block h-4 w-4 transform rounded-full bg-background transition-transform ${
+                bypassProxy ? "translate-x-6" : "translate-x-1"
               }`}
-            >
-              深色
-            </button>
-          </div>
+            />
+          </button>
         </ItemActions>
       </Item>
 

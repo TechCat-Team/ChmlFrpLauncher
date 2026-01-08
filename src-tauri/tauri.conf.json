@@ -16,7 +16,13 @@
         "width": 1030,
         "height": 660,
         "resizable": true,
-        "fullscreen": false
+        "fullscreen": false,
+        
+        "transparent": true,
+        "windowEffects": {
+          "effects": ["hudWindow", "mica"],
+          "radius": 12
+        }
       }
     ],
     "security": {

@@ -32,24 +32,62 @@ function App() {
     const stored = localStorage.getItem("backgroundBlur");
     return stored ? parseInt(stored, 10) : 4;
   });
-  const [theme, setTheme] = useState<string>(() => {
+  
+  const getInitialTheme = (): string => {
     if (typeof window === "undefined") return "light";
-    const stored = localStorage.getItem("theme");
-    return stored || "light";
-  });
+    const followSystem = localStorage.getItem("themeFollowSystem") !== "false";
+    let initialTheme: string;
+    if (followSystem) {
+      const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+      initialTheme = prefersDark ? "dark" : "light";
+    } else {
+      initialTheme = localStorage.getItem("theme") || "light";
+    }
+    
+    const root = document.documentElement;
+    if (initialTheme === "dark") {
+      root.classList.add("dark");
+    } else {
+      root.classList.remove("dark");
+    }
+    
+    return initialTheme;
+  };
+  
+  const [theme, setTheme] = useState<string>(() => getInitialTheme());
 
   useEffect(() => {
     logStore.startListening();
   }, []);
 
   useEffect(() => {
+    const applyThemeToDOM = (themeValue: string) => {
+      const root = document.documentElement;
+      if (themeValue === "dark") {
+        root.classList.add("dark");
+      } else {
+        root.classList.remove("dark");
+      }
+    };
+
+    applyThemeToDOM(theme);
+  }, [theme]);
+
+  useEffect(() => {
+
     const handleThemeChange = () => {
-      const currentTheme = localStorage.getItem("theme") || "light";
-      setTheme(currentTheme);
+      const followSystem = localStorage.getItem("themeFollowSystem") !== "false";
+      if (followSystem) {
+        const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+        setTheme(prefersDark ? "dark" : "light");
+      } else {
+        const currentTheme = localStorage.getItem("theme") || "light";
+        setTheme(currentTheme);
+      }
     };
 
     window.addEventListener("storage", (e) => {
-      if (e.key === "theme") {
+      if (e.key === "theme" || e.key === "themeFollowSystem") {
         handleThemeChange();
       }
     });
@@ -58,6 +96,21 @@ function App() {
       handleThemeChange();
     };
     window.addEventListener("themeChanged", handleThemeChanged);
+
+    const followSystem = localStorage.getItem("themeFollowSystem") !== "false";
+    if (followSystem) {
+      const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+      const handleSystemThemeChange = (e: MediaQueryListEvent) => {
+        setTheme(e.matches ? "dark" : "light");
+      };
+
+      mediaQuery.addEventListener("change", handleSystemThemeChange);
+
+      return () => {
+        window.removeEventListener("themeChanged", handleThemeChanged);
+        mediaQuery.removeEventListener("change", handleSystemThemeChange);
+      };
+    }
 
     return () => {
       window.removeEventListener("themeChanged", handleThemeChanged);
@@ -301,7 +354,23 @@ function App() {
       backdropFilter: `blur(${blur}px)`,
       WebkitBackdropFilter: `blur(${blur}px)`,
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [backgroundImage, overlayOpacity, blur, theme]);
+
+  useEffect(() => {
+    if (backgroundImage) {
+      const updateOverlayColor = () => {
+        const overlayElement = document.querySelector(".background-overlay") as HTMLElement;
+        if (overlayElement) {
+          overlayElement.style.backgroundColor = getBackgroundColorWithOpacity(overlayOpacity);
+        }
+      };
+      
+      requestAnimationFrame(() => {
+        requestAnimationFrame(updateOverlayColor);
+      });
+    }
+  }, [theme, overlayOpacity, backgroundImage]);
 
   return (
     <div

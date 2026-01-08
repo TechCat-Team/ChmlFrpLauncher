@@ -73,7 +73,7 @@ interface ApiResponse<T> {
 const isBrowser = typeof window !== "undefined";
 
 // 简单的请求去重（针对短时间内重复发起相同请求的场景）
-const pendingRequests = new Map<string, Promise<any>>();
+const pendingRequests = new Map<string, Promise<unknown>>();
 
 function normalizeHeaders(h?: HeadersInit): Record<string, string> {
   if (!h) return {};
@@ -88,6 +88,12 @@ function normalizeHeaders(h?: HeadersInit): Record<string, string> {
     return obj;
   }
   return h as Record<string, string>;
+}
+
+function getBypassProxy(): boolean {
+  if (!isBrowser) return true;
+  const stored = localStorage.getItem("bypassProxy");
+  return stored !== "false";
 }
 
 async function request<T>(endpoint: string, options?: RequestInit): Promise<T> {
@@ -108,12 +114,47 @@ async function request<T>(endpoint: string, options?: RequestInit): Promise<T> {
       const url = endpoint.startsWith("/")
         ? `${API_BASE_URL}${endpoint}`
         : `${API_BASE_URL}/${endpoint}`;
-      const res = await fetch(url, options);
-      const data = (await res.json()) as ApiResponse<T>;
-      if (data?.code === 200) {
-        return data.data as T;
+      
+      const bypassProxy = getBypassProxy();
+      
+      // 在 Tauri 环境中，如果启用绕过代理，使用 Tauri 命令
+      if (typeof window !== "undefined" && "__TAURI__" in window && bypassProxy) {
+        const { invoke } = await import("@tauri-apps/api/core");
+        const method = (options?.method ?? "GET").toUpperCase();
+        const headers: Record<string, string> = {};
+        
+        if (headersObj) {
+          Object.entries(headersObj).forEach(([k, v]) => {
+            headers[k] = v;
+          });
+        }
+        
+        const body = options?.body ? String(options.body) : undefined;
+        
+        const responseText = await invoke<string>("http_request", {
+          options: {
+            url,
+            method,
+            headers: Object.keys(headers).length > 0 ? headers : undefined,
+            body,
+            bypass_proxy: true,
+          },
+        });
+        
+        const data = JSON.parse(responseText) as ApiResponse<T>;
+        if (data?.code === 200) {
+          return data.data as T;
+        }
+        throw new Error(data?.msg || "请求失败");
+      } else {
+        // 使用普通的 fetch
+        const res = await fetch(url, options);
+        const data = (await res.json()) as ApiResponse<T>;
+        if (data?.code === 200) {
+          return data.data as T;
+        }
+        throw new Error(data?.msg || "请求失败");
       }
-      throw new Error(data?.msg || "请求失败");
     } finally {
       pendingRequests.delete(key);
     }
