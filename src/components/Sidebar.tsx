@@ -14,6 +14,7 @@ export function Sidebar({ activeTab, onTabChange, user, onUserChange }: SidebarP
   const [loginOpen, setLoginOpen] = useState(false)
   const [username, setUsername] = useState("")
   const [password, setPassword] = useState("")
+  const [rememberMe, setRememberMe] = useState(true)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
   const [userMenuOpen, setUserMenuOpen] = useState(false)
@@ -25,7 +26,9 @@ export function Sidebar({ activeTab, onTabChange, user, onUserChange }: SidebarP
     try {
       const authedUser = await login(username, password)
       onUserChange(authedUser)
-      saveStoredUser(authedUser)
+      if (rememberMe) {
+        saveStoredUser(authedUser)
+      }
       setLoginOpen(false)
       setUserMenuOpen(false)
       setPassword("")
@@ -234,6 +237,19 @@ export function Sidebar({ activeTab, onTabChange, user, onUserChange }: SidebarP
                     onChange={(e) => setPassword(e.target.value)}
                     required
                   />
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="rememberMe"
+                    checked={rememberMe}
+                    onChange={(e) => setRememberMe(e.target.checked)}
+                    className="h-4 w-4 rounded border-border/50 text-foreground focus:ring-2 focus:ring-foreground/20 cursor-pointer"
+                  />
+                  <label htmlFor="rememberMe" className="text-xs text-foreground/80 cursor-pointer select-none">
+                    保存登录（重启后无需重新登录）
+                  </label>
                 </div>
                 
                 {error && (

@@ -9,6 +9,29 @@ export interface StoredUser {
   tunnel?: number
 }
 
+export interface UserInfo {
+  id: number
+  username: string
+  password: string | null
+  userimg: string
+  qq: string
+  email: string
+  usertoken: string
+  usergroup: string
+  bandwidth: number
+  tunnel: number
+  realname: string
+  integral: number
+  term: string
+  scgm: string
+  regtime: string
+  realname_count: number | null
+  total_download: number | null
+  total_upload: number | null
+  tunnelCount: number
+  totalCurConns: number
+}
+
 export interface Tunnel {
   id: number
   name: string
@@ -125,6 +148,33 @@ export async function fetchFlowLast7Days(token?: string): Promise<FlowPoint[]> {
   }
 
   throw new Error(data?.msg || "获取近7日流量失败")
+}
+
+export async function fetchUserInfo(token?: string): Promise<UserInfo> {
+  const storedUser = getStoredUser()
+  const bearer = token ?? storedUser?.usertoken
+
+  if (!bearer) {
+    throw new Error("登录信息已过期，请重新登录")
+  }
+
+  const res = await fetch(`${API_BASE_URL}/userinfo`, {
+    headers: { authorization: bearer },
+  })
+
+  const data = (await res.json()) as ApiResponse<UserInfo>
+
+  if (data?.code === 200 && data.data) {
+    return data.data
+  }
+
+  // 如果 token 无效，清除本地信息
+  if (data?.code !== 200) {
+    clearStoredUser()
+    throw new Error(data?.msg || "获取用户信息失败，请重新登录")
+  }
+
+  throw new Error(data?.msg || "获取用户信息失败")
 }
 
 

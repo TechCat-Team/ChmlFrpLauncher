@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { fetchFlowLast7Days, type FlowPoint } from "../../services/api";
+import { useEffect, useState, useRef } from "react";
+import { fetchFlowLast7Days, fetchUserInfo, type FlowPoint, type UserInfo, getStoredUser, clearStoredUser, saveStoredUser, type StoredUser } from "../../services/api";
 import {
   Accordion,
   AccordionContent,
@@ -7,31 +7,63 @@ import {
   AccordionTrigger,
 } from "../../components/ui/accordion";
 
-interface UserInfo {
-  username?: string;
-  usergroup?: string;
-  tunnelCount?: number;
-  tunnel?: number;
+interface HomeProps {
+  onUserChange?: (user: StoredUser | null) => void;
 }
 
-export function Home() {
-  const [userInfo] = useState<UserInfo | null>(() => {
-    if (typeof window === "undefined") return null;
-    const saved = localStorage.getItem("chmlfrp_user");
-    if (!saved) return null;
-    try {
-      return JSON.parse(saved);
-    } catch {
-      return null;
-    }
-  });
+export function Home({ onUserChange }: HomeProps) {
+  const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
+  const onUserChangeRef = useRef(onUserChange);
+  
+  // 保持回调引用最新
+  useEffect(() => {
+    onUserChangeRef.current = onUserChange;
+  }, [onUserChange]);
 
   const [flowData, setFlowData] = useState<FlowPoint[]>([]);
   const [flowLoading, setFlowLoading] = useState(true);
   const [flowError, setFlowError] = useState("");
 
+  // 获取最新用户信息
+  useEffect(() => {
+    const loadUserInfo = async () => {
+      const storedUser = getStoredUser();
+      if (!storedUser?.usertoken) {
+        return;
+      }
+
+      try {
+        const data = await fetchUserInfo();
+        setUserInfo(data);
+        // 更新本地存储的用户信息
+        const updatedUser = {
+          username: data.username,
+          usergroup: data.usergroup,
+          userimg: data.userimg,
+          usertoken: data.usertoken,
+          tunnelCount: data.tunnelCount,
+          tunnel: data.tunnel,
+        };
+        saveStoredUser(updatedUser);
+      } catch (err) {
+        // token 无效，清除本地信息
+        clearStoredUser();
+        setUserInfo(null);
+        // 通知父组件用户信息已清除
+        onUserChangeRef.current?.(null);
+        console.error("获取用户信息失败", err);
+      }
+    };
+    loadUserInfo();
+  }, []);
+
   useEffect(() => {
     const loadFlow = async () => {
+      if (!userInfo?.usertoken) {
+        setFlowLoading(false);
+        return;
+      }
+
       setFlowLoading(true);
       setFlowError("");
       try {
@@ -46,7 +78,7 @@ export function Home() {
       }
     };
     loadFlow();
-  }, []);
+  }, [userInfo]);
 
   return (
     <div className="flex flex-col gap-4 h-full">
