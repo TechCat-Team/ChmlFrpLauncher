@@ -11,6 +11,8 @@ import {
   ItemDescription,
   ItemActions,
 } from "../ui/item";
+import { open } from "@tauri-apps/plugin-dialog";
+import { readFile } from "@tauri-apps/plugin-fs";
 
 type ThemeMode = "light" | "dark";
 
@@ -20,6 +22,23 @@ const getInitialTheme = (): ThemeMode => {
   if (stored === "light" || stored === "dark") return stored;
   const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
   return prefersDark ? "dark" : "light";
+};
+
+const getInitialBackgroundImage = (): string | null => {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem("backgroundImage");
+};
+
+const getInitialBackgroundOverlayOpacity = (): number => {
+  if (typeof window === "undefined") return 80;
+  const stored = localStorage.getItem("backgroundOverlayOpacity");
+  return stored ? parseInt(stored, 10) : 80;
+};
+
+const getInitialBackgroundBlur = (): number => {
+  if (typeof window === "undefined") return 4;
+  const stored = localStorage.getItem("backgroundBlur");
+  return stored ? parseInt(stored, 10) : 4;
 };
 
 export function Settings() {
@@ -32,6 +51,14 @@ export function Settings() {
   );
   const [checkingUpdate, setCheckingUpdate] = useState(false);
   const [currentVersion, setCurrentVersion] = useState<string>("");
+  const [backgroundImage, setBackgroundImage] = useState<string | null>(() =>
+    getInitialBackgroundImage(),
+  );
+  const [isSelectingImage, setIsSelectingImage] = useState(false);
+  const [overlayOpacity, setOverlayOpacity] = useState<number>(() =>
+    getInitialBackgroundOverlayOpacity(),
+  );
+  const [blur, setBlur] = useState<number>(() => getInitialBackgroundBlur());
 
   useEffect(() => {
     const root = document.documentElement;
@@ -41,7 +68,23 @@ export function Settings() {
       root.classList.remove("dark");
     }
     localStorage.setItem("theme", theme);
+    window.dispatchEvent(new Event("themeChanged"));
   }, [theme]);
+
+  useEffect(() => {
+    localStorage.setItem("backgroundImage", backgroundImage || "");
+    window.dispatchEvent(new Event("backgroundImageChanged"));
+  }, [backgroundImage]);
+
+  useEffect(() => {
+    localStorage.setItem("backgroundOverlayOpacity", overlayOpacity.toString());
+    window.dispatchEvent(new Event("backgroundOverlayChanged"));
+  }, [overlayOpacity]);
+
+  useEffect(() => {
+    localStorage.setItem("backgroundBlur", blur.toString());
+    window.dispatchEvent(new Event("backgroundOverlayChanged"));
+  }, [blur]);
 
   useEffect(() => {
     const checkAutostart = async () => {
@@ -203,6 +246,69 @@ export function Settings() {
     );
   };
 
+  const handleSelectBackgroundImage = async () => {
+    if (isSelectingImage) return;
+
+    setIsSelectingImage(true);
+    try {
+      const selected = await open({
+        multiple: false,
+        filters: [
+          {
+            name: "图片",
+            extensions: ["png", "jpg", "jpeg", "gif", "webp", "bmp"],
+          },
+        ],
+      });
+
+      if (selected && typeof selected === "string") {
+        const fileData = await readFile(selected);
+        const uint8Array = new Uint8Array(fileData);
+        
+        let binaryString = "";
+        for (let i = 0; i < uint8Array.length; i++) {
+          binaryString += String.fromCharCode(uint8Array[i]);
+        }
+        
+        const base64 = btoa(binaryString);
+        const mimeType = getMimeType(selected);
+        const dataUrl = `data:${mimeType};base64,${base64}`;
+
+        setBackgroundImage(dataUrl);
+        toast.success("背景图设置成功", {
+          duration: 2000,
+        });
+      }
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      toast.error(`选择图片失败: ${errorMsg}`, {
+        duration: 3000,
+      });
+    } finally {
+      setIsSelectingImage(false);
+    }
+  };
+
+  const handleClearBackgroundImage = () => {
+    setBackgroundImage(null);
+    toast.success("已清除背景图", {
+      duration: 2000,
+    });
+  };
+
+  const getMimeType = (filePath: string): string => {
+    const ext = filePath.split(".").pop()?.toLowerCase();
+    const mimeTypes: Record<string, string> = {
+      png: "image/png",
+      jpg: "image/jpeg",
+      jpeg: "image/jpeg",
+      gif: "image/gif",
+      webp: "image/webp",
+      bmp: "image/bmp",
+    };
+    return mimeTypes[ext || ""] || "image/png";
+  };
+
   return (
     <div className="space-y-4">
       <h1 className="text-xl font-medium text-foreground">设置</h1>
@@ -352,6 +458,110 @@ export function Settings() {
           </button>
         </ItemActions>
       </Item>
+
+      <Item
+        variant="outline"
+        className="border border-border/60 rounded-lg bg-card"
+      >
+        <ItemContent>
+          <ItemTitle>背景图</ItemTitle>
+          <ItemDescription className="text-xs">
+            设置应用背景图片
+            {backgroundImage && (
+              <span className="ml-1 text-muted-foreground">(已设置)</span>
+            )}
+          </ItemDescription>
+        </ItemContent>
+        <ItemActions>
+          <div className="flex gap-2">
+            <button
+              onClick={handleSelectBackgroundImage}
+              disabled={isSelectingImage}
+              className={`px-3 py-1.5 text-xs rounded transition-colors ${
+                isSelectingImage
+                  ? "bg-muted text-muted-foreground cursor-not-allowed"
+                  : "bg-foreground text-background hover:opacity-90"
+              }`}
+            >
+              {isSelectingImage ? "选择中..." : "选择图片"}
+            </button>
+            {backgroundImage && (
+              <button
+                onClick={handleClearBackgroundImage}
+                className="px-3 py-1.5 text-xs rounded transition-colors border border-border/60 hover:bg-muted/40"
+              >
+                清除
+              </button>
+            )}
+          </div>
+        </ItemActions>
+      </Item>
+
+      {backgroundImage && (
+        <>
+          <Item
+            variant="outline"
+            className="border border-border/60 rounded-lg bg-card"
+          >
+            <ItemContent>
+              <ItemTitle>遮罩透明度</ItemTitle>
+              <ItemDescription className="text-xs">
+                调整背景图遮罩的透明度 ({overlayOpacity}%)
+              </ItemDescription>
+            </ItemContent>
+            <ItemActions>
+              <div className="flex items-center gap-3 w-48">
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  value={overlayOpacity}
+                  onChange={(e) =>
+                    setOverlayOpacity(parseInt(e.target.value, 10))
+                  }
+                  className="flex-1 h-2 bg-muted rounded-lg appearance-none cursor-pointer accent-foreground"
+                  style={{
+                    background: `linear-gradient(to right, var(--foreground) 0%, var(--foreground) ${overlayOpacity}%, var(--muted) ${overlayOpacity}%, var(--muted) 100%)`,
+                  }}
+                />
+                <span className="text-xs text-muted-foreground w-10 text-right">
+                  {overlayOpacity}%
+                </span>
+              </div>
+            </ItemActions>
+          </Item>
+
+          <Item
+            variant="outline"
+            className="border border-border/60 rounded-lg bg-card"
+          >
+            <ItemContent>
+              <ItemTitle>模糊度</ItemTitle>
+              <ItemDescription className="text-xs">
+                调整背景图的模糊效果 ({blur}px)
+              </ItemDescription>
+            </ItemContent>
+            <ItemActions>
+              <div className="flex items-center gap-3 w-48">
+                <input
+                  type="range"
+                  min="0"
+                  max="20"
+                  value={blur}
+                  onChange={(e) => setBlur(parseInt(e.target.value, 10))}
+                  className="flex-1 h-2 bg-muted rounded-lg appearance-none cursor-pointer accent-foreground"
+                  style={{
+                    background: `linear-gradient(to right, var(--foreground) 0%, var(--foreground) ${(blur / 20) * 100}%, var(--muted) ${(blur / 20) * 100}%, var(--muted) 100%)`,
+                  }}
+                />
+                <span className="text-xs text-muted-foreground w-10 text-right">
+                  {blur}px
+                </span>
+              </div>
+            </ItemActions>
+          </Item>
+        </>
+      )}
     </div>
   );
 }

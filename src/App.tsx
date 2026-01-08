@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { toast } from "sonner";
 import { Sidebar } from "./components/Sidebar";
 import { Home } from "./components/pages/Home";
@@ -18,13 +18,92 @@ function App() {
   const [user, setUser] = useState<StoredUser | null>(() => getStoredUser());
   const downloadToastRef = useRef<string | number | null>(null);
   const isDownloadingRef = useRef(false);
+  const [backgroundImage, setBackgroundImage] = useState<string | null>(() => {
+    if (typeof window === "undefined") return null;
+    return localStorage.getItem("backgroundImage");
+  });
+  const [overlayOpacity, setOverlayOpacity] = useState<number>(() => {
+    if (typeof window === "undefined") return 80;
+    const stored = localStorage.getItem("backgroundOverlayOpacity");
+    return stored ? parseInt(stored, 10) : 80;
+  });
+  const [blur, setBlur] = useState<number>(() => {
+    if (typeof window === "undefined") return 4;
+    const stored = localStorage.getItem("backgroundBlur");
+    return stored ? parseInt(stored, 10) : 4;
+  });
+  const [theme, setTheme] = useState<string>(() => {
+    if (typeof window === "undefined") return "light";
+    const stored = localStorage.getItem("theme");
+    return stored || "light";
+  });
 
   useEffect(() => {
     logStore.startListening();
   }, []);
 
   useEffect(() => {
-    // 启动时自动检测更新
+    const handleThemeChange = () => {
+      const currentTheme = localStorage.getItem("theme") || "light";
+      setTheme(currentTheme);
+    };
+
+    window.addEventListener("storage", (e) => {
+      if (e.key === "theme") {
+        handleThemeChange();
+      }
+    });
+
+    const handleThemeChanged = () => {
+      handleThemeChange();
+    };
+    window.addEventListener("themeChanged", handleThemeChanged);
+
+    return () => {
+      window.removeEventListener("themeChanged", handleThemeChanged);
+    };
+  }, []);
+
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === "backgroundImage") {
+        setBackgroundImage(e.newValue);
+      } else if (e.key === "backgroundOverlayOpacity") {
+        const value = e.newValue ? parseInt(e.newValue, 10) : 80;
+        setOverlayOpacity(value);
+      } else if (e.key === "backgroundBlur") {
+        const value = e.newValue ? parseInt(e.newValue, 10) : 4;
+        setBlur(value);
+      }
+    };
+    window.addEventListener("storage", handleStorageChange);
+    
+    const handleBackgroundImageChange = () => {
+      const bg = localStorage.getItem("backgroundImage");
+      setBackgroundImage(bg);
+    };
+    window.addEventListener("backgroundImageChanged", handleBackgroundImageChange);
+
+    const handleBackgroundOverlayChange = () => {
+      const opacity = localStorage.getItem("backgroundOverlayOpacity");
+      const blurValue = localStorage.getItem("backgroundBlur");
+      if (opacity) {
+        setOverlayOpacity(parseInt(opacity, 10));
+      }
+      if (blurValue) {
+        setBlur(parseInt(blurValue, 10));
+      }
+    };
+    window.addEventListener("backgroundOverlayChanged", handleBackgroundOverlayChange);
+
+    return () => {
+      window.removeEventListener("storage", handleStorageChange);
+      window.removeEventListener("backgroundImageChanged", handleBackgroundImageChange);
+      window.removeEventListener("backgroundOverlayChanged", handleBackgroundOverlayChange);
+    };
+  }, []);
+
+  useEffect(() => {
     const checkUpdateOnStart = async () => {
       if (!updateService.getAutoCheckEnabled()) {
         return;
@@ -50,24 +129,20 @@ function App() {
             { duration: 8000 },
           );
 
-          // 自动开始下载并安装更新
           try {
             await updateService.installUpdate();
             toast.success("更新已下载完成，应用将在重启后更新", {
               duration: 5000,
             });
           } catch (installError) {
-            // 静默失败，不打扰用户
             console.error("自动下载更新失败:", installError);
           }
         }
       } catch (error) {
-        // 静默失败，不打扰用户
         console.error("自动检测更新失败:", error);
       }
     };
 
-    // 延迟一下再检查，避免影响启动速度
     const timer = setTimeout(() => {
       checkUpdateOnStart();
     }, 2000);
@@ -188,19 +263,65 @@ function App() {
     }
   };
 
-  return (
-    <div className="flex h-screen overflow-hidden bg-background text-foreground">
-      <Sidebar
-        activeTab={activeTab}
-        onTabChange={handleTabChange}
-        user={user}
-        onUserChange={setUser}
-      />
+  const getBackgroundColorWithOpacity = (opacity: number): string => {
+    if (typeof window === "undefined") return `rgba(246, 247, 249, ${opacity / 100})`;
+    const root = document.documentElement;
+    const bgColor = getComputedStyle(root).getPropertyValue("--background").trim();
+    
+    if (bgColor.startsWith("#")) {
+      const hex = bgColor.slice(1);
+      const r = parseInt(hex.slice(0, 2), 16);
+      const g = parseInt(hex.slice(2, 4), 16);
+      const b = parseInt(hex.slice(4, 6), 16);
+      return `rgba(${r}, ${g}, ${b}, ${opacity / 100})`;
+    }
+    
+    const rgbMatch = bgColor.match(/\d+/g);
+    if (rgbMatch && rgbMatch.length >= 3) {
+      return `rgba(${rgbMatch[0]}, ${rgbMatch[1]}, ${rgbMatch[2]}, ${opacity / 100})`;
+    }
+    
+    return `rgba(246, 247, 249, ${opacity / 100})`;
+  };
 
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <div className="flex-1 overflow-auto p-6 md:p-8">
-          <div className="max-w-6xl mx-auto w-full h-full">
-            <div className="h-full flex flex-col">{renderContent()}</div>
+  const backgroundStyle = backgroundImage
+    ? {
+        backgroundImage: `url(${backgroundImage})`,
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+        backgroundRepeat: "no-repeat",
+        backgroundAttachment: "fixed",
+      }
+    : {};
+
+  const overlayStyle = useMemo(() => {
+    if (!backgroundImage) return {};
+    return {
+      backgroundColor: getBackgroundColorWithOpacity(overlayOpacity),
+      backdropFilter: `blur(${blur}px)`,
+      WebkitBackdropFilter: `blur(${blur}px)`,
+    };
+  }, [backgroundImage, overlayOpacity, blur, theme]);
+
+  return (
+    <div
+      className="flex h-screen overflow-hidden text-foreground"
+      style={backgroundStyle}
+    >
+      <div className="absolute inset-0 background-overlay" style={overlayStyle} />
+      <div className="relative flex w-full h-full">
+        <Sidebar
+          activeTab={activeTab}
+          onTabChange={handleTabChange}
+          user={user}
+          onUserChange={setUser}
+        />
+
+        <div className="flex-1 flex flex-col overflow-hidden relative">
+          <div className="flex-1 overflow-auto p-6 md:p-8">
+            <div className="max-w-6xl mx-auto w-full h-full">
+              <div className="h-full flex flex-col">{renderContent()}</div>
+            </div>
           </div>
         </div>
       </div>
