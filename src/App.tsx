@@ -119,7 +119,7 @@ function App() {
   const renderContent = () => {
     switch (activeTab) {
       case "home":
-        return <Home onUserChange={setUser} />
+        return <Home user={user} onUserChange={setUser} />
       case "tunnels":
         return <TunnelList />
       case "logs":
@@ -127,7 +127,7 @@ function App() {
       case "settings":
         return <Settings />
       default:
-        return <Home onUserChange={setUser} />
+        return <Home user={user} onUserChange={setUser} />
     }
   }
 

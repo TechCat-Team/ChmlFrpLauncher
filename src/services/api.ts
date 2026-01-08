@@ -56,6 +56,14 @@ export interface FlowPoint {
   time: string
 }
 
+export interface SignInInfo {
+  is_signed_in_today: boolean
+  total_points: number
+  count_of_matching_records: number
+  total_sign_ins: number
+  last_sign_in_time: string
+}
+
 interface ApiResponse<T> {
   code: number
   msg?: string
@@ -175,6 +183,27 @@ export async function fetchUserInfo(token?: string): Promise<UserInfo> {
   }
 
   throw new Error(data?.msg || "获取用户信息失败")
+}
+
+export async function fetchSignInInfo(token?: string): Promise<SignInInfo> {
+  const storedUser = getStoredUser()
+  const bearer = token ?? storedUser?.usertoken
+
+  if (!bearer) {
+    throw new Error("登录信息已过期，请重新登录")
+  }
+
+  const res = await fetch(`${API_BASE_URL}/qiandao_info`, {
+    headers: { authorization: bearer },
+  })
+
+  const data = (await res.json()) as ApiResponse<SignInInfo>
+
+  if (data?.code === 200 && data.data) {
+    return data.data
+  }
+
+  throw new Error(data?.msg || "获取签到信息失败")
 }
 
 

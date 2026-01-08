@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from "react";
-import { fetchFlowLast7Days, fetchUserInfo, type FlowPoint, type UserInfo, getStoredUser, clearStoredUser, saveStoredUser, type StoredUser } from "../../services/api";
+import { fetchFlowLast7Days, fetchUserInfo, fetchSignInInfo, type FlowPoint, type UserInfo, type SignInInfo, getStoredUser, clearStoredUser, saveStoredUser, type StoredUser } from "../../services/api";
 import {
   Accordion,
   AccordionContent,
@@ -8,10 +8,11 @@ import {
 } from "../../components/ui/accordion";
 
 interface HomeProps {
+  user?: StoredUser | null;
   onUserChange?: (user: StoredUser | null) => void;
 }
 
-export function Home({ onUserChange }: HomeProps) {
+export function Home({ user, onUserChange }: HomeProps) {
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
   const onUserChangeRef = useRef(onUserChange);
   
@@ -24,11 +25,18 @@ export function Home({ onUserChange }: HomeProps) {
   const [flowLoading, setFlowLoading] = useState(true);
   const [flowError, setFlowError] = useState("");
 
+  // 签到信息相关状态
+  const [signInInfoHover, setSignInInfoHover] = useState(false);
+  const [signInInfo, setSignInInfo] = useState<SignInInfo | null>(null);
+  const [signInInfoLoading, setSignInInfoLoading] = useState(false);
+  const [signInInfoError, setSignInInfoError] = useState("");
+
   // 获取最新用户信息
   useEffect(() => {
     const loadUserInfo = async () => {
       const storedUser = getStoredUser();
       if (!storedUser?.usertoken) {
+        setUserInfo(null);
         return;
       }
 
@@ -55,7 +63,7 @@ export function Home({ onUserChange }: HomeProps) {
       }
     };
     loadUserInfo();
-  }, []);
+  }, [user?.usertoken]); // 当 user 的 token 变化时重新获取
 
   useEffect(() => {
     const loadFlow = async () => {
@@ -80,6 +88,54 @@ export function Home({ onUserChange }: HomeProps) {
     loadFlow();
   }, [userInfo]);
 
+  // 当用户信息加载后，自动获取签到信息（用于判断是否显示签到按钮）
+  useEffect(() => {
+    if (!userInfo?.usertoken) {
+      setSignInInfo(null);
+      return;
+    }
+
+    const loadSignInInfo = async () => {
+      try {
+        const data = await fetchSignInInfo();
+        setSignInInfo(data);
+      } catch (err) {
+        setSignInInfo(null);
+        console.error("获取签到信息失败", err);
+      }
+    };
+
+    loadSignInInfo();
+  }, [userInfo?.usertoken]);
+
+  // 当鼠标悬浮时获取签到信息
+  useEffect(() => {
+    if (!signInInfoHover || !userInfo?.usertoken) {
+      return;
+    }
+
+    // 如果已有数据，不重复加载
+    if (signInInfo) {
+      return;
+    }
+
+    const loadSignInInfo = async () => {
+      setSignInInfoLoading(true);
+      setSignInInfoError("");
+      try {
+        const data = await fetchSignInInfo();
+        setSignInInfo(data);
+      } catch (err) {
+        setSignInInfoError(err instanceof Error ? err.message : "获取签到信息失败");
+        console.error("获取签到信息失败", err);
+      } finally {
+        setSignInInfoLoading(false);
+      }
+    };
+
+    loadSignInInfo();
+  }, [signInInfoHover, userInfo?.usertoken, signInInfo]);
+
   return (
     <div className="flex flex-col gap-4 h-full">
       <div className="border border-border/60 rounded-lg p-6 bg-card">
@@ -90,13 +146,82 @@ export function Home({ onUserChange }: HomeProps) {
               欢迎回来{userInfo?.username ? `，${userInfo.username}` : ""}
             </h1>
           </div>
-          <div className="flex flex-wrap gap-2">
-            <button className="px-3 py-2 text-xs rounded bg-foreground text-background font-medium hover:opacity-90 transition-opacity">
-              签到
-            </button>
-            <button className="px-3 py-2 text-xs rounded border border-border/60 text-foreground hover:bg-foreground/[0.03] transition-colors">
-              签到信息
-            </button>
+          <div className="flex flex-wrap gap-2 relative">
+            {!signInInfo?.is_signed_in_today && (
+              <button 
+                className="px-3 py-2 text-xs rounded bg-foreground text-background font-medium hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={!userInfo}
+              >
+                签到
+              </button>
+            )}
+            <div 
+              className="relative"
+              onMouseEnter={() => setSignInInfoHover(true)}
+              onMouseLeave={() => setSignInInfoHover(false)}
+            >
+              <button 
+                className="px-3 py-2 text-xs rounded border border-border/60 text-foreground hover:bg-foreground/[0.03] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={!userInfo}
+              >
+                签到信息
+              </button>
+              
+              {/* 悬浮菜单 */}
+              {signInInfoHover && userInfo && (
+                <div className="absolute right-0 top-full mt-2 w-80 rounded-2xl bg-card/95 backdrop-blur-md border border-border/50 p-5 shadow-2xl z-50 animate-in fade-in slide-in-from-top-2 duration-200">
+                  {signInInfoLoading ? (
+                    <div className="flex items-center justify-center py-8">
+                      <div className="h-6 w-6 border-2 border-foreground/30 border-t-foreground rounded-full animate-spin" />
+                      <span className="ml-2 text-sm text-muted-foreground">加载中...</span>
+                    </div>
+                  ) : signInInfoError ? (
+                    <div className="rounded-xl bg-destructive/10 border border-destructive/20 px-4 py-3">
+                      <p className="text-sm text-destructive font-medium">{signInInfoError}</p>
+                    </div>
+                  ) : signInInfo ? (
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="rounded-xl border border-border/50 bg-foreground/[0.02] p-3">
+                          <p className="text-xs text-muted-foreground mb-1">今日是否已签到</p>
+                          <p className={`text-base font-semibold ${signInInfo.is_signed_in_today ? 'text-green-600' : 'text-orange-600'}`}>
+                            {signInInfo.is_signed_in_today ? "已签到" : "未签到"}
+                          </p>
+                        </div>
+                        <div className="rounded-xl border border-border/50 bg-foreground/[0.02] p-3">
+                          <p className="text-xs text-muted-foreground mb-1">总签到积分</p>
+                          <p className="text-base font-semibold text-foreground">
+                            {signInInfo.total_points.toLocaleString()}
+                          </p>
+                        </div>
+                        <div className="rounded-xl border border-border/50 bg-foreground/[0.02] p-3">
+                          <p className="text-xs text-muted-foreground mb-1">用户总签到次数</p>
+                          <p className="text-base font-semibold text-foreground">
+                            {signInInfo.total_sign_ins}
+                          </p>
+                        </div>
+                        <div className="rounded-xl border border-border/50 bg-foreground/[0.02] p-3">
+                          <p className="text-xs text-muted-foreground mb-1">今日签到人数</p>
+                          <p className="text-base font-semibold text-foreground">
+                            {signInInfo.count_of_matching_records}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="rounded-xl border border-border/50 bg-foreground/[0.02] p-3">
+                        <p className="text-xs text-muted-foreground mb-1">上次签到时间</p>
+                        <p className="text-sm font-medium text-foreground">
+                          {signInInfo.last_sign_in_time || "暂无记录"}
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-center py-8 text-sm text-muted-foreground">
+                      暂无数据
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
