@@ -13,6 +13,12 @@ import {
 } from "../ui/item";
 import { open } from "@tauri-apps/plugin-dialog";
 import { readFile } from "@tauri-apps/plugin-fs";
+import {
+  Palette,
+  Network,
+  Settings2,
+  Sparkles,
+} from "lucide-react";
 
 type ThemeMode = "light" | "dark";
 
@@ -368,316 +374,326 @@ export function Settings() {
   };
 
   return (
-    <div className="space-y-4">
-      <h1 className="text-xl font-medium text-foreground">设置</h1>
+    <div className="flex flex-col h-full gap-4">
+      <div className="flex items-center justify-between">
+        <h1 className="text-xl font-medium text-foreground">设置</h1>
+      </div>
 
-      <Item
-        variant="outline"
-        className="border border-border/60 rounded-lg bg-card"
-      >
-        <ItemContent>
-          <ItemTitle>跟随系统</ItemTitle>
-          <ItemDescription className="text-xs">
-            自动跟随系统主题设置
-          </ItemDescription>
-        </ItemContent>
-        <ItemActions>
-          <button
-            onClick={() => setFollowSystem(!followSystem)}
-            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 ${
-              followSystem ? "bg-foreground" : "bg-muted"
-            } cursor-pointer`}
-            role="switch"
-            aria-checked={followSystem}
-          >
-            <span
-              className={`inline-block h-4 w-4 transform rounded-full bg-background transition-transform ${
-                followSystem ? "translate-x-6" : "translate-x-1"
-              }`}
-            />
-          </button>
-        </ItemActions>
-      </Item>
+      <div className="flex-1 overflow-auto space-y-6">
+        {/* 外观设置 */}
+        <div className="space-y-3">
+          <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+            <Palette className="w-4 h-4" />
+            <span>外观</span>
+          </div>
+          <div className="border border-border/60 rounded-lg bg-card overflow-hidden">
+            <Item variant="outline" className="border-0 border-b border-border/60 last:border-0">
+              <ItemContent>
+                <ItemTitle>跟随系统</ItemTitle>
+                <ItemDescription className="text-xs">
+                  自动跟随系统主题设置
+                </ItemDescription>
+              </ItemContent>
+              <ItemActions>
+                <button
+                  onClick={() => setFollowSystem(!followSystem)}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+                    followSystem ? "bg-foreground" : "bg-muted"
+                  } cursor-pointer`}
+                  role="switch"
+                  aria-checked={followSystem}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-background transition-transform ${
+                      followSystem ? "translate-x-6" : "translate-x-1"
+                    }`}
+                  />
+                </button>
+              </ItemActions>
+            </Item>
 
-      {!followSystem && (
-        <Item
-          variant="outline"
-          className="border border-border/60 rounded-lg bg-card"
-        >
-          <ItemContent>
-            <ItemTitle>主题</ItemTitle>
-            <ItemDescription className="text-xs">
-              选择界面配色方案
-            </ItemDescription>
-          </ItemContent>
-          <ItemActions>
-            <div className="flex gap-2">
-              <button
-                onClick={() => setTheme("light")}
-                className={`px-3 py-1.5 text-xs rounded transition-colors ${
-                  theme === "light"
-                    ? "bg-foreground text-background"
-                    : "border border-border/60 hover:bg-muted/40"
-                }`}
-              >
-                浅色
-              </button>
-              <button
-                onClick={() => setTheme("dark")}
-                className={`px-3 py-1.5 text-xs rounded transition-colors ${
-                  theme === "dark"
-                    ? "bg-foreground text-background"
-                    : "border border-border/60 hover:bg-muted/40"
-                }`}
-              >
-                深色
-              </button>
-            </div>
-          </ItemActions>
-        </Item>
-      )}
-
-      <Item
-        variant="outline"
-        className="border border-border/60 rounded-lg bg-card"
-      >
-        <ItemContent>
-          <ItemTitle>绕过代理</ItemTitle>
-          <ItemDescription className="text-xs">
-            网络请求绕过系统代理设置
-          </ItemDescription>
-        </ItemContent>
-        <ItemActions>
-          <button
-            onClick={() => setBypassProxy(!bypassProxy)}
-            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 ${
-              bypassProxy ? "bg-foreground" : "bg-muted"
-            } cursor-pointer`}
-            role="switch"
-            aria-checked={bypassProxy}
-          >
-            <span
-              className={`inline-block h-4 w-4 transform rounded-full bg-background transition-transform ${
-                bypassProxy ? "translate-x-6" : "translate-x-1"
-              }`}
-            />
-          </button>
-        </ItemActions>
-      </Item>
-
-      <Item
-        variant="outline"
-        className="border border-border/60 rounded-lg bg-card"
-      >
-        <ItemContent>
-          <ItemTitle>开机自启</ItemTitle>
-          <ItemDescription className="text-xs">
-            系统启动时自动运行应用
-          </ItemDescription>
-        </ItemContent>
-        <ItemActions>
-          <button
-            onClick={() => handleToggleAutostart(!autostartEnabled)}
-            disabled={autostartLoading}
-            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 ${
-              autostartEnabled ? "bg-foreground" : "bg-muted"
-            } ${autostartLoading ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
-            role="switch"
-            aria-checked={autostartEnabled}
-          >
-            <span
-              className={`inline-block h-4 w-4 transform rounded-full bg-background transition-transform ${
-                autostartEnabled ? "translate-x-6" : "translate-x-1"
-              }`}
-            />
-          </button>
-        </ItemActions>
-      </Item>
-
-      <Item
-        variant="outline"
-        className="border border-border/60 rounded-lg bg-card"
-      >
-        <ItemContent>
-          <ItemTitle>应用更新</ItemTitle>
-          <ItemDescription className="text-xs">
-            检查并安装应用更新
-            {currentVersion && (
-              <span className="ml-1">当前版本: v{currentVersion}</span>
+            {!followSystem && (
+              <Item variant="outline" className="border-0 border-b border-border/60 last:border-0">
+                <ItemContent>
+                  <ItemTitle>主题</ItemTitle>
+                  <ItemDescription className="text-xs">
+                    选择界面配色方案
+                  </ItemDescription>
+                </ItemContent>
+                <ItemActions>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setTheme("light")}
+                      className={`px-3 py-1.5 text-xs rounded transition-colors ${
+                        theme === "light"
+                          ? "bg-foreground text-background"
+                          : "border border-border/60 hover:bg-muted/40"
+                      }`}
+                    >
+                      浅色
+                    </button>
+                    <button
+                      onClick={() => setTheme("dark")}
+                      className={`px-3 py-1.5 text-xs rounded transition-colors ${
+                        theme === "dark"
+                          ? "bg-foreground text-background"
+                          : "border border-border/60 hover:bg-muted/40"
+                      }`}
+                    >
+                      深色
+                    </button>
+                  </div>
+                </ItemActions>
+              </Item>
             )}
-          </ItemDescription>
-        </ItemContent>
-        <ItemActions>
-          <button
-            onClick={handleCheckUpdate}
-            disabled={checkingUpdate}
-            className={`px-3 py-1.5 text-xs rounded transition-colors ${
-              checkingUpdate
-                ? "bg-muted text-muted-foreground cursor-not-allowed"
-                : "bg-foreground text-background hover:opacity-90"
-            }`}
-          >
-            {checkingUpdate ? "检查中..." : "检测更新"}
-          </button>
-        </ItemActions>
-      </Item>
 
-      <Item
-        variant="outline"
-        className="border border-border/60 rounded-lg bg-card"
-      >
-        <ItemContent>
-          <ItemTitle>启动时自动检测更新</ItemTitle>
-          <ItemDescription className="text-xs">
-            应用启动时自动检查是否有可用更新
-          </ItemDescription>
-        </ItemContent>
-        <ItemActions>
-          <button
-            onClick={() => handleToggleAutoCheckUpdate(!autoCheckUpdate)}
-            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 ${
-              autoCheckUpdate ? "bg-foreground" : "bg-muted"
-            } cursor-pointer`}
-            role="switch"
-            aria-checked={autoCheckUpdate}
-          >
-            <span
-              className={`inline-block h-4 w-4 transform rounded-full bg-background transition-transform ${
-                autoCheckUpdate ? "translate-x-6" : "translate-x-1"
-              }`}
-            />
-          </button>
-        </ItemActions>
-      </Item>
+            <Item variant="outline" className="border-0">
+              <ItemContent>
+                <ItemTitle>背景图</ItemTitle>
+                <ItemDescription className="text-xs">
+                  设置应用背景图片
+                  {backgroundImage && (
+                    <span className="ml-1 text-muted-foreground">(已设置)</span>
+                  )}
+                </ItemDescription>
+              </ItemContent>
+              <ItemActions>
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleSelectBackgroundImage}
+                    disabled={isSelectingImage}
+                    className={`px-3 py-1.5 text-xs rounded transition-colors ${
+                      isSelectingImage
+                        ? "bg-muted text-muted-foreground cursor-not-allowed"
+                        : "bg-foreground text-background hover:opacity-90"
+                    }`}
+                  >
+                    {isSelectingImage ? "选择中..." : "选择图片"}
+                  </button>
+                  {backgroundImage && (
+                    <button
+                      onClick={handleClearBackgroundImage}
+                      className="px-3 py-1.5 text-xs rounded transition-colors border border-border/60 hover:bg-muted/40"
+                    >
+                      清除
+                    </button>
+                  )}
+                </div>
+              </ItemActions>
+            </Item>
 
-      <Item
-        variant="outline"
-        className="border border-border/60 rounded-lg bg-card"
-      >
-        <ItemContent>
-          <ItemTitle>frpc 客户端</ItemTitle>
-          <ItemDescription className="text-xs">
-            重新下载 frpc 客户端程序
-          </ItemDescription>
-        </ItemContent>
-        <ItemActions>
-          <button
-            onClick={handleRedownloadFrpc}
-            disabled={isDownloading}
-            className={`px-3 py-1.5 text-xs rounded transition-colors ${
-              isDownloading
-                ? "bg-muted text-muted-foreground cursor-not-allowed"
-                : "bg-foreground text-background hover:opacity-90"
-            }`}
-          >
-            {isDownloading ? "下载中..." : "重新下载"}
-          </button>
-        </ItemActions>
-      </Item>
-
-      <Item
-        variant="outline"
-        className="border border-border/60 rounded-lg bg-card"
-      >
-        <ItemContent>
-          <ItemTitle>背景图</ItemTitle>
-          <ItemDescription className="text-xs">
-            设置应用背景图片
             {backgroundImage && (
-              <span className="ml-1 text-muted-foreground">(已设置)</span>
-            )}
-          </ItemDescription>
-        </ItemContent>
-        <ItemActions>
-          <div className="flex gap-2">
-            <button
-              onClick={handleSelectBackgroundImage}
-              disabled={isSelectingImage}
-              className={`px-3 py-1.5 text-xs rounded transition-colors ${
-                isSelectingImage
-                  ? "bg-muted text-muted-foreground cursor-not-allowed"
-                  : "bg-foreground text-background hover:opacity-90"
-              }`}
-            >
-              {isSelectingImage ? "选择中..." : "选择图片"}
-            </button>
-            {backgroundImage && (
-              <button
-                onClick={handleClearBackgroundImage}
-                className="px-3 py-1.5 text-xs rounded transition-colors border border-border/60 hover:bg-muted/40"
-              >
-                清除
-              </button>
+              <>
+                <Item variant="outline" className="border-0 border-t border-border/60">
+                  <ItemContent>
+                    <ItemTitle>遮罩透明度</ItemTitle>
+                    <ItemDescription className="text-xs">
+                      调整背景图遮罩的透明度 ({overlayOpacity}%)
+                    </ItemDescription>
+                  </ItemContent>
+                  <ItemActions>
+                    <div className="flex items-center gap-3 w-48">
+                      <input
+                        type="range"
+                        min="0"
+                        max="100"
+                        value={overlayOpacity}
+                        onChange={(e) =>
+                          setOverlayOpacity(parseInt(e.target.value, 10))
+                        }
+                        className="flex-1 h-2 bg-muted rounded-lg appearance-none cursor-pointer accent-foreground"
+                        style={{
+                          background: `linear-gradient(to right, var(--foreground) 0%, var(--foreground) ${overlayOpacity}%, var(--muted) ${overlayOpacity}%, var(--muted) 100%)`,
+                        }}
+                      />
+                      <span className="text-xs text-muted-foreground w-10 text-right">
+                        {overlayOpacity}%
+                      </span>
+                    </div>
+                  </ItemActions>
+                </Item>
+
+                <Item variant="outline" className="border-0">
+                  <ItemContent>
+                    <ItemTitle>模糊度</ItemTitle>
+                    <ItemDescription className="text-xs">
+                      调整背景图的模糊效果 ({blur}px)
+                    </ItemDescription>
+                  </ItemContent>
+                  <ItemActions>
+                    <div className="flex items-center gap-3 w-48">
+                      <input
+                        type="range"
+                        min="0"
+                        max="20"
+                        value={blur}
+                        onChange={(e) => setBlur(parseInt(e.target.value, 10))}
+                        className="flex-1 h-2 bg-muted rounded-lg appearance-none cursor-pointer accent-foreground"
+                        style={{
+                          background: `linear-gradient(to right, var(--foreground) 0%, var(--foreground) ${(blur / 20) * 100}%, var(--muted) ${(blur / 20) * 100}%, var(--muted) 100%)`,
+                        }}
+                      />
+                      <span className="text-xs text-muted-foreground w-10 text-right">
+                        {blur}px
+                      </span>
+                    </div>
+                  </ItemActions>
+                </Item>
+              </>
             )}
           </div>
-        </ItemActions>
-      </Item>
+        </div>
 
-      {backgroundImage && (
-        <>
-          <Item
-            variant="outline"
-            className="border border-border/60 rounded-lg bg-card"
-          >
-            <ItemContent>
-              <ItemTitle>遮罩透明度</ItemTitle>
-              <ItemDescription className="text-xs">
-                调整背景图遮罩的透明度 ({overlayOpacity}%)
-              </ItemDescription>
-            </ItemContent>
-            <ItemActions>
-              <div className="flex items-center gap-3 w-48">
-                <input
-                  type="range"
-                  min="0"
-                  max="100"
-                  value={overlayOpacity}
-                  onChange={(e) =>
-                    setOverlayOpacity(parseInt(e.target.value, 10))
-                  }
-                  className="flex-1 h-2 bg-muted rounded-lg appearance-none cursor-pointer accent-foreground"
-                  style={{
-                    background: `linear-gradient(to right, var(--foreground) 0%, var(--foreground) ${overlayOpacity}%, var(--muted) ${overlayOpacity}%, var(--muted) 100%)`,
-                  }}
-                />
-                <span className="text-xs text-muted-foreground w-10 text-right">
-                  {overlayOpacity}%
-                </span>
-              </div>
-            </ItemActions>
-          </Item>
+        {/* 网络设置 */}
+        <div className="space-y-3">
+          <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+            <Network className="w-4 h-4" />
+            <span>网络</span>
+          </div>
+          <div className="border border-border/60 rounded-lg bg-card overflow-hidden">
+            <Item variant="outline" className="border-0">
+              <ItemContent>
+                <ItemTitle>绕过代理</ItemTitle>
+                <ItemDescription className="text-xs">
+                  网络请求绕过系统代理设置
+                </ItemDescription>
+              </ItemContent>
+              <ItemActions>
+                <button
+                  onClick={() => setBypassProxy(!bypassProxy)}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+                    bypassProxy ? "bg-foreground" : "bg-muted"
+                  } cursor-pointer`}
+                  role="switch"
+                  aria-checked={bypassProxy}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-background transition-transform ${
+                      bypassProxy ? "translate-x-6" : "translate-x-1"
+                    }`}
+                  />
+                </button>
+              </ItemActions>
+            </Item>
+          </div>
+        </div>
 
-          <Item
-            variant="outline"
-            className="border border-border/60 rounded-lg bg-card"
-          >
-            <ItemContent>
-              <ItemTitle>模糊度</ItemTitle>
-              <ItemDescription className="text-xs">
-                调整背景图的模糊效果 ({blur}px)
-              </ItemDescription>
-            </ItemContent>
-            <ItemActions>
-              <div className="flex items-center gap-3 w-48">
-                <input
-                  type="range"
-                  min="0"
-                  max="20"
-                  value={blur}
-                  onChange={(e) => setBlur(parseInt(e.target.value, 10))}
-                  className="flex-1 h-2 bg-muted rounded-lg appearance-none cursor-pointer accent-foreground"
-                  style={{
-                    background: `linear-gradient(to right, var(--foreground) 0%, var(--foreground) ${(blur / 20) * 100}%, var(--muted) ${(blur / 20) * 100}%, var(--muted) 100%)`,
-                  }}
-                />
-                <span className="text-xs text-muted-foreground w-10 text-right">
-                  {blur}px
-                </span>
-              </div>
-            </ItemActions>
-          </Item>
-        </>
-      )}
+        {/* 系统设置 */}
+        <div className="space-y-3">
+          <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+            <Settings2 className="w-4 h-4" />
+            <span>系统</span>
+          </div>
+          <div className="border border-border/60 rounded-lg bg-card overflow-hidden">
+            <Item variant="outline" className="border-0 border-b border-border/60 last:border-0">
+              <ItemContent>
+                <ItemTitle>开机自启</ItemTitle>
+                <ItemDescription className="text-xs">
+                  系统启动时自动运行应用
+                </ItemDescription>
+              </ItemContent>
+              <ItemActions>
+                <button
+                  onClick={() => handleToggleAutostart(!autostartEnabled)}
+                  disabled={autostartLoading}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+                    autostartEnabled ? "bg-foreground" : "bg-muted"
+                  } ${autostartLoading ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
+                  role="switch"
+                  aria-checked={autostartEnabled}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-background transition-transform ${
+                      autostartEnabled ? "translate-x-6" : "translate-x-1"
+                    }`}
+                  />
+                </button>
+              </ItemActions>
+            </Item>
+
+            <Item variant="outline" className="border-0">
+              <ItemContent>
+                <ItemTitle>启动时自动检测更新</ItemTitle>
+                <ItemDescription className="text-xs">
+                  应用启动时自动检查是否有可用更新
+                </ItemDescription>
+              </ItemContent>
+              <ItemActions>
+                <button
+                  onClick={() => handleToggleAutoCheckUpdate(!autoCheckUpdate)}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+                    autoCheckUpdate ? "bg-foreground" : "bg-muted"
+                  } cursor-pointer`}
+                  role="switch"
+                  aria-checked={autoCheckUpdate}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-background transition-transform ${
+                      autoCheckUpdate ? "translate-x-6" : "translate-x-1"
+                    }`}
+                  />
+                </button>
+              </ItemActions>
+            </Item>
+          </div>
+        </div>
+
+        {/* 更新与下载 */}
+        <div className="space-y-3">
+          <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+            <Sparkles className="w-4 h-4" />
+            <span>更新与下载</span>
+          </div>
+          <div className="border border-border/60 rounded-lg bg-card overflow-hidden">
+            <Item variant="outline" className="border-0 border-b border-border/60 last:border-0">
+              <ItemContent>
+                <ItemTitle>应用更新</ItemTitle>
+                <ItemDescription className="text-xs">
+                  检查并安装应用更新
+                  {currentVersion && (
+                    <span className="ml-1">当前版本: v{currentVersion}</span>
+                  )}
+                </ItemDescription>
+              </ItemContent>
+              <ItemActions>
+                <button
+                  onClick={handleCheckUpdate}
+                  disabled={checkingUpdate}
+                  className={`px-3 py-1.5 text-xs rounded transition-colors ${
+                    checkingUpdate
+                      ? "bg-muted text-muted-foreground cursor-not-allowed"
+                      : "bg-foreground text-background hover:opacity-90"
+                  }`}
+                >
+                  {checkingUpdate ? "检查中..." : "检测更新"}
+                </button>
+              </ItemActions>
+            </Item>
+
+            <Item variant="outline" className="border-0">
+              <ItemContent>
+                <ItemTitle>frpc 客户端</ItemTitle>
+                <ItemDescription className="text-xs">
+                  重新下载 frpc 客户端程序
+                </ItemDescription>
+              </ItemContent>
+              <ItemActions>
+                <button
+                  onClick={handleRedownloadFrpc}
+                  disabled={isDownloading}
+                  className={`px-3 py-1.5 text-xs rounded transition-colors ${
+                    isDownloading
+                      ? "bg-muted text-muted-foreground cursor-not-allowed"
+                      : "bg-foreground text-background hover:opacity-90"
+                  }`}
+                >
+                  {isDownloading ? "下载中..." : "重新下载"}
+                </button>
+              </ItemActions>
+            </Item>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
