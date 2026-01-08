@@ -1,5 +1,5 @@
-import { check, type DownloadEvent } from '@tauri-apps/plugin-updater';
-import { getVersion } from '@tauri-apps/api/app';
+import { check, type DownloadEvent } from "@tauri-apps/plugin-updater";
+import { getVersion } from "@tauri-apps/api/app";
 
 export interface UpdateInfo {
   version: string;
@@ -12,7 +12,12 @@ export class UpdateService {
    * 检查是否有可用更新
    * @returns 如果有更新返回 Update 对象，否则返回 null
    */
-  async checkUpdate(): Promise<{ available: boolean; version?: string; date?: string; body?: string }> {
+  async checkUpdate(): Promise<{
+    available: boolean;
+    version?: string;
+    date?: string;
+    body?: string;
+  }> {
     try {
       const update = await check({
         headers: {},
@@ -29,7 +34,7 @@ export class UpdateService {
 
       return { available: false };
     } catch (error) {
-      console.error('检查更新失败:', error);
+      console.error("检查更新失败:", error);
       const errorMsg = error instanceof Error ? error.message : String(error);
       throw new Error(`检查更新失败: ${errorMsg}`);
     }
@@ -46,10 +51,10 @@ export class UpdateService {
 
       if (update?.available) {
         await update.downloadAndInstall((progressEvent: DownloadEvent) => {
-          console.log('更新进度:', progressEvent);
+          console.log("更新进度:", progressEvent);
         });
       } else {
-        throw new Error('没有可用的更新');
+        throw new Error("没有可用的更新");
       }
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
@@ -61,17 +66,17 @@ export class UpdateService {
    * 获取自动检测更新设置
    */
   getAutoCheckEnabled(): boolean {
-    if (typeof window === 'undefined') return true;
-    const stored = localStorage.getItem('autoCheckUpdate');
-    return stored !== 'false'; // 默认为 true
+    if (typeof window === "undefined") return true;
+    const stored = localStorage.getItem("autoCheckUpdate");
+    return stored !== "false"; // 默认为 true
   }
 
   /**
    * 设置自动检测更新
    */
   setAutoCheckEnabled(enabled: boolean): void {
-    if (typeof window === 'undefined') return;
-    localStorage.setItem('autoCheckUpdate', enabled ? 'true' : 'false');
+    if (typeof window === "undefined") return;
+    localStorage.setItem("autoCheckUpdate", enabled ? "true" : "false");
   }
 
   /**
@@ -81,11 +86,10 @@ export class UpdateService {
     try {
       return await getVersion();
     } catch (error) {
-      console.error('获取版本失败:', error);
-      return '未知';
+      console.error("获取版本失败:", error);
+      return "未知";
     }
   }
 }
 
 export const updateService = new UpdateService();
-

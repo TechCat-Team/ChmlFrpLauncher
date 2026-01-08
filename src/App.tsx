@@ -1,41 +1,43 @@
-import { useState, useEffect, useRef } from "react"
-import { toast } from "sonner"
-import { Sidebar } from "./components/Sidebar"
-import { Home } from "./components/pages/Home"
-import { TunnelList } from "./components/pages/TunnelList"
-import { Logs } from "./components/pages/Logs"
-import { Settings } from "./components/pages/Settings"
-import { getStoredUser, type StoredUser } from "./services/api"
-import { frpcDownloader } from "./services/frpcDownloader.ts"
-import { updateService } from "./services/updateService"
-import { Progress } from "./components/ui/progress"
-import { logStore } from "./services/logStore"
+import { useState, useEffect, useRef } from "react";
+import { toast } from "sonner";
+import { Sidebar } from "./components/Sidebar";
+import { Home } from "./components/pages/Home";
+import { TunnelList } from "./components/pages/TunnelList";
+import { Logs } from "./components/pages/Logs";
+import { Settings } from "./components/pages/Settings";
+import { getStoredUser, type StoredUser } from "./services/api";
+import { frpcDownloader } from "./services/frpcDownloader.ts";
+import { updateService } from "./services/updateService";
+import { Progress } from "./components/ui/progress";
+import { logStore } from "./services/logStore";
 
-let globalDownloadFlag = false
+let globalDownloadFlag = false;
 
 function App() {
-  const [activeTab, setActiveTab] = useState("home")
-  const [user, setUser] = useState<StoredUser | null>(() => getStoredUser())
-  const downloadToastRef = useRef<string | number | null>(null)
-  const isDownloadingRef = useRef(false)
+  const [activeTab, setActiveTab] = useState("home");
+  const [user, setUser] = useState<StoredUser | null>(() => getStoredUser());
+  const downloadToastRef = useRef<string | number | null>(null);
+  const isDownloadingRef = useRef(false);
 
   useEffect(() => {
-    logStore.startListening()
-  }, [])
+    logStore.startListening();
+  }, []);
 
   useEffect(() => {
     // 启动时自动检测更新
     const checkUpdateOnStart = async () => {
       if (!updateService.getAutoCheckEnabled()) {
-        return
+        return;
       }
 
       try {
-        const result = await updateService.checkUpdate()
+        const result = await updateService.checkUpdate();
         if (result.available) {
           toast.info(
             <div className="space-y-2">
-              <div className="text-sm font-medium">发现新版本: {result.version}</div>
+              <div className="text-sm font-medium">
+                发现新版本: {result.version}
+              </div>
               {result.body && (
                 <div className="text-xs text-muted-foreground max-w-md whitespace-pre-wrap">
                   {result.body}
@@ -45,50 +47,50 @@ function App() {
                 更新将在后台下载，完成后会提示您安装
               </div>
             </div>,
-            { duration: 8000 }
-          )
-          
+            { duration: 8000 },
+          );
+
           // 自动开始下载并安装更新
           try {
-            await updateService.installUpdate()
+            await updateService.installUpdate();
             toast.success("更新已下载完成，应用将在重启后更新", {
               duration: 5000,
-            })
+            });
           } catch (installError) {
             // 静默失败，不打扰用户
-            console.error("自动下载更新失败:", installError)
+            console.error("自动下载更新失败:", installError);
           }
         }
       } catch (error) {
         // 静默失败，不打扰用户
-        console.error("自动检测更新失败:", error)
+        console.error("自动检测更新失败:", error);
       }
-    }
+    };
 
     // 延迟一下再检查，避免影响启动速度
     const timer = setTimeout(() => {
-      checkUpdateOnStart()
-    }, 2000)
+      checkUpdateOnStart();
+    }, 2000);
 
-    return () => clearTimeout(timer)
-  }, [])
+    return () => clearTimeout(timer);
+  }, []);
 
   useEffect(() => {
     const checkAndDownloadFrpc = async () => {
       if (globalDownloadFlag || isDownloadingRef.current) {
-        return
+        return;
       }
-      
-      globalDownloadFlag = true
-      isDownloadingRef.current = true
+
+      globalDownloadFlag = true;
+      isDownloadingRef.current = true;
 
       try {
-        const exists = await frpcDownloader.checkFrpcExists()
-        
+        const exists = await frpcDownloader.checkFrpcExists();
+
         if (exists) {
-          globalDownloadFlag = false
-          isDownloadingRef.current = false
-          return
+          globalDownloadFlag = false;
+          isDownloadingRef.current = false;
+          return;
         }
         downloadToastRef.current = toast.loading(
           <div className="space-y-2">
@@ -98,40 +100,44 @@ function App() {
           </div>,
           {
             duration: Infinity,
-          }
-        )
+          },
+        );
 
         await frpcDownloader.downloadFrpc((progress) => {
           if (downloadToastRef.current !== null) {
             toast.loading(
               <div className="space-y-2">
-                <div className="text-sm font-medium">正在下载 frpc 客户端...</div>
+                <div className="text-sm font-medium">
+                  正在下载 frpc 客户端...
+                </div>
                 <Progress value={progress.percentage} />
                 <div className="text-xs text-muted-foreground">
-                  {progress.percentage.toFixed(1)}% ({(progress.downloaded / 1024 / 1024).toFixed(2)} MB / {(progress.total / 1024 / 1024).toFixed(2)} MB)
+                  {progress.percentage.toFixed(1)}% (
+                  {(progress.downloaded / 1024 / 1024).toFixed(2)} MB /{" "}
+                  {(progress.total / 1024 / 1024).toFixed(2)} MB)
                 </div>
               </div>,
               {
                 id: downloadToastRef.current,
                 duration: Infinity,
-              }
-            )
+              },
+            );
           }
-        })
+        });
 
         if (downloadToastRef.current !== null) {
           toast.success("frpc 客户端下载成功", {
             id: downloadToastRef.current,
             duration: 3000,
-          })
-          downloadToastRef.current = null
+          });
+          downloadToastRef.current = null;
         }
-        globalDownloadFlag = false
-        isDownloadingRef.current = false
+        globalDownloadFlag = false;
+        isDownloadingRef.current = false;
       } catch (error) {
-        
         if (downloadToastRef.current !== null) {
-          const errorMsg = error instanceof Error ? error.message : String(error)
+          const errorMsg =
+            error instanceof Error ? error.message : String(error);
           toast.error(
             <div className="space-y-2">
               <div className="text-sm font-medium">frpc 客户端下载失败</div>
@@ -141,46 +147,46 @@ function App() {
             {
               id: downloadToastRef.current,
               duration: 10000,
-            }
-          )
-          downloadToastRef.current = null
+            },
+          );
+          downloadToastRef.current = null;
         }
-        
-        globalDownloadFlag = false
-        isDownloadingRef.current = false
-      }
-    }
 
-    checkAndDownloadFrpc()
+        globalDownloadFlag = false;
+        isDownloadingRef.current = false;
+      }
+    };
+
+    checkAndDownloadFrpc();
 
     return () => {
-      frpcDownloader.cleanup()
+      frpcDownloader.cleanup();
       if (downloadToastRef.current !== null) {
-        toast.dismiss(downloadToastRef.current)
-        downloadToastRef.current = null
+        toast.dismiss(downloadToastRef.current);
+        downloadToastRef.current = null;
       }
-    }
-  }, [])
+    };
+  }, []);
 
   const handleTabChange = (tab: string) => {
-    if (tab === "tunnels" && !user) return
-    setActiveTab(tab)
-  }
+    if (tab === "tunnels" && !user) return;
+    setActiveTab(tab);
+  };
 
   const renderContent = () => {
     switch (activeTab) {
       case "home":
-        return <Home user={user} onUserChange={setUser} />
+        return <Home user={user} onUserChange={setUser} />;
       case "tunnels":
-        return <TunnelList />
+        return <TunnelList />;
       case "logs":
-        return <Logs />
+        return <Logs />;
       case "settings":
-        return <Settings />
+        return <Settings />;
       default:
-        return <Home user={user} onUserChange={setUser} />
+        return <Home user={user} onUserChange={setUser} />;
     }
-  }
+  };
 
   return (
     <div className="flex h-screen overflow-hidden bg-background text-foreground">
@@ -199,7 +205,7 @@ function App() {
         </div>
       </div>
     </div>
-  )
+  );
 }
 
-export default App
+export default App;

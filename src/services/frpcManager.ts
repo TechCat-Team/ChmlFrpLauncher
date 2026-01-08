@@ -1,5 +1,5 @@
-import { invoke } from '@tauri-apps/api/core';
-import { listen, type UnlistenFn, type Event } from '@tauri-apps/api/event';
+import { invoke } from "@tauri-apps/api/core";
+import { listen, type UnlistenFn, type Event } from "@tauri-apps/api/event";
 
 export interface LogMessage {
   tunnel_id: number;
@@ -12,7 +12,7 @@ export class FrpcManager {
 
   async startTunnel(tunnelId: number, userToken: string): Promise<string> {
     try {
-      return await invoke<string>('start_frpc', {
+      return await invoke<string>("start_frpc", {
         tunnelId,
         userToken,
       });
@@ -23,7 +23,7 @@ export class FrpcManager {
 
   async stopTunnel(tunnelId: number): Promise<string> {
     try {
-      return await invoke<string>('stop_frpc', {
+      return await invoke<string>("stop_frpc", {
         tunnelId,
       });
     } catch (error) {
@@ -33,7 +33,7 @@ export class FrpcManager {
 
   async isTunnelRunning(tunnelId: number): Promise<boolean> {
     try {
-      return await invoke<boolean>('is_frpc_running', {
+      return await invoke<boolean>("is_frpc_running", {
         tunnelId,
       });
     } catch (error) {
@@ -43,7 +43,7 @@ export class FrpcManager {
 
   async getRunningTunnels(): Promise<number[]> {
     try {
-      return await invoke<number[]>('get_running_tunnels');
+      return await invoke<number[]>("get_running_tunnels");
     } catch (error) {
       return [];
     }
@@ -55,10 +55,10 @@ export class FrpcManager {
     }
 
     this.unlisten = await listen<LogMessage>(
-      'frpc-log',
+      "frpc-log",
       (event: Event<LogMessage>) => {
         onLog(event.payload);
-      }
+      },
     );
   }
 
@@ -72,4 +72,3 @@ export class FrpcManager {
 
 // 导出单例
 export const frpcManager = new FrpcManager();
-

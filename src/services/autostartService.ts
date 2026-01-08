@@ -1,4 +1,4 @@
-import { invoke } from '@tauri-apps/api/core';
+import { invoke } from "@tauri-apps/api/core";
 
 export class AutostartService {
   /**
@@ -6,9 +6,9 @@ export class AutostartService {
    */
   async isEnabled(): Promise<boolean> {
     try {
-      return await invoke<boolean>('is_autostart_enabled');
+      return await invoke<boolean>("is_autostart_enabled");
     } catch (error) {
-      console.error('检查开机自启状态失败:', error);
+      console.error("检查开机自启状态失败:", error);
       return false;
     }
   }
@@ -19,7 +19,7 @@ export class AutostartService {
    */
   async setEnabled(enabled: boolean): Promise<void> {
     try {
-      await invoke('set_autostart', { enabled });
+      await invoke("set_autostart", { enabled });
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
       throw new Error(`设置开机自启失败: ${errorMsg}`);
@@ -29,4 +29,3 @@ export class AutostartService {
 
 // 导出单例
 export const autostartService = new AutostartService();
-

@@ -1,62 +1,81 @@
-import { useState } from "react"
-import { cn } from "../lib/utils"
-import { Home as HomeIcon, List, ScrollText, Settings as SettingsIcon, X, LogIn, LogOut, User } from "lucide-react"
-import { clearStoredUser, login, saveStoredUser, type StoredUser } from "../services/api"
+import { useState } from "react";
+import { cn } from "../lib/utils";
+import {
+  Home as HomeIcon,
+  List,
+  ScrollText,
+  Settings as SettingsIcon,
+  X,
+  LogIn,
+  LogOut,
+  User,
+} from "lucide-react";
+import {
+  clearStoredUser,
+  login,
+  saveStoredUser,
+  type StoredUser,
+} from "../services/api";
 
 interface SidebarProps {
-  activeTab: string
-  onTabChange: (tab: string) => void
-  user: StoredUser | null
-  onUserChange: (user: StoredUser | null) => void
+  activeTab: string;
+  onTabChange: (tab: string) => void;
+  user: StoredUser | null;
+  onUserChange: (user: StoredUser | null) => void;
 }
 
-export function Sidebar({ activeTab, onTabChange, user, onUserChange }: SidebarProps) {
-  const [loginOpen, setLoginOpen] = useState(false)
-  const [username, setUsername] = useState("")
-  const [password, setPassword] = useState("")
-  const [rememberMe, setRememberMe] = useState(true)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState("")
-  const [userMenuOpen, setUserMenuOpen] = useState(false)
+export function Sidebar({
+  activeTab,
+  onTabChange,
+  user,
+  onUserChange,
+}: SidebarProps) {
+  const [loginOpen, setLoginOpen] = useState(false);
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [rememberMe, setRememberMe] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setLoading(true)
-    setError("")
+    e.preventDefault();
+    setLoading(true);
+    setError("");
     try {
-      const authedUser = await login(username, password)
-      onUserChange(authedUser)
+      const authedUser = await login(username, password);
+      onUserChange(authedUser);
       if (rememberMe) {
-        saveStoredUser(authedUser)
+        saveStoredUser(authedUser);
       }
-      setLoginOpen(false)
-      setUserMenuOpen(false)
-      setPassword("")
-      setError("")
+      setLoginOpen(false);
+      setUserMenuOpen(false);
+      setPassword("");
+      setError("");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "登录失败")
+      setError(err instanceof Error ? err.message : "登录失败");
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const menuItems = [
     { id: "home", label: "首页", icon: HomeIcon },
     { id: "tunnels", label: "隧道", icon: List },
     { id: "logs", label: "日志", icon: ScrollText },
     { id: "settings", label: "设置", icon: SettingsIcon },
-  ]
+  ];
 
   const handleMenuClick = (itemId: string) => {
     if (itemId === "tunnels" && !user) {
-      setLoginOpen(true)
-      setError("请先登录后访问隧道页面")
-      return
+      setLoginOpen(true);
+      setError("请先登录后访问隧道页面");
+      return;
     }
 
-    setError("")
-    onTabChange(itemId)
-  }
+    setError("");
+    onTabChange(itemId);
+  };
 
   return (
     <div className="relative w-60 border-r border-sidebar-border/40 bg-sidebar overflow-hidden">
@@ -70,8 +89,12 @@ export function Sidebar({ activeTab, onTabChange, user, onUserChange }: SidebarP
               <span className="text-background font-bold text-sm">CF</span>
             </div>
             <div>
-              <h1 className="text-base font-bold text-foreground tracking-tight">ChmlFrp</h1>
-              <p className="text-[10px] text-foreground/50 tracking-wide">LAUNCHER</p>
+              <h1 className="text-base font-bold text-foreground tracking-tight">
+                ChmlFrp
+              </h1>
+              <p className="text-[10px] text-foreground/50 tracking-wide">
+                LAUNCHER
+              </p>
             </div>
           </div>
         </div>
@@ -80,8 +103,8 @@ export function Sidebar({ activeTab, onTabChange, user, onUserChange }: SidebarP
         <nav className="relative flex-1 px-3 py-2">
           <ul className="space-y-1">
             {menuItems.map((item) => {
-              const Icon = item.icon
-              const isActive = activeTab === item.id
+              const Icon = item.icon;
+              const isActive = activeTab === item.id;
               return (
                 <li key={item.id}>
                   <button
@@ -90,18 +113,22 @@ export function Sidebar({ activeTab, onTabChange, user, onUserChange }: SidebarP
                       "w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-all duration-200 text-sm group",
                       isActive
                         ? "bg-foreground/[0.08] text-foreground border border-foreground/10"
-                        : "text-foreground/65 hover:text-foreground hover:bg-foreground/[0.04]"
+                        : "text-foreground/65 hover:text-foreground hover:bg-foreground/[0.04]",
                     )}
                     aria-current={isActive ? "page" : undefined}
                   >
-                    <Icon className={cn(
-                      "w-[18px] h-[18px] transition-transform duration-200",
-                      isActive ? "" : "group-hover:scale-110"
-                    )} />
-                    <span className="font-medium tracking-tight">{item.label}</span>
+                    <Icon
+                      className={cn(
+                        "w-[18px] h-[18px] transition-transform duration-200",
+                        isActive ? "" : "group-hover:scale-110",
+                      )}
+                    />
+                    <span className="font-medium tracking-tight">
+                      {item.label}
+                    </span>
                   </button>
                 </li>
-              )
+              );
             })}
           </ul>
         </nav>
@@ -112,10 +139,10 @@ export function Sidebar({ activeTab, onTabChange, user, onUserChange }: SidebarP
             className="w-full px-3 py-3 text-left hover:bg-foreground/[0.04] transition-all duration-200 flex items-center gap-3 rounded-xl group"
             onClick={() => {
               if (user) {
-                setUserMenuOpen((v) => !v)
+                setUserMenuOpen((v) => !v);
               } else {
-                setError("")
-                setLoginOpen(true)
+                setError("");
+                setLoginOpen(true);
               }
             }}
           >
@@ -172,10 +199,10 @@ export function Sidebar({ activeTab, onTabChange, user, onUserChange }: SidebarP
                 <button
                   className="w-full text-left text-sm text-foreground px-3 py-2.5 rounded-lg hover:bg-destructive/10 hover:text-destructive transition-all duration-200 flex items-center gap-2.5 group"
                   onClick={() => {
-                    onUserChange(null)
-                    setUserMenuOpen(false)
-                    clearStoredUser()
-                    onTabChange("home")
+                    onUserChange(null);
+                    setUserMenuOpen(false);
+                    clearStoredUser();
+                    onTabChange("home");
                   }}
                 >
                   <LogOut className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
@@ -187,11 +214,11 @@ export function Sidebar({ activeTab, onTabChange, user, onUserChange }: SidebarP
         </div>
 
         {loginOpen && (
-          <div 
+          <div
             className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in duration-200"
             onClick={() => setLoginOpen(false)}
           >
-            <div 
+            <div
               className="w-full max-w-md rounded-2xl bg-card/95 backdrop-blur-md border border-border/50 p-8 shadow-2xl animate-in zoom-in-95 slide-in-from-bottom-4 duration-300"
               onClick={(e) => e.stopPropagation()}
             >
@@ -202,8 +229,12 @@ export function Sidebar({ activeTab, onTabChange, user, onUserChange }: SidebarP
                     <LogIn className="w-5 h-5 text-background" />
                   </div>
                   <div>
-                    <h2 className="text-lg font-bold text-foreground">登录账号</h2>
-                    <p className="text-xs text-muted-foreground">登录以访问所有功能</p>
+                    <h2 className="text-lg font-bold text-foreground">
+                      登录账号
+                    </h2>
+                    <p className="text-xs text-muted-foreground">
+                      登录以访问所有功能
+                    </p>
                   </div>
                 </div>
                 <button
@@ -218,7 +249,9 @@ export function Sidebar({ activeTab, onTabChange, user, onUserChange }: SidebarP
               {/* 表单 */}
               <form className="space-y-4" onSubmit={handleLogin}>
                 <div className="space-y-2">
-                  <label className="text-xs font-medium text-foreground/80 tracking-wide">账户名</label>
+                  <label className="text-xs font-medium text-foreground/80 tracking-wide">
+                    账户名
+                  </label>
                   <input
                     className="w-full rounded-xl border border-border/50 bg-background/50 px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-foreground/20 focus:border-foreground/50 transition-all duration-200"
                     placeholder="请输入账户名"
@@ -228,7 +261,9 @@ export function Sidebar({ activeTab, onTabChange, user, onUserChange }: SidebarP
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-xs font-medium text-foreground/80 tracking-wide">密码</label>
+                  <label className="text-xs font-medium text-foreground/80 tracking-wide">
+                    密码
+                  </label>
                   <input
                     type="password"
                     className="w-full rounded-xl border border-border/50 bg-background/50 px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-foreground/20 focus:border-foreground/50 transition-all duration-200"
@@ -247,14 +282,19 @@ export function Sidebar({ activeTab, onTabChange, user, onUserChange }: SidebarP
                     onChange={(e) => setRememberMe(e.target.checked)}
                     className="h-4 w-4 rounded border-border/50 text-foreground focus:ring-2 focus:ring-foreground/20 cursor-pointer"
                   />
-                  <label htmlFor="rememberMe" className="text-xs text-foreground/80 cursor-pointer select-none">
+                  <label
+                    htmlFor="rememberMe"
+                    className="text-xs text-foreground/80 cursor-pointer select-none"
+                  >
                     保存登录（重启后无需重新登录）
                   </label>
                 </div>
-                
+
                 {error && (
                   <div className="rounded-xl bg-destructive/10 border border-destructive/20 px-4 py-3 animate-in fade-in slide-in-from-top-1 duration-200">
-                    <p className="text-xs text-destructive font-medium">{error}</p>
+                    <p className="text-xs text-destructive font-medium">
+                      {error}
+                    </p>
                   </div>
                 )}
 
@@ -278,9 +318,9 @@ export function Sidebar({ activeTab, onTabChange, user, onUserChange }: SidebarP
               <div className="mt-6 pt-4 border-t border-border/30">
                 <p className="text-xs text-center text-muted-foreground">
                   还没有账号？{" "}
-                  <a 
-                    href="https://www.chmlfrp.net" 
-                    target="_blank" 
+                  <a
+                    href="https://www.chmlfrp.net"
+                    target="_blank"
                     rel="noopener noreferrer"
                     className="text-foreground font-medium hover:underline"
                   >
@@ -293,6 +333,5 @@ export function Sidebar({ activeTab, onTabChange, user, onUserChange }: SidebarP
         )}
       </div>
     </div>
-  )
+  );
 }
-

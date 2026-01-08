@@ -209,4 +209,101 @@
       opacity: 1;
     }
   }
+
+  /* 签到信息相关动画 */
+  @keyframes slideInFromTop2 {
+    from {
+      transform: translateY(-0.5rem);
+      opacity: 0;
+    }
+    to {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+
+  @keyframes scaleIn {
+    from {
+      transform: scale(0.95);
+      opacity: 0;
+    }
+    to {
+      transform: scale(1);
+      opacity: 1;
+    }
+  }
+
+  @keyframes fadeInUp {
+    from {
+      transform: translateY(0.5rem);
+      opacity: 0;
+    }
+    to {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+
+  @keyframes numberCount {
+    from {
+      opacity: 0;
+      transform: translateY(0.25rem);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes fadeOut {
+    from {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+    to {
+      opacity: 0;
+      transform: translateY(-0.5rem) scale(0.95);
+    }
+  }
+
+  .animate-slide-in-from-top-2 {
+    animation: slideInFromTop2 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .animate-scale-in {
+    animation: scaleIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .animate-fade-in-up {
+    animation: fadeInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .animate-number-count {
+    animation: numberCount 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .animate-fade-out {
+    animation: fadeOut 0.2s cubic-bezier(0.4, 0, 1, 1);
+  }
+
+  /* 卡片依次出现动画 */
+  .animate-card-delay-1 {
+    animation: fadeInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) 0.05s both;
+  }
+
+  .animate-card-delay-2 {
+    animation: fadeInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) 0.1s both;
+  }
+
+  .animate-card-delay-3 {
+    animation: fadeInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) 0.15s both;
+  }
+
+  .animate-card-delay-4 {
+    animation: fadeInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) 0.2s both;
+  }
+
+  .animate-card-delay-5 {
+    animation: fadeInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) 0.25s both;
+  }
 }
