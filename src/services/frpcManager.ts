@@ -11,24 +11,16 @@ export class FrpcManager {
   private unlisten?: UnlistenFn;
 
   async startTunnel(tunnelId: number, userToken: string): Promise<string> {
-    try {
-      return await invoke<string>("start_frpc", {
-        tunnelId,
-        userToken,
-      });
-    } catch (error) {
-      throw error;
-    }
+    return await invoke<string>("start_frpc", {
+      tunnelId,
+      userToken,
+    });
   }
 
   async stopTunnel(tunnelId: number): Promise<string> {
-    try {
-      return await invoke<string>("stop_frpc", {
-        tunnelId,
-      });
-    } catch (error) {
-      throw error;
-    }
+    return await invoke<string>("stop_frpc", {
+      tunnelId,
+    });
   }
 
   async isTunnelRunning(tunnelId: number): Promise<boolean> {
@@ -36,7 +28,7 @@ export class FrpcManager {
       return await invoke<boolean>("is_frpc_running", {
         tunnelId,
       });
-    } catch (error) {
+    } catch {
       return false;
     }
   }
@@ -44,7 +36,7 @@ export class FrpcManager {
   async getRunningTunnels(): Promise<number[]> {
     try {
       return await invoke<number[]>("get_running_tunnels");
-    } catch (error) {
+    } catch {
       return [];
     }
   }

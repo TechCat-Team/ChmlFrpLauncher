@@ -10,13 +10,13 @@ import {
   clearStoredUser,
   saveStoredUser,
   type StoredUser,
-} from "../../services/api";
+} from "@/services/api";
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
-} from "../../components/ui/accordion";
+} from "@/components/ui/accordion";
 
 import { ExternalLinkIcon } from "lucide-react";
 import {

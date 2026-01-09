@@ -1,10 +1,10 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { toast } from "sonner";
-import { ScrollArea } from "../ui/scroll-area";
-import { Progress } from "../ui/progress";
-import { fetchTunnels, type Tunnel, getStoredUser } from "../../services/api";
-import { frpcManager, type LogMessage } from "../../services/frpcManager";
-import { logStore } from "../../services/logStore";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Progress } from "@/components/ui/progress";
+import { fetchTunnels, type Tunnel, getStoredUser } from "@/services/api";
+import { frpcManager, type LogMessage } from "@/services/frpcManager";
+import { logStore } from "@/services/logStore";
 
 // 模块级别的缓存，确保在组件卸载后数据仍然保留
 const tunnelListCache = {
