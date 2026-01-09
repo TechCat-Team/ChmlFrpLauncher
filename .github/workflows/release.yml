@@ -1,21 +1,31 @@
 name: Tauri Build & Release
 
 on:
-  push:
+  pull_request:
+    types: [closed]
     branches:
       - main
+
+  push:
     tags:
       - "v*"
 
 jobs:
   release:
+    if: |
+      github.event_name == 'push' ||
+      (github.event_name == 'pull_request' &&
+       github.event.pull_request.merged == true &&
+       github.event.pull_request.base.ref == 'main' &&
+       github.event.pull_request.head.ref == 'develop')
+
     name: Tauri Build (${{ matrix.platform }})
+    runs-on: ${{ matrix.platform }}
+
     strategy:
       fail-fast: false
       matrix:
         platform: [macos-latest, ubuntu-latest, windows-latest]
-
-    runs-on: ${{ matrix.platform }}
 
     steps:
       - name: Checkout
@@ -25,7 +35,6 @@ jobs:
         uses: pnpm/action-setup@v4
         with:
           version: 9
-          run_install: false
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -54,7 +63,7 @@ jobs:
       - name: Install frontend dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build with Tauri
+      - name: Build & Release with Tauri
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -62,8 +71,5 @@ jobs:
           TAURI_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
         with:
           packageManager: pnpm
-          tagName: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || '' }}
-          releaseName: "Release ${{ github.ref_name }}"
-          releaseBody: "Automated build from main branch"
           releaseDraft: false
           prerelease: false
