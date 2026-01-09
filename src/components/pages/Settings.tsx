@@ -1,16 +1,16 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { frpcDownloader } from "../../services/frpcDownloader";
-import { autostartService } from "../../services/autostartService";
-import { updateService } from "../../services/updateService";
-import { Progress } from "../ui/progress";
+import { frpcDownloader } from "@/services/frpcDownloader";
+import { autostartService } from "@/services/autostartService";
+import { updateService } from "@/services/updateService";
+import { Progress } from "@/components/ui/progress";
 import {
   Item,
   ItemContent,
   ItemTitle,
   ItemDescription,
   ItemActions,
-} from "../ui/item";
+} from "@/components/ui/item";
 import { open } from "@tauri-apps/plugin-dialog";
 import { readFile } from "@tauri-apps/plugin-fs";
 import { Palette, Network, Settings2, Sparkles } from "lucide-react";

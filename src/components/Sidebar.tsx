@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { cn } from "../lib/utils";
+import { cn } from "@/lib/utils";
 import {
   Home as HomeIcon,
   List,
@@ -15,7 +15,7 @@ import {
   login,
   saveStoredUser,
   type StoredUser,
-} from "../services/api";
+} from "@/services/api";
 
 interface SidebarProps {
   activeTab: string;

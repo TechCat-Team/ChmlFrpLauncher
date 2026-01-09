@@ -1,10 +1,10 @@
 import { useState, useEffect, useRef } from "react";
 import { toast } from "sonner";
-import { ScrollArea } from "../ui/scroll-area";
-import { Select } from "../ui/select";
-import { fetchTunnels, type Tunnel } from "../../services/api";
-import { frpcManager, type LogMessage } from "../../services/frpcManager";
-import { logStore } from "../../services/logStore";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Select } from "@/components/ui/select";
+import { fetchTunnels, type Tunnel } from "@/services/api";
+import { frpcManager, type LogMessage } from "@/services/frpcManager";
+import { logStore } from "@/services/logStore";
 import { save } from "@tauri-apps/plugin-dialog";
 import { writeTextFile } from "@tauri-apps/plugin-fs";
 
