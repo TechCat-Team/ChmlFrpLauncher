@@ -30,6 +30,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
@@ -72,5 +74,8 @@ jobs:
         with:
           packageManager: pnpm
           includeRelease: true
+          tagName: ${{ github.ref_name }}
+          releaseName: 'ChmlFrpLauncher ${{ github.ref_name }}'
+          releaseBody: 'See the assets to download and install this version.'
           releaseDraft: false
           prerelease: false
