@@ -71,5 +71,6 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
         with:
           packageManager: pnpm
+          includeRelease: true
           releaseDraft: false
           prerelease: false
