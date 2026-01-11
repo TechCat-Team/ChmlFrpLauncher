@@ -8,10 +8,12 @@ version = "0.0.3"
 dependencies = [
  "chrono",
  "futures-util",
+ "hex",
  "log",
  "reqwest",
  "serde",
  "serde_json",
+ "sha2",
  "strip-ansi-escapes",
  "tauri",
  "tauri-build",
