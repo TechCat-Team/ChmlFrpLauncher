@@ -7,6 +7,8 @@
     "dialog:allow-open",
     "dialog:allow-save",
     "fs:allow-read-file",
-    "fs:allow-write-file"
+    "fs:allow-write-file",
+    "opener:allow-default-urls",
+    "opener:allow-open-url"
   ]
 }

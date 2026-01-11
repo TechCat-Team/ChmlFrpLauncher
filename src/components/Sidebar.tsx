@@ -16,6 +16,7 @@ import {
   saveStoredUser,
   type StoredUser,
 } from "@/services/api";
+import { openUrl } from '@tauri-apps/plugin-opener';
 
 interface SidebarProps {
   activeTab: string;
@@ -318,14 +319,12 @@ export function Sidebar({
               <div className="mt-6 pt-4 border-t border-border/30">
                 <p className="text-xs text-center text-muted-foreground">
                   还没有账号？{" "}
-                  <a
-                    href="https://www.chmlfrp.net"
-                    target="_blank"
-                    rel="noopener noreferrer"
+                  <button
+                    onClick={() => openUrl("https://www.chmlfrp.net")}
                     className="text-foreground font-medium hover:underline"
                   >
                     立即注册
-                  </a>
+                  </button>
                 </p>
               </div>
             </div>
