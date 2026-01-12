@@ -277,3 +277,81 @@ export async function fetchSignInInfo(token?: string): Promise<SignInInfo> {
   if (data) return data;
   throw new Error("获取签到信息失败");
 }
+
+interface OfflineTunnelResponse {
+  code: number;
+  state: string;
+  msg?: string;
+}
+
+export async function offlineTunnel(
+  tunnelName: string,
+  token?: string,
+): Promise<void> {
+  const storedUser = getStoredUser();
+  const bearer = token ?? storedUser?.usertoken;
+
+  if (!bearer) {
+    throw new Error("登录信息已过期，请重新登录");
+  }
+
+  const formData = new URLSearchParams();
+  formData.append("tunnel_name", tunnelName);
+
+  const endpoint = "/offline_tunnel";
+  const headersObj = {
+    "Content-Type": "application/x-www-form-urlencoded",
+    authorization: bearer,
+  };
+
+  const bypassProxy = getBypassProxy();
+
+  // 在 Tauri 环境中，如果启用绕过代理，使用 Tauri 命令
+  if (
+    typeof window !== "undefined" &&
+    "__TAURI__" in window &&
+    bypassProxy
+  ) {
+    const { invoke } = await import("@tauri-apps/api/core");
+    const url = endpoint.startsWith("/")
+      ? `${API_BASE_URL}${endpoint}`
+      : `${API_BASE_URL}/${endpoint}`;
+
+    const responseText = await invoke<string>("http_request", {
+      options: {
+        url,
+        method: "POST",
+        headers: headersObj,
+        body: formData.toString(),
+        bypass_proxy: true,
+      },
+    });
+
+    const data = JSON.parse(responseText) as OfflineTunnelResponse;
+    if (data?.code === 200 && data?.state === "success") {
+      return;
+    }
+    throw new Error(data?.msg || "下线隧道失败");
+  } else {
+    // 使用普通的 fetch
+    const url = endpoint.startsWith("/")
+      ? `${API_BASE_URL}${endpoint}`
+      : `${API_BASE_URL}/${endpoint}`;
+
+    const res = await fetch(url, {
+      method: "POST",
+      headers: headersObj,
+      body: formData.toString(),
+    });
+
+    if (!res.ok) {
+      throw new Error(`HTTP错误: ${res.status}`);
+    }
+
+    const data = (await res.json()) as OfflineTunnelResponse;
+    if (data?.code === 200 && data?.state === "success") {
+      return;
+    }
+    throw new Error(data?.msg || "下线隧道失败");
+  }
+}

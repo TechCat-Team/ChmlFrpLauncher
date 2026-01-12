@@ -2,7 +2,12 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { toast } from "sonner";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Progress } from "@/components/ui/progress";
-import { fetchTunnels, type Tunnel, getStoredUser } from "@/services/api";
+import {
+  fetchTunnels,
+  type Tunnel,
+  getStoredUser,
+  offlineTunnel,
+} from "@/services/api";
 import { frpcManager, type LogMessage } from "@/services/frpcManager";
 import { logStore } from "@/services/logStore";
 
@@ -14,6 +19,7 @@ const tunnelListCache = {
 interface TunnelProgress {
   progress: number; // 0-100
   isError: boolean; // 是否错误状态（红色）
+  isSuccess: boolean; // 是否成功状态（绿色）
   startTime?: number; // 启动时间戳
 }
 
@@ -32,6 +38,7 @@ function restoreProgressFromLogs(logs: LogMessage[]): Map<number, TunnelProgress
   for (const [tunnelId, tunnelLogs] of logsByTunnel) {
     let progress = 0;
     let isError = false;
+    let isSuccess = false;
     
     for (let i = tunnelLogs.length - 1; i >= 0; i--) {
       const message = tunnelLogs[i].message;
@@ -39,6 +46,7 @@ function restoreProgressFromLogs(logs: LogMessage[]): Map<number, TunnelProgress
       if (message.includes("映射启动成功")) {
         progress = 100;
         isError = false;
+        isSuccess = false;
         break;
       } else if (message.includes("已启动隧道")) {
         progress = 80;
@@ -55,8 +63,8 @@ function restoreProgressFromLogs(logs: LogMessage[]): Map<number, TunnelProgress
     }
     
     if (progress > 0) {
-      progressMap.set(tunnelId, { progress, isError });
-      tunnelProgressCache.set(tunnelId, { progress, isError });
+      progressMap.set(tunnelId, { progress, isError, isSuccess });
+      tunnelProgressCache.set(tunnelId, { progress, isError, isSuccess });
     }
   }
   
@@ -90,6 +98,9 @@ export function TunnelList() {
     return cached;
   });
   const timeoutRefs = useRef<Map<number, ReturnType<typeof setTimeout>>>(
+    new Map(),
+  );
+  const successTimeoutRefs = useRef<Map<number, ReturnType<typeof setTimeout>>>(
     new Map(),
   );
   const processedErrorsRef = useRef<Set<string>>(new Set());
@@ -146,23 +157,35 @@ export function TunnelList() {
   };
 
   useEffect(() => {
-    loadTunnels();
-    logStore.startListening();
-    
-    const logs = logStore.getLogs();
-    if (logs.length > 0) {
-      const restored = restoreProgressFromLogs(logs);
-      if (restored.size > 0) {
-        setTunnelProgress((prev) => {
-          const merged = new Map(prev);
-          for (const [tunnelId, progress] of restored) {
-            merged.set(tunnelId, progress);
-            tunnelProgressCache.set(tunnelId, progress);
-          }
-          return merged;
-        });
+    const initializeProgress = async () => {
+      await loadTunnels();
+      logStore.startListening();
+      
+      const logs = logStore.getLogs();
+      if (logs.length > 0) {
+        const restored = restoreProgressFromLogs(logs);
+        if (restored.size > 0) {
+          const runningTunnels = await frpcManager.getRunningTunnels();
+          const runningSet = new Set(runningTunnels);
+          
+          setTunnelProgress((prev) => {
+            const merged = new Map(prev);
+            for (const [tunnelId, progress] of restored) {
+              if (!runningSet.has(tunnelId)) {
+                merged.set(tunnelId, { progress: 0, isError: false, isSuccess: false });
+                tunnelProgressCache.set(tunnelId, { progress: 0, isError: false, isSuccess: false });
+              } else {
+                merged.set(tunnelId, { ...progress, isSuccess: false });
+                tunnelProgressCache.set(tunnelId, { ...progress, isSuccess: false });
+              }
+            }
+            return merged;
+          });
+        }
       }
-    }
+    };
+    
+    initializeProgress();
   }, []);
 
   const handleDuplicateTunnelError = useCallback(
@@ -198,33 +221,17 @@ export function TunnelList() {
       }
 
       try {
-        const formData = new URLSearchParams();
-        formData.append("tunnel_name", cleanedTunnelName);
-        
         console.log("调用下线隧道API", { tunnelId, tunnelName: cleanedTunnelName });
         
-        const response = await fetch("https://cf-v2.uapis.cn/offline_tunnel", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/x-www-form-urlencoded",
-            authorization: user.usertoken,
-          },
-          body: formData.toString(),
-        });
+        await offlineTunnel(cleanedTunnelName, user.usertoken);
         
-        if (!response.ok) {
-          throw new Error(`HTTP错误: ${response.status}`);
-        }
-
-        const result = await response.json();
-        if (result.code === 200 && result.state === "success") {
-          await new Promise((resolve) => setTimeout(resolve, 8000));
+        await new Promise((resolve) => setTimeout(resolve, 8000));
 
           const tunnel = tunnels.find((t) => t.id === tunnelId);
           if (tunnel) {
             setTunnelProgress((prev) => {
               const next = new Map(prev);
-              const resetProgress = { progress: 0, isError: false };
+              const resetProgress = { progress: 0, isError: false, isSuccess: false };
               next.set(tunnelId, resetProgress);
               tunnelProgressCache.set(tunnelId, resetProgress);
               return next;
@@ -286,6 +293,7 @@ export function TunnelList() {
                       ...current,
                       progress: 100,
                       isError: true,
+                      isSuccess: false,
                     };
                     tunnelProgressCache.set(tunnelId, errorProgress);
                     return new Map(prev).set(tunnelId, errorProgress);
@@ -302,9 +310,6 @@ export function TunnelList() {
               }
             }, 20000);
           }
-        } else {
-          throw new Error(result.msg || "下线隧道失败");
-        }
       } catch (err) {
         const message =
           err instanceof Error ? err.message : "自动修复失败";
@@ -347,7 +352,7 @@ export function TunnelList() {
           return prev;
         }
 
-        const newProgress = current || { progress: 0, isError: false };
+        const newProgress = current || { progress: 0, isError: false, isSuccess: false };
 
         if (message.includes("frpc 进程已启动")) {
           newProgress.startTime = Date.now();
@@ -387,10 +392,30 @@ export function TunnelList() {
         else if (message.includes("映射启动成功")) {
           newProgress.progress = 100;
           newProgress.isError = false;
+          newProgress.isSuccess = true;
           if (timeoutRefs.current.has(tunnelId)) {
             clearTimeout(timeoutRefs.current.get(tunnelId)!);
             timeoutRefs.current.delete(tunnelId);
           }
+          if (successTimeoutRefs.current.has(tunnelId)) {
+            clearTimeout(successTimeoutRefs.current.get(tunnelId)!);
+          }
+          const successTimeout = setTimeout(() => {
+            setTunnelProgress((prev) => {
+              const current = prev.get(tunnelId);
+              if (current) {
+                const updated = {
+                  ...current,
+                  isSuccess: false,
+                };
+                tunnelProgressCache.set(tunnelId, updated);
+                return new Map(prev).set(tunnelId, updated);
+              }
+              return prev;
+            });
+            successTimeoutRefs.current.delete(tunnelId);
+          }, 2000);
+          successTimeoutRefs.current.set(tunnelId, successTimeout);
         }
         else if (
           message.includes("启动失败") &&
@@ -446,9 +471,12 @@ export function TunnelList() {
 
   useEffect(() => {
     const timeouts = timeoutRefs.current;
+    const successTimeouts = successTimeoutRefs.current;
     return () => {
       timeouts.forEach((timeout) => clearTimeout(timeout));
       timeouts.clear();
+      successTimeouts.forEach((timeout) => clearTimeout(timeout));
+      successTimeouts.clear();
     };
   }, []);
 
@@ -470,12 +498,27 @@ export function TunnelList() {
                   ...current,
                   progress: 100,
                   isError: true,
+                  isSuccess: false,
                 };
                 tunnelProgressCache.set(tunnel.id, errorProgress);
                 return new Map(prev).set(tunnel.id, errorProgress);
               }
               return prev;
             });
+          } else {
+            setTunnelProgress((prev) => {
+              const current = prev.get(tunnel.id);
+              if (current && current.progress > 0) {
+                const cleared = { progress: 0, isError: false, isSuccess: false };
+                tunnelProgressCache.set(tunnel.id, cleared);
+                return new Map(prev).set(tunnel.id, cleared);
+              }
+              return prev;
+            });
+            if (successTimeoutRefs.current.has(tunnel.id)) {
+              clearTimeout(successTimeoutRefs.current.get(tunnel.id)!);
+              successTimeoutRefs.current.delete(tunnel.id);
+            }
           }
         }
       }
@@ -504,7 +547,7 @@ export function TunnelList() {
       if (enabled) {
         setTunnelProgress((prev) => {
           const next = new Map(prev);
-          const resetProgress = { progress: 0, isError: false };
+          const resetProgress = { progress: 0, isError: false, isSuccess: false };
           next.set(tunnel.id, resetProgress);
           tunnelProgressCache.set(tunnel.id, resetProgress);
           return next;
@@ -525,13 +568,17 @@ export function TunnelList() {
         });
         setTunnelProgress((prev) => {
           const next = new Map(prev);
-          next.set(tunnel.id, { progress: 0, isError: false });
-          tunnelProgressCache.set(tunnel.id, { progress: 0, isError: false });
+          next.set(tunnel.id, { progress: 0, isError: false, isSuccess: false });
+          tunnelProgressCache.set(tunnel.id, { progress: 0, isError: false, isSuccess: false });
           return next;
         });
         if (timeoutRefs.current.has(tunnel.id)) {
           clearTimeout(timeoutRefs.current.get(tunnel.id)!);
           timeoutRefs.current.delete(tunnel.id);
+        }
+        if (successTimeoutRefs.current.has(tunnel.id)) {
+          clearTimeout(successTimeoutRefs.current.get(tunnel.id)!);
+          successTimeoutRefs.current.delete(tunnel.id);
         }
       }
     } catch (err) {
@@ -539,7 +586,7 @@ export function TunnelList() {
         err instanceof Error ? err.message : `${enabled ? "启动" : "停止"}失败`;
       toast.error(message);
       if (enabled) {
-        const errorProgress = { progress: 100, isError: true };
+        const errorProgress = { progress: 100, isError: true, isSuccess: false };
         setTunnelProgress((prev) => {
           const next = new Map(prev);
           next.set(tunnel.id, errorProgress);
@@ -584,6 +631,7 @@ export function TunnelList() {
               const progress = tunnelProgress.get(tunnel.id);
               const progressValue = progress?.progress ?? 0;
               const isError = progress?.isError ?? false;
+              const isSuccess = progress?.isSuccess ?? false;
               return (
                 <div
                   key={tunnel.id}
@@ -592,15 +640,17 @@ export function TunnelList() {
                   <div className="w-full">
                     <Progress
                       value={progressValue}
-                      className={`h-1 ${
+                      className={`h-1 transition-colors ${
                         isError
                           ? "bg-destructive/20 [&>div]:bg-destructive"
-                          : ""
+                          : isSuccess
+                            ? "bg-green-500/20 [&>div]:bg-green-500"
+                            : ""
                       }`}
                     />
                   </div>
                   <div className="p-4">
-                    <div className="flex items-start justify-between mb-3">
+                  <div className="flex items-start justify-between mb-3">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
                         <h3 className="font-medium text-foreground truncate">
@@ -629,9 +679,9 @@ export function TunnelList() {
                         className={`absolute left-[2px] top-[2px] w-4 h-4 bg-background rounded-full transition-transform peer-checked:translate-x-4 ${isToggling ? "opacity-50" : ""}`}
                       ></div>
                     </label>
-                    </div>
+                  </div>
 
-                    <div className="space-y-2 text-xs">
+                  <div className="space-y-2 text-xs">
                     <div className="flex items-center justify-between">
                       <span className="text-muted-foreground">本地地址</span>
                       <span className="font-mono">

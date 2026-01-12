@@ -3,10 +3,19 @@
   "platforms": ["macOS", "windows", "linux"],
   "windows": ["main"],
   "permissions": [
+    "core:window:default",
+    "core:window:allow-start-dragging",
+    "core:window:allow-minimize",
+    "core:window:allow-maximize",
+    "core:window:allow-unmaximize",
+    "core:window:allow-close",
     "updater:default",
     "dialog:allow-open",
     "dialog:allow-save",
     "fs:allow-read-file",
-    "fs:allow-write-file"
+    "fs:allow-write-file",
+    "fs:allow-write-text-file",
+    "opener:allow-default-urls",
+    "opener:allow-open-url"
   ]
 }

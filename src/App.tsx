@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { toast } from "sonner";
 import { Sidebar } from "@/components/Sidebar";
+import { TitleBar } from "@/components/TitleBar";
 import { Home } from "@/components/pages/Home";
 import { TunnelList } from "@/components/pages/TunnelList";
 import { Logs } from "@/components/pages/Logs";
@@ -18,6 +19,15 @@ function App() {
   const [user, setUser] = useState<StoredUser | null>(() => getStoredUser());
   const downloadToastRef = useRef<string | number | null>(null);
   const isDownloadingRef = useRef(false);
+  const appContainerRef = useRef<HTMLDivElement>(null);
+  const isMacOS = typeof navigator !== "undefined" && navigator.platform.toUpperCase().indexOf("MAC") >= 0;
+  const [showTitleBar, setShowTitleBar] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    const stored = localStorage.getItem("showTitleBar");
+    // 如果从未设置过，默认返回 false（关闭）
+    if (stored === null) return false;
+    return stored === "true";
+  });
   const [backgroundImage, setBackgroundImage] = useState<string | null>(() => {
     if (typeof window === "undefined") return null;
     return localStorage.getItem("backgroundImage");
@@ -60,6 +70,32 @@ function App() {
 
   useEffect(() => {
     logStore.startListening();
+  }, []);
+
+  useEffect(() => {
+    const handleTitleBarVisibilityChange = () => {
+      const stored = localStorage.getItem("showTitleBar");
+      setShowTitleBar(stored !== "false");
+    };
+
+    window.addEventListener("titleBarVisibilityChanged", handleTitleBarVisibilityChange);
+    return () => {
+      window.removeEventListener("titleBarVisibilityChanged", handleTitleBarVisibilityChange);
+    };
+  }, []);
+
+  useEffect(() => {
+    // 禁用右键菜单
+    const handleContextMenu = (e: MouseEvent) => {
+      e.preventDefault();
+      return false;
+    };
+
+    document.addEventListener("contextmenu", handleContextMenu);
+
+    return () => {
+      document.removeEventListener("contextmenu", handleContextMenu);
+    };
   }, []);
 
   useEffect(() => {
@@ -186,11 +222,6 @@ function App() {
               <div className="text-sm font-medium">
                 发现新版本: {result.version}
               </div>
-              {result.body && (
-                <div className="text-xs text-muted-foreground max-w-md whitespace-pre-wrap">
-                  {result.body}
-                </div>
-              )}
               <div className="text-xs text-muted-foreground mt-1">
                 更新将在后台下载，完成后会提示您安装
               </div>
@@ -356,18 +387,27 @@ function App() {
     return `rgba(246, 247, 249, ${opacity / 100})`;
   };
 
-  const backgroundStyle = backgroundImage
-    ? {
+  const backgroundStyle = useMemo(() => {
+    if (backgroundImage) {
+      return {
         backgroundImage: `url(${backgroundImage})`,
         backgroundSize: "cover",
         backgroundPosition: "center",
         backgroundRepeat: "no-repeat",
         backgroundAttachment: "fixed",
-      }
-    : {};
+      };
+    }
+    return {
+      backgroundColor: getBackgroundColorWithOpacity(100),
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [backgroundImage, theme]);
 
   const overlayStyle = useMemo(() => {
-    if (!backgroundImage) return {};
+    if (!backgroundImage) {
+      // 没有背景图片时，不显示覆盖层
+      return {};
+    }
     return {
       backgroundColor: getBackgroundColorWithOpacity(overlayOpacity),
       backdropFilter: `blur(${blur}px)`,
@@ -377,8 +417,10 @@ function App() {
   }, [backgroundImage, overlayOpacity, blur, theme]);
 
   useEffect(() => {
-    if (backgroundImage) {
-      const updateOverlayColor = () => {
+    // 当主题变化时，延迟更新背景色以确保 CSS 变量已更新
+    const updateBackgroundColors = () => {
+      // 更新覆盖层颜色（如果有背景图）
+      if (backgroundImage) {
         const overlayElement = document.querySelector(
           ".background-overlay",
         ) as HTMLElement;
@@ -386,24 +428,43 @@ function App() {
           overlayElement.style.backgroundColor =
             getBackgroundColorWithOpacity(overlayOpacity);
         }
-      };
+      }
+      
+      // 更新主背景色（如果没有背景图）
+      if (!backgroundImage && appContainerRef.current) {
+        appContainerRef.current.style.backgroundColor =
+          getBackgroundColorWithOpacity(100);
+      }
+    };
 
-      requestAnimationFrame(() => {
-        requestAnimationFrame(updateOverlayColor);
-      });
-    }
+    requestAnimationFrame(() => {
+      requestAnimationFrame(updateBackgroundColors);
+    });
   }, [theme, overlayOpacity, backgroundImage]);
 
   return (
     <div
-      className="flex h-screen overflow-hidden text-foreground"
-      style={backgroundStyle}
+      ref={appContainerRef}
+      className="flex flex-col h-screen overflow-hidden text-foreground rounded-[12px]"
+      style={{
+        ...backgroundStyle,
+        borderRadius: '12px',
+        overflow: 'hidden',
+      }}
     >
       <div
-        className="absolute inset-0 background-overlay"
-        style={overlayStyle}
+        className="absolute inset-0 background-overlay rounded-[12px]"
+        style={{
+          ...overlayStyle,
+          borderRadius: '12px',
+        }}
       />
-      <div className="relative flex w-full h-full">
+      {(!isMacOS || showTitleBar) && (
+        <div className="relative z-50">
+          <TitleBar />
+        </div>
+      )}
+      <div className="relative flex w-full flex-1 overflow-hidden rounded-b-[12px]">
         <Sidebar
           activeTab={activeTab}
           onTabChange={handleTabChange}
@@ -412,6 +473,12 @@ function App() {
         />
 
         <div className="flex-1 flex flex-col overflow-hidden relative">
+          {isMacOS && !showTitleBar ? (
+            <div
+              data-tauri-drag-region
+              className="absolute top-0 left-0 right-0 h-12 z-10"
+            />
+          ) : null}
           <div className="flex-1 overflow-auto p-6 md:p-8">
             <div className="max-w-6xl mx-auto w-full h-full">
               <div className="h-full flex flex-col">{renderContent()}</div>

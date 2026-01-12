@@ -7,6 +7,7 @@ import { frpcManager, type LogMessage } from "@/services/frpcManager";
 import { logStore } from "@/services/logStore";
 import { save } from "@tauri-apps/plugin-dialog";
 import { writeTextFile } from "@tauri-apps/plugin-fs";
+import { updateService } from "@/services/updateService";
 
 export function Logs() {
   const [tunnels, setTunnels] = useState<Tunnel[]>([]);
@@ -65,7 +66,12 @@ export function Logs() {
   };
 
   const handleSaveLogs = async () => {
-    if (logs.length === 0) {
+    // 在函数内部重新计算 filteredLogs，确保使用最新的值
+    const logsToSave = selectedTunnelId
+      ? logs.filter((log) => log.tunnel_id === selectedTunnelId)
+      : logs;
+
+    if (logsToSave.length === 0) {
       toast.error("没有日志可保存");
       return;
     }
@@ -82,19 +88,108 @@ export function Logs() {
       });
 
       if (filePath) {
-        const logContent = filteredLogs
+        // 生成日志头部信息
+        const now = new Date();
+        const saveTime = now.toLocaleString("zh-CN", {
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit",
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+        });
+
+        // 获取系统信息
+        const appVersion = await updateService
+          .getCurrentVersion()
+          .catch(() => "未知");
+
+        // 使用浏览器 API 获取系统信息
+        const userAgent = navigator.userAgent;
+        let osPlatform = "未知";
+        let osArch = "未知";
+
+        if (userAgent.includes("Win")) {
+          osPlatform = "Windows";
+          osArch = userAgent.includes("WOW64") || userAgent.includes("x64")
+            ? "x64"
+            : "x86";
+        } else if (userAgent.includes("Mac")) {
+          osPlatform = "macOS";
+          osArch = userAgent.includes("Intel") ? "x64" : "ARM64";
+        } else if (userAgent.includes("Linux")) {
+          osPlatform = "Linux";
+          osArch = userAgent.includes("x86_64") ? "x64" : "未知";
+        } else if (userAgent.includes("Android")) {
+          osPlatform = "Android";
+        } else if (userAgent.includes("iOS")) {
+          osPlatform = "iOS";
+        }
+
+        // 获取隧道信息
+        const selectedTunnel = selectedTunnelId
+          ? tunnels.find((t) => t.id === selectedTunnelId)
+          : null;
+
+        // 计算日志时间范围
+        const logTimes = logsToSave.map((log) => log.timestamp);
+        const firstLogTime = logTimes[0] || "未知";
+        const lastLogTime = logTimes[logTimes.length - 1] || "未知";
+
+        // 统计各隧道的日志数量
+        const tunnelLogCounts = new Map<number, number>();
+        logsToSave.forEach((log) => {
+          tunnelLogCounts.set(
+            log.tunnel_id,
+            (tunnelLogCounts.get(log.tunnel_id) || 0) + 1,
+          );
+        });
+
+        // 构建头部信息
+        const headerLines: (string | null)[] = [
+          "———ChmlFrpLauncherLog———",
+          `版本: ${appVersion} | 系统: ${osPlatform} ${osArch} | 保存时间: ${saveTime}`,
+          selectedTunnel
+            ? `隧道: ${selectedTunnel.id} (${selectedTunnel.name}) | 类型: ${selectedTunnel.type || "未知"} | 节点: ${selectedTunnel.node || "未知"}`
+            : `模式: 所有隧道 | 涉及: ${tunnelLogCounts.size} 个隧道`,
+          selectedTunnel && selectedTunnel.localip && selectedTunnel.nport
+            ? `本地: ${selectedTunnel.localip}:${selectedTunnel.nport} | 链接: ${selectedTunnel.ip && selectedTunnel.dorp ? `${selectedTunnel.ip}:${selectedTunnel.dorp}` : "未知"}`
+            : null,
+          ...(!selectedTunnelId && tunnelLogCounts.size > 0
+            ? Array.from(tunnelLogCounts.keys())
+                .sort((a, b) => a - b)
+                .map((id) => {
+                  const tunnel = tunnels.find((t) => t.id === id);
+                  if (!tunnel) return null;
+                  const localAddr = tunnel.localip && tunnel.nport ? `${tunnel.localip}:${tunnel.nport}` : "未知";
+                  const remoteAddr = tunnel.ip && tunnel.dorp ? `${tunnel.ip}:${tunnel.dorp}` : "未知";
+                  return `  隧道${id}(${tunnel.name}): ${localAddr} → ${remoteAddr}`;
+                })
+                .filter((line): line is string => line !== null)
+            : []),
+          `日志: ${logsToSave.length} 条 | 时间: ${firstLogTime} ~ ${lastLogTime}`,
+          "———FrpcLog———",
+          "",
+        ];
+
+        // 过滤掉 null 值并连接
+        const header = headerLines.filter((line): line is string => line !== null).join("\n");
+
+        const logContent = logsToSave
           .map(
             (log) =>
               `[${log.timestamp}] [隧道 ${log.tunnel_id}] ${log.message}`,
           )
           .join("\n");
 
-        await writeTextFile(filePath, logContent);
+        const fullContent = header + logContent;
+
+        await writeTextFile(filePath, fullContent);
         toast.success("日志已保存");
       }
     } catch (error) {
       console.error("Failed to save logs:", error);
-      toast.error("保存日志失败");
+      toast.error(`保存日志失败: ${error instanceof Error ? error.message : String(error)}`);
     }
   };
 

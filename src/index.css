@@ -117,8 +117,35 @@
   * {
     @apply border-border outline-ring/50;
   }
+  html,
   body {
-    @apply bg-background text-foreground antialiased;
+    @apply bg-transparent text-foreground antialiased;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+  }
+  /* 隐藏滚动条 */
+  * {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  *::-webkit-scrollbar {
+    display: none;
+  }
+  #root {
+    height: 100vh;
+    width: 100vw;
+    background: transparent;
+    border-radius: 12px;
+    overflow: hidden;
+    -webkit-app-region: no-drag;
+    /* 确保内容被正确裁剪到圆角内 */
+    clip-path: inset(0 round 12px);
+    -webkit-clip-path: inset(0 round 12px);
+  }
+  /* 隐藏 macOS 系统标题栏文本 */
+  body[data-tauri-platform="macos"] .titlebar {
+    display: none;
   }
 }
 
