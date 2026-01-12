@@ -3,7 +3,7 @@ import { toast } from "sonner";
 import { Sidebar } from "@/components/Sidebar";
 import { TitleBar } from "@/components/TitleBar";
 import { Home } from "@/components/pages/Home";
-import { TunnelList } from "@/components/pages/TunnelList";
+import { TunnelList } from "@/components/pages/TunnelList/TunnelList";
 import { Logs } from "@/components/pages/Logs";
 import { Settings } from "@/components/pages/Settings";
 import { getStoredUser, type StoredUser } from "@/services/api";
