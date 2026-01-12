@@ -574,12 +574,12 @@ function App() {
           />
 
           <div className="flex-1 flex flex-col overflow-hidden relative">
-            {isMacOS && !showTitleBar ? (
-              <div
-                data-tauri-drag-region
-                className="absolute top-0 left-0 right-0 h-12 z-10"
-              />
-            ) : null}
+          {isMacOS && !showTitleBar ? (
+            <div
+              data-tauri-drag-region
+              className="absolute top-0 left-0 right-0 h-8 z-10"
+            />
+          ) : null}
             <div className="flex-1 overflow-auto p-6 md:p-8">
               <div className="max-w-6xl mx-auto w-full h-full">
                 <div className="h-full flex flex-col">{renderContent()}</div>

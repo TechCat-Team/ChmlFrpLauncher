@@ -1,10 +1,15 @@
+import { useState } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Button } from "@/components/ui/button";
 import { useTunnelList } from "./hooks/useTunnelList";
 import { useTunnelProgress } from "./hooks/useTunnelProgress";
 import { useTunnelToggle } from "./hooks/useTunnelToggle";
 import { TunnelCard } from "./components/TunnelCard";
+import { CreateTunnelDialog } from "./components/CreateTunnelDialog";
 
 export function TunnelList() {
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+
   const {
     tunnels,
     loading,
@@ -31,12 +36,21 @@ export function TunnelList() {
   return (
     <div className="flex flex-col h-full gap-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-medium text-foreground">隧道</h1>
-        {!loading && !error && (
-          <span className="text-xs text-muted-foreground">
-            {tunnels.length} 个
-          </span>
-        )}
+        <div className="flex items-center gap-3">
+          <h1 className="text-xl font-medium text-foreground">隧道</h1>
+          {!loading && !error && (
+            <span className="text-xs text-muted-foreground">
+              {tunnels.length} 个
+            </span>
+          )}
+        </div>
+        <Button
+          size="sm"
+          onClick={() => setCreateDialogOpen(true)}
+          className="h-8 px-3 text-xs"
+        >
+          新建隧道
+        </Button>
       </div>
 
       {loading ? (
@@ -69,6 +83,12 @@ export function TunnelList() {
           </div>
         </ScrollArea>
       )}
+
+      <CreateTunnelDialog
+        open={createDialogOpen}
+        onOpenChange={setCreateDialogOpen}
+        onSuccess={refreshTunnels}
+      />
     </div>
   );
 }

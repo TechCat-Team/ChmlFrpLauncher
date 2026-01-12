@@ -33,7 +33,8 @@ export function TunnelCard({
 
   const handleCopyLink = async () => {
     try {
-      const linkAddress = `${tunnel.ip}:${tunnel.dorp}`;
+      const isHttpType = tunnel.type.toUpperCase() === 'HTTP' || tunnel.type.toUpperCase() === 'HTTPS';
+      const linkAddress = isHttpType ? `${tunnel.dorp}` : `${tunnel.ip}:${tunnel.dorp}`;
       await navigator.clipboard.writeText(linkAddress);
     } catch (error) {
       console.error("Failed to copy:", error);
@@ -114,7 +115,9 @@ export function TunnelCard({
             >
               <span className="text-muted-foreground">链接地址</span>
               <span className="font-mono">
-                {tunnel.ip}:{tunnel.dorp}
+                {tunnel.type.toUpperCase() === 'HTTP' || tunnel.type.toUpperCase() === 'HTTPS' 
+                  ? tunnel.dorp 
+                  : `${tunnel.ip}:${tunnel.dorp}`}
               </span>
             </div>
 

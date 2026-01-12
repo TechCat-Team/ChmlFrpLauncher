@@ -113,7 +113,8 @@ pub fn run() {
             commands::http_request,
             commands::hide_window,
             commands::show_window,
-            commands::quit_app
+            commands::quit_app,
+            commands::ping_host
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")

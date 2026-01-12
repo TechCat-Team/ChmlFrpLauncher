@@ -107,11 +107,11 @@ export function Sidebar({
         {isMacOS && !showTitleBar ? (
           <div
             data-tauri-drag-region
-            className="h-12 flex-shrink-0 flex items-start pt-3 pl-5"
+            className="h-8 flex-shrink-0 flex items-start pt-3 pl-5"
           />
         ) : null}
         <div 
-          className={cn("px-5 pb-5", isMacOS && !showTitleBar ? "pt-2" : "pt-6")}
+          className={cn("px-5 pb-5", isMacOS && !showTitleBar ? "pt-4" : "pt-6")}
           {...(isMacOS && !showTitleBar && { "data-tauri-drag-region": true })}
         >
           <div className="flex items-center gap-2.5">
