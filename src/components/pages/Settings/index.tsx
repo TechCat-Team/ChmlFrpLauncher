@@ -4,6 +4,7 @@ import { useBackgroundImage } from "./hooks/useBackgroundImage";
 import { useAutostart } from "./hooks/useAutostart";
 import { useUpdate } from "./hooks/useUpdate";
 import { useFrpcDownload } from "./hooks/useFrpcDownload";
+import { useCloseBehavior } from "./hooks/useCloseBehavior";
 import { getInitialBypassProxy, getInitialShowTitleBar } from "./utils";
 import { AppearanceSection } from "./components/AppearanceSection";
 import { NetworkSection } from "./components/NetworkSection";
@@ -48,6 +49,11 @@ export function Settings() {
   } = useUpdate();
 
   const { isDownloading, handleRedownloadFrpc } = useFrpcDownload();
+
+  const {
+    closeToTrayEnabled,
+    handleToggleCloseToTray,
+  } = useCloseBehavior();
 
   const [bypassProxy, setBypassProxy] = useState<boolean>(() =>
     getInitialBypassProxy(),
@@ -101,6 +107,8 @@ export function Settings() {
           onToggleAutostart={handleToggleAutostart}
           autoCheckUpdate={autoCheckUpdate}
           onToggleAutoCheckUpdate={handleToggleAutoCheckUpdate}
+          closeToTrayEnabled={closeToTrayEnabled}
+          onToggleCloseToTray={handleToggleCloseToTray}
         />
 
         <UpdateSection

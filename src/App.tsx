@@ -11,7 +11,8 @@ import { frpcDownloader } from "@/services/frpcDownloader.ts";
 import { updateService } from "@/services/updateService";
 import { Progress } from "@/components/ui/progress";
 import { logStore } from "@/services/logStore";
-import { AntivirusWarningDialog } from "@/components/ui/AntivirusWarningDialog";
+import { AntivirusWarningDialog } from "@/components/dialogs/AntivirusWarningDialog";
+import { CloseConfirmDialog } from "@/components/dialogs/CloseConfirmDialog";
 
 let globalDownloadFlag = false;
 
@@ -23,6 +24,7 @@ function App() {
   const appContainerRef = useRef<HTMLDivElement>(null);
   const isMacOS = typeof navigator !== "undefined" && navigator.platform.toUpperCase().indexOf("MAC") >= 0;
   const [showAntivirusWarning, setShowAntivirusWarning] = useState(false);
+  const [showCloseConfirmDialog, setShowCloseConfirmDialog] = useState(false);
   const [showTitleBar, setShowTitleBar] = useState<boolean>(() => {
     if (typeof window === "undefined") return false;
     const stored = localStorage.getItem("showTitleBar");
@@ -71,6 +73,85 @@ function App() {
 
   useEffect(() => {
     logStore.startListening();
+  }, []);
+
+  useEffect(() => {
+    const handleShowCloseConfirmDialog = () => {
+      setShowCloseConfirmDialog(true);
+    };
+
+    const handleMinimizeToTray = async () => {
+      try {
+        const { invoke } = await import("@tauri-apps/api/core");
+        await invoke("hide_window");
+      } catch (error) {
+        console.error("Failed to minimize to tray:", error);
+      }
+    };
+
+    const handleCloseApp = async () => {
+      try {
+        const { getCurrentWindow } = await import("@tauri-apps/api/window");
+        const appWindow = getCurrentWindow();
+        await appWindow.destroy();
+      } catch (error) {
+        console.error("Failed to close app:", error);
+      }
+    };
+
+    window.addEventListener("showCloseConfirmDialog", handleShowCloseConfirmDialog);
+    window.addEventListener("minimizeToTray", handleMinimizeToTray);
+    window.addEventListener("closeApp", handleCloseApp);
+
+    return () => {
+      window.removeEventListener("showCloseConfirmDialog", handleShowCloseConfirmDialog);
+      window.removeEventListener("minimizeToTray", handleMinimizeToTray);
+      window.removeEventListener("closeApp", handleCloseApp);
+    };
+  }, []);
+
+  useEffect(() => {
+    let unlistenFn: (() => void) | null = null;
+
+    const setupWindowCloseListener = async () => {
+      try {
+        const { getCurrentWindow } = await import("@tauri-apps/api/window");
+        const { invoke } = await import("@tauri-apps/api/core");
+        const appWindow = getCurrentWindow();
+
+        const unlisten = await appWindow.listen("window-close-requested", async () => {
+          const closeBehavior = localStorage.getItem("closeBehavior") || "ask";
+          
+          if (closeBehavior === "ask") {
+            setShowCloseConfirmDialog(true);
+          } else if (closeBehavior === "minimize_to_tray") {
+            try {
+              await invoke("hide_window");
+            } catch (error) {
+              console.error("Failed to hide window:", error);
+            }
+          } else {
+            try {
+              await appWindow.destroy();
+            } catch (error) {
+              console.error("Failed to close window:", error);
+            }
+          }
+        });
+
+        unlistenFn = unlisten;
+      } catch (error) {
+        console.error("Failed to setup window close listener:", error);
+      }
+    };
+
+    setupWindowCloseListener();
+
+    return () => {
+      if (unlistenFn) {
+        unlistenFn();
+      }
+    };
   }, []);
 
   useEffect(() => {
@@ -513,6 +594,21 @@ function App() {
         isOpen={showAntivirusWarning}
         onClose={() => setShowAntivirusWarning(false)}
         onConfirm={() => setActiveTab("settings")}
+      />
+
+      <CloseConfirmDialog
+        isOpen={showCloseConfirmDialog}
+        onClose={() => setShowCloseConfirmDialog(false)}
+        onMinimizeToTray={() => {
+          localStorage.setItem("closeBehavior", "minimize_to_tray");
+          setShowCloseConfirmDialog(false);
+          window.dispatchEvent(new CustomEvent("minimizeToTray"));
+        }}
+        onCloseApp={() => {
+          localStorage.setItem("closeBehavior", "close_app");
+          setShowCloseConfirmDialog(false);
+          window.dispatchEvent(new CustomEvent("closeApp"));
+        }}
       />
     </>
   );

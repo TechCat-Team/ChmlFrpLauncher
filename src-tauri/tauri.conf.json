@@ -13,7 +13,7 @@
     "macOSPrivateApi": true,
     "windows": [
       {
-        "title": "",
+        "title": "ChmlFrp Launcher",
         "width": 1030,
         "height": 660,
         "resizable": true,
@@ -34,6 +34,13 @@
     ],
     "security": {
       "csp": null
+    },
+    "trayIcon": {
+      "id": "main",
+      "iconPath": "icons/icon.png",
+      "iconAsTemplate": true,
+      "menuOnLeftClick": false,
+      "title": "ChmlFrp Launcher"
     }
   },
   "bundle": {
