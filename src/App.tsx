@@ -5,7 +5,7 @@ import { TitleBar } from "@/components/TitleBar";
 import { Home } from "@/components/pages/Home";
 import { TunnelList } from "@/components/pages/TunnelList/TunnelList";
 import { Logs } from "@/components/pages/Logs";
-import { Settings } from "@/components/pages/Settings";
+import { Settings } from "@/components/pages/Settings/Settings";
 import { getStoredUser, type StoredUser } from "@/services/api";
 import { frpcDownloader } from "@/services/frpcDownloader.ts";
 import { updateService } from "@/services/updateService";
