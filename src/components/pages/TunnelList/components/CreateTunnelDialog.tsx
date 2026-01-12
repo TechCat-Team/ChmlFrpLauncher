@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { cn } from "@/lib/utils";
 import {
   Dialog,
   DialogContent,
@@ -283,20 +284,25 @@ export function CreateTunnelDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-6xl max-h-[80vh] flex flex-col">
+      <DialogContent 
+        className={cn(
+          "max-h-[90vh] flex flex-col transition-all duration-500 ease-in-out",
+          step === 1 ? "max-w-6xl" : step === 2 ? "max-w-4xl" : "max-w-xl"
+        )}
+      >
         <DialogHeader className="shrink-0 gap-1.5">
-          <DialogTitle className="text-xl">
+          <DialogTitle className="text-xl animate-in fade-in duration-300" key={`title-${step}`}>
             {step === 1 && "选择节点"}
             {step === 2 && "节点详情"}
             {step === 3 && "新建隧道"}
           </DialogTitle>
           {step === 2 && selectedNode && (
-            <DialogDescription className="text-sm">
+            <DialogDescription className="text-sm animate-in fade-in duration-300" key="desc-step2">
               {selectedNode.name} - 查看节点详细信息
             </DialogDescription>
           )}
           {step === 3 && selectedNode && (
-            <DialogDescription className="text-sm">
+            <DialogDescription className="text-sm animate-in fade-in duration-300" key="desc-step3">
               节点：{selectedNode.name} - 填写隧道配置信息
             </DialogDescription>
           )}
@@ -304,7 +310,7 @@ export function CreateTunnelDialog({
 
         {step === 1 ? (
           // 第一步：选择节点
-          <div className="flex-1 flex flex-col min-h-0 py-4">
+          <div key="step1" className="flex-1 flex flex-col min-h-0 py-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
             <div className="flex-1 min-h-0 overflow-y-auto pr-4">
               <Accordion 
                 type="multiple" 
@@ -460,7 +466,7 @@ export function CreateTunnelDialog({
           </div>
         ) : step === 2 ? (
           // 第二步：查看节点详情
-          <div className="flex-1 flex flex-col min-h-0 pt-3">
+          <div key="step2" className="flex-1 flex flex-col min-h-0 pt-3 animate-in fade-in slide-in-from-bottom-2 duration-300">
             <div className="flex-1 min-h-0 overflow-y-auto pr-4">
               <div className="space-y-4 pb-3">
                 {nodeInfo && (
@@ -667,7 +673,7 @@ export function CreateTunnelDialog({
           </div>
         ) : (
           // 第三步：填写隧道信息
-          <form onSubmit={handleSubmit} className="flex-1 flex flex-col min-h-0 pt-3">
+          <form key="step3" onSubmit={handleSubmit} className="flex-1 flex flex-col min-h-0 pt-3 animate-in fade-in slide-in-from-bottom-2 duration-300">
             <div className="flex-1 min-h-0 overflow-y-auto pr-4">
               <div className="space-y-4 pb-3">
                 <div className="space-y-2">

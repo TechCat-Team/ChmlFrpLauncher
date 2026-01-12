@@ -7,11 +7,12 @@ import {
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { Toaster as Sonner, type ToasterProps } from "sonner";
+import { createPortal } from "react-dom";
 
 const Toaster = ({ ...props }: ToasterProps) => {
   const { theme = "system" } = useTheme();
 
-  return (
+  return createPortal(
     <Sonner
       theme={theme as ToasterProps["theme"]}
       className="toaster group"
@@ -28,10 +29,12 @@ const Toaster = ({ ...props }: ToasterProps) => {
           "--normal-text": "var(--popover-foreground)",
           "--normal-border": "var(--border)",
           "--border-radius": "var(--radius)",
+          zIndex: 9999,
         } as React.CSSProperties
       }
       {...props}
-    />
+    />,
+    document.body
   );
 };
 
