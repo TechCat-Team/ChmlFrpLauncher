@@ -918,6 +918,22 @@ pub fn run() {
         .plugin(tauri_plugin_autostart::Builder::new().build())
         .plugin(tauri_plugin_opener::init())
         .setup(|app| {
+            if let Some(window) = app.get_webview_window("main") {
+                #[cfg(target_os = "macos")]
+                {
+                    if let Err(e) = window.set_title("") {
+                        eprintln!("Failed to set window title: {:?}", e);
+                    }
+                }
+                
+                #[cfg(target_os = "windows")]
+                {
+                    if let Err(e) = window.set_decorations(false) {
+                        eprintln!("Failed to set decorations: {:?}", e);
+                    }
+                }
+            }
+            
             if cfg!(debug_assertions) {
                 app.handle().plugin(
                     tauri_plugin_log::Builder::default()
