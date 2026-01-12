@@ -91,9 +91,8 @@ function App() {
 
     const handleCloseApp = async () => {
       try {
-        const { getCurrentWindow } = await import("@tauri-apps/api/window");
-        const appWindow = getCurrentWindow();
-        await appWindow.destroy();
+        const { invoke } = await import("@tauri-apps/api/core");
+        await invoke("quit_app");
       } catch (error) {
         console.error("Failed to close app:", error);
       }
@@ -132,9 +131,9 @@ function App() {
             }
           } else {
             try {
-              await appWindow.destroy();
+              await invoke("quit_app");
             } catch (error) {
-              console.error("Failed to close window:", error);
+              console.error("Failed to quit app:", error);
             }
           }
         });

@@ -17,3 +17,8 @@ pub fn show_window<R: Runtime>(app: AppHandle<R>) -> Result<(), String> {
     Ok(())
 }
 
+#[tauri::command]
+pub fn quit_app<R: Runtime>(app: AppHandle<R>) {
+    app.exit(0);
+}
+
