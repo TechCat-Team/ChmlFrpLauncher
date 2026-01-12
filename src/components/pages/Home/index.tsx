@@ -59,12 +59,12 @@ export function Home({ user, onUserChange }: HomeProps) {
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <UserInfoCard userInfo={userInfo} />
+        <FAQSection />
         <FlowDataCard
           flowData={flowData}
           flowLoading={flowLoading}
           flowError={flowError}
         />
-        <FAQSection />
         <FeedbackCard />
       </div>
     </div>

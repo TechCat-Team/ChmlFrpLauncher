@@ -7,8 +7,9 @@ import {
 
 export function FAQSection() {
   return (
-    <div className="border border-border/60 rounded-lg p-5 bg-card md:col-span-3">
-      <h2 className="text-sm font-semibold text-foreground mb-3">常见问题</h2>
+    <div className="border border-border/60 rounded-lg p-5 bg-card md:col-span-2 flex flex-col h-[160px]">
+      <h2 className="text-sm font-semibold text-foreground mb-3 flex-shrink-0">常见问题</h2>
+      <div className="overflow-y-auto flex-1 min-h-0 -mx-5 px-5">
       <Accordion type="single" collapsible className="w-full">
         <AccordionItem value="item-1">
           <AccordionTrigger>软件出现了BUG怎么办</AccordionTrigger>
@@ -34,15 +35,8 @@ export function FAQSection() {
             </p>
           </AccordionContent>
         </AccordionItem>
-        <AccordionItem value="item-3">
-          <AccordionTrigger>关于映射延迟问题</AccordionTrigger>
-          <AccordionContent className="flex flex-col gap-4 text-balance">
-            <p>
-              节点请尽量选择距离运行映射设备最近的节点。同时，您可以根据节点状态页中的节点负载选择负载较低的节点，这能够优化您的体验。
-            </p>
-          </AccordionContent>
-        </AccordionItem>
       </Accordion>
+      </div>
     </div>
   );
 }
