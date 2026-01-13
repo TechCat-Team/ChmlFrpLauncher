@@ -4,12 +4,25 @@ use std::thread;
 use std::time::Duration;
 use tauri::{Emitter, Manager, State};
 
+/// 停止守护的错误模式配置
+const STOP_GUARD_PATTERNS: &[&str] = &[
+    "token in login doesn't match token from configuration",
+    "authorization failed",
+    "invalid token",
+    "read: connection reset by peer",
+    "错误的用户token，此用户不存在",
+    "允许的隧道数量超出上限，请删除隧道或续费vip",
+    "不属于你",
+    "缺少用户token或隧道id参数",
+    "您目前为免费会员",
+    "客户端代理参数错误，配置文件与记录不匹配。请不要随意修改配置文件！",
+];
+
 #[tauri::command]
 pub async fn set_process_guard_enabled(
     enabled: bool,
     guard_state: State<'_, ProcessGuardState>,
 ) -> Result<String, String> {
-    eprintln!("[守护进程] 设置守护进程状态: {}", enabled);
     guard_state.enabled.store(enabled, Ordering::SeqCst);
     
     if !enabled {
@@ -128,6 +141,51 @@ pub async fn remove_guarded_process(
     }
     
     eprintln!("[守护进程] 从守护列表移除隧道 {}", tunnel_id);
+    Ok(())
+}
+
+/// 检查日志消息是否包含需要停止守护的错误模式
+pub fn should_stop_guard_by_log(message: &str) -> Option<&'static str> {
+    for pattern in STOP_GUARD_PATTERNS {
+        if message.to_lowercase().contains(&pattern.to_lowercase()) {
+            return Some(pattern);
+        }
+    }
+    None
+}
+
+/// 处理日志并检查是否需要停止守护
+#[tauri::command]
+pub async fn check_log_and_stop_guard(
+    app_handle: tauri::AppHandle,
+    tunnel_id: i32,
+    log_message: String,
+    guard_state: State<'_, ProcessGuardState>,
+) -> Result<(), String> {
+    if let Some(pattern) = should_stop_guard_by_log(&log_message) {
+        eprintln!("[守护进程] 检测到隧道 {} 出现错误: {}", tunnel_id, pattern);
+        eprintln!("[守护进程] 停止对隧道 {} 的守护", tunnel_id);
+        
+        // 从守护列表中移除（不标记为手动停止，因为这是自动停止）
+        let mut guarded = guard_state
+            .guarded_processes
+            .lock()
+            .map_err(|e| format!("获取守护进程锁失败: {}", e))?;
+        
+        guarded.remove(&tunnel_id);
+        
+        // 发送日志消息通知用户
+        let timestamp = chrono::Local::now().format("%H:%M:%S").to_string();
+        let _ = app_handle.emit(
+            "frpc-log",
+            LogMessage {
+                tunnel_id,
+                message: format!("检测到错误 \"{}\"，已停止守护进程", pattern),
+                timestamp,
+            },
+        );
+    }
+    
     Ok(())
 }
 

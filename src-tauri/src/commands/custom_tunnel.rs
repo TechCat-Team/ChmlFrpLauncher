@@ -279,6 +279,18 @@ pub async fn start_custom_tunnel(
                 for line in reader.lines().flatten() {
                     let clean_line = strip_ansi_escapes::strip_str(&line);
                     let timestamp = chrono::Local::now().format("%H:%M:%S").to_string();
+                    
+                    // 检查日志是否需要停止守护
+                    let guard_state_for_check = app_handle_clone.state::<ProcessGuardState>();
+                    let _ = tauri::async_runtime::block_on(async {
+                        crate::commands::process_guard::check_log_and_stop_guard(
+                            app_handle_clone.clone(),
+                            tunnel_id_hash,
+                            clean_line.clone(),
+                            guard_state_for_check,
+                        ).await
+                    });
+                    
                     let _ = app_handle_clone.emit(
                         "frpc-log",
                         LogMessage {
@@ -302,6 +314,18 @@ pub async fn start_custom_tunnel(
                 for line in reader.lines().flatten() {
                     let clean_line = strip_ansi_escapes::strip_str(&line);
                     let timestamp = chrono::Local::now().format("%H:%M:%S").to_string();
+                    
+                    // 检查错误日志是否需要停止守护
+                    let guard_state_for_check = app_handle_clone.state::<ProcessGuardState>();
+                    let _ = tauri::async_runtime::block_on(async {
+                        crate::commands::process_guard::check_log_and_stop_guard(
+                            app_handle_clone.clone(),
+                            tunnel_id_hash,
+                            clean_line.clone(),
+                            guard_state_for_check,
+                        ).await
+                    });
+                    
                     let _ = app_handle_clone.emit(
                         "frpc-log",
                         LogMessage {

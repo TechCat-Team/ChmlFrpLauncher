@@ -120,6 +120,18 @@ pub async fn start_frpc(
                     let sanitized_line = sanitize_log(&clean_line, &user_token_clone);
 
                     let timestamp = chrono::Local::now().format("%H:%M:%S").to_string();
+                    
+                    // 检查日志是否需要停止守护
+                    let guard_state_for_check = app_handle_clone.state::<crate::models::ProcessGuardState>();
+                    let _ = tauri::async_runtime::block_on(async {
+                        crate::commands::process_guard::check_log_and_stop_guard(
+                            app_handle_clone.clone(),
+                            tunnel_id_clone,
+                            sanitized_line.clone(),
+                            guard_state_for_check,
+                        ).await
+                    });
+                    
                     if let Err(e) = app_handle_clone.emit(
                         "frpc-log",
                         LogMessage {
@@ -157,6 +169,18 @@ pub async fn start_frpc(
                     let sanitized_line = sanitize_log(&clean_line, &user_token_clone);
 
                     let timestamp = chrono::Local::now().format("%H:%M:%S").to_string();
+                    
+                    // 检查错误日志是否需要停止守护
+                    let guard_state_for_check = app_handle_clone.state::<crate::models::ProcessGuardState>();
+                    let _ = tauri::async_runtime::block_on(async {
+                        crate::commands::process_guard::check_log_and_stop_guard(
+                            app_handle_clone.clone(),
+                            tunnel_id_clone,
+                            sanitized_line.clone(),
+                            guard_state_for_check,
+                        ).await
+                    });
+                    
                     if let Err(e) = app_handle_clone.emit(
                         "frpc-log",
                         LogMessage {
