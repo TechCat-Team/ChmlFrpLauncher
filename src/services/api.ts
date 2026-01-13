@@ -355,3 +355,147 @@ export async function offlineTunnel(
     throw new Error(data?.msg || "下线隧道失败");
   }
 }
+
+export async function deleteTunnel(
+  tunnelId: number,
+  token?: string,
+): Promise<void> {
+  const storedUser = getStoredUser();
+  const bearer = token ?? storedUser?.usertoken;
+
+  if (!bearer) {
+    throw new Error("登录信息已过期，请重新登录");
+  }
+
+  await request<unknown>(
+    `/delete_tunnel?tunnelid=${tunnelId}`,
+    {
+      headers: { authorization: bearer },
+    }
+  );
+}
+
+export interface Node {
+  id: number;
+  name: string;
+  area: string;
+  nodegroup: string;
+  china: string;
+  web: string;
+  udp: string;
+  fangyu: string;
+  notes: string;
+}
+
+export interface NodeInfo {
+  id: number;
+  name: string;
+  area: string;
+  nodegroup: string;
+  china: string;
+  web: string;
+  udp: string;
+  fangyu: string;
+  notes: string;
+  ip: string;
+  port: number;
+  adminPort: number;
+  rport: string;
+  state: string;
+  auth: string;
+  apitoken: string;
+  nodetoken: string;
+  real_IP: string;
+  realIp: string;
+  ipv6: string | null;
+  coordinates: string;
+  version: string;
+  load1: number;
+  load5: number;
+  load15: number;
+  bandwidth_usage_percent: number;
+  totalTrafficIn: number;
+  totalTrafficOut: number;
+  uptime_seconds: number | null;
+  cpu_info: string | null;
+  num_cores: number | null;
+  memory_total: number | null;
+  storage_total: number | null;
+  storage_used: number | null;
+  toowhite: boolean;
+}
+
+export interface CreateTunnelParams {
+  tunnelname: string;
+  node: string;
+  localip: string;
+  porttype: string;
+  localport: number;
+  encryption: boolean;
+  compression: boolean;
+  extraparams: string;
+  remoteport?: number;
+  banddomain?: string;
+}
+
+export async function fetchNodes(token?: string): Promise<Node[]> {
+  const storedUser = getStoredUser();
+  const bearer = token ?? storedUser?.usertoken;
+
+  if (!bearer) {
+    throw new Error("登录信息已过期，请重新登录");
+  }
+
+  const data = await request<Node[]>("/node", {
+    headers: { authorization: `Bearer ${bearer}` },
+  });
+
+  if (Array.isArray(data)) return data;
+  throw new Error("获取节点列表失败");
+}
+
+export async function fetchNodeInfo(
+  nodeName: string,
+  token?: string,
+): Promise<NodeInfo> {
+  const storedUser = getStoredUser();
+  const bearer = token ?? storedUser?.usertoken;
+
+  if (!bearer) {
+    throw new Error("登录信息已过期，请重新登录");
+  }
+
+  const data = await request<NodeInfo>(
+    `/nodeinfo?node=${encodeURIComponent(nodeName)}`,
+    {
+      headers: { authorization: `Bearer ${bearer}` },
+    }
+  );
+
+  if (data) return data;
+  throw new Error("获取节点信息失败");
+}
+
+export async function createTunnel(
+  params: CreateTunnelParams,
+  token?: string,
+): Promise<void> {
+  const storedUser = getStoredUser();
+  const bearer = token ?? storedUser?.usertoken;
+
+  if (!bearer) {
+    throw new Error("登录信息已过期，请重新登录");
+  }
+
+  await request<unknown>(
+    "/create_tunnel",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        authorization: bearer,
+      },
+      body: JSON.stringify(params),
+    }
+  );
+}

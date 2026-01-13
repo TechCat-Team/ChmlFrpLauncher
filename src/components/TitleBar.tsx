@@ -130,6 +130,7 @@ export function TitleBar() {
             onClick={async () => {
               try {
                 const appWindow = getCurrentWindow();
+                // 触发关闭事件，会被后端拦截并触发window-close-requested
                 await appWindow.close();
               } catch (error) {
                 console.error("Failed to close window:", error);
