@@ -68,6 +68,11 @@ export function Settings() {
   const [showTitleBar, setShowTitleBar] = useState<boolean>(() =>
     getInitialShowTitleBar(),
   );
+  const [frostedGlassEnabled, setFrostedGlassEnabled] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    const stored = localStorage.getItem("frostedGlassEnabled");
+    return stored === "true";
+  });
 
   useEffect(() => {
     localStorage.setItem("bypassProxy", bypassProxy.toString());
@@ -99,6 +104,8 @@ export function Settings() {
           setOverlayOpacity={setOverlayOpacity}
           blur={blur}
           setBlur={setBlur}
+          frostedGlassEnabled={frostedGlassEnabled}
+          setFrostedGlassEnabled={setFrostedGlassEnabled}
           onSelectBackgroundImage={handleSelectBackgroundImage}
           onClearBackgroundImage={handleClearBackgroundImage}
         />

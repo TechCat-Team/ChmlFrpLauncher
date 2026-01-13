@@ -32,7 +32,7 @@ export function WelcomeHeader({
   animatedCountOfRecords,
 }: WelcomeHeaderProps) {
   return (
-    <div className="border border-border/60 rounded-lg p-6 bg-card">
+    <div className="border border-border/60 rounded-lg p-6 bg-card relative z-10">
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
         <div>
           <p className="text-sm text-muted-foreground">ChmlFrp Launcher</p>
@@ -40,9 +40,9 @@ export function WelcomeHeader({
             欢迎回来{userInfo?.username ? `，${userInfo.username}` : ""}
           </h1>
         </div>
-        <div className="flex flex-wrap gap-2 relative">
+        <div className="flex flex-wrap gap-2 relative z-[9999]">
           <div
-            className="relative"
+            className="relative z-[9999]"
             onMouseEnter={onMouseEnter}
             onMouseLeave={onMouseLeave}
           >

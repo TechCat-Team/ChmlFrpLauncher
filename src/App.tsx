@@ -45,6 +45,11 @@ function App() {
     const stored = localStorage.getItem("backgroundBlur");
     return stored ? parseInt(stored, 10) : 4;
   });
+  const [frostedGlassEnabled, setFrostedGlassEnabled] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    const stored = localStorage.getItem("frostedGlassEnabled");
+    return stored === "true";
+  });
 
   const getInitialTheme = (): string => {
     if (typeof window === "undefined") return "light";
@@ -261,6 +266,8 @@ function App() {
       } else if (e.key === "backgroundBlur") {
         const value = e.newValue ? parseInt(e.newValue, 10) : 4;
         setBlur(value);
+      } else if (e.key === "frostedGlassEnabled") {
+        setFrostedGlassEnabled(e.newValue === "true");
       }
     };
     window.addEventListener("storage", handleStorageChange);
@@ -289,6 +296,15 @@ function App() {
       handleBackgroundOverlayChange,
     );
 
+    const handleFrostedGlassChange = () => {
+      const enabled = localStorage.getItem("frostedGlassEnabled") === "true";
+      setFrostedGlassEnabled(enabled);
+    };
+    window.addEventListener(
+      "frostedGlassChanged",
+      handleFrostedGlassChange,
+    );
+
     return () => {
       window.removeEventListener("storage", handleStorageChange);
       window.removeEventListener(
@@ -298,6 +314,10 @@ function App() {
       window.removeEventListener(
         "backgroundOverlayChanged",
         handleBackgroundOverlayChange,
+      );
+      window.removeEventListener(
+        "frostedGlassChanged",
+        handleFrostedGlassChange,
       );
     };
   }, []);
@@ -559,7 +579,9 @@ function App() {
     <>
       <div
         ref={appContainerRef}
-        className="flex flex-col h-screen overflow-hidden text-foreground rounded-[12px]"
+        className={`flex flex-col h-screen overflow-hidden text-foreground rounded-[12px] ${
+          backgroundImage && frostedGlassEnabled ? "frosted-glass-enabled" : ""
+        }`}
         style={{
           ...backgroundStyle,
           borderRadius: '12px',

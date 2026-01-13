@@ -333,4 +333,82 @@
   .animate-card-delay-5 {
     animation: fadeInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) 0.25s both;
   }
+
+  /* 毛玻璃效果 - 亮色模式 */
+  .frosted-glass-enabled [data-slot="card"],
+  .frosted-glass-enabled .border.rounded-lg.bg-card,
+  .frosted-glass-enabled .bg-card,
+  .frosted-glass-enabled [data-slot="popover"],
+  .frosted-glass-enabled .bg-popover,
+  .frosted-glass-enabled .bg-sidebar,
+  .frosted-glass-enabled .bg-background,
+  .frosted-glass-enabled input,
+  .frosted-glass-enabled textarea,
+  .frosted-glass-enabled select {
+    background: rgba(255, 255, 255, 0.6) !important;
+    backdrop-filter: blur(12px) saturate(180%);
+    -webkit-backdrop-filter: blur(12px) saturate(180%);
+    border-color: rgba(255, 255, 255, 0.4) !important;
+  }
+
+  /* 毛玻璃效果 - 暗色模式 */
+  .dark .frosted-glass-enabled [data-slot="card"],
+  .dark .frosted-glass-enabled .border.rounded-lg.bg-card,
+  .dark .frosted-glass-enabled .bg-card,
+  .dark .frosted-glass-enabled [data-slot="popover"],
+  .dark .frosted-glass-enabled .bg-popover,
+  .dark .frosted-glass-enabled .bg-sidebar,
+  .dark .frosted-glass-enabled .bg-background,
+  .dark .frosted-glass-enabled input,
+  .dark .frosted-glass-enabled textarea,
+  .dark .frosted-glass-enabled select {
+    background: rgba(15, 16, 20, 0.6) !important;
+    backdrop-filter: blur(12px) saturate(180%);
+    -webkit-backdrop-filter: blur(12px) saturate(180%);
+    border-color: rgba(255, 255, 255, 0.15) !important;
+  }
+
+  /* Item 在毛玻璃模式下保持透明 */
+  .frosted-glass-enabled [data-slot="item"] {
+    background: transparent !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+
+  /* Item 边框在毛玻璃模式下的优化 */
+  .frosted-glass-enabled [data-slot="item"][data-variant="outline"] {
+    border-color: rgba(255, 255, 255, 0.15) !important;
+  }
+
+  .dark .frosted-glass-enabled [data-slot="item"][data-variant="outline"] {
+    border-color: rgba(255, 255, 255, 0.08) !important;
+  }
+
+  /* 毛玻璃效果 - CSS 变量（亮色模式）*/
+  .frosted-glass-enabled {
+    --card: rgba(255, 255, 255, 0.6);
+    --sidebar: rgba(255, 255, 255, 0.6);
+    --popover: rgba(255, 255, 255, 0.6);
+  }
+
+  /* 毛玻璃效果 - CSS 变量（暗色模式）*/
+  .dark .frosted-glass-enabled {
+    --card: rgba(15, 16, 20, 0.6);
+    --sidebar: rgba(15, 16, 20, 0.6);
+    --popover: rgba(15, 16, 20, 0.6);
+  }
+
+  /* 签到信息弹窗在毛玻璃模式下的 z-index 提升 */
+  .frosted-glass-enabled .bg-card\/95.backdrop-blur-md {
+    z-index: 9999 !important;
+    background: rgba(255, 255, 255, 0.98) !important;
+    backdrop-filter: blur(20px) saturate(180%) !important;
+    -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
+  }
+
+  .dark .frosted-glass-enabled .bg-card\/95.backdrop-blur-md {
+    background: rgba(15, 16, 20, 0.98) !important;
+    backdrop-filter: blur(20px) saturate(180%) !important;
+    -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
+  }
 }

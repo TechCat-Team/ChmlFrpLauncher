@@ -31,7 +31,7 @@ export function SignInInfoPopup({
 
   return (
     <div
-      className={`absolute right-0 top-full mt-1 w-80 rounded-2xl bg-card/95 backdrop-blur-md border border-border/50 p-5 shadow-2xl z-50 ${
+      className={`absolute right-0 top-full mt-1 w-80 rounded-2xl bg-card/95 backdrop-blur-md border border-border/50 p-5 shadow-2xl z-[9999] ${
         closing
           ? "animate-fade-out"
           : "animate-slide-in-from-top-2 animate-scale-in"

@@ -22,6 +22,8 @@ interface AppearanceSectionProps {
   setOverlayOpacity: (value: number) => void;
   blur: number;
   setBlur: (value: number) => void;
+  frostedGlassEnabled: boolean;
+  setFrostedGlassEnabled: (value: boolean) => void;
   onSelectBackgroundImage: () => void;
   onClearBackgroundImage: () => void;
 }
@@ -40,6 +42,8 @@ export function AppearanceSection({
   setOverlayOpacity,
   blur,
   setBlur,
+  frostedGlassEnabled,
+  setFrostedGlassEnabled,
   onSelectBackgroundImage,
   onClearBackgroundImage,
 }: AppearanceSectionProps) {
@@ -184,6 +188,39 @@ export function AppearanceSection({
 
         {backgroundImage && (
           <>
+            <Item
+              variant="outline"
+              className="border-0 border-t border-border/60"
+            >
+              <ItemContent>
+                <ItemTitle>毛玻璃效果</ItemTitle>
+                <ItemDescription className="text-xs">
+                  为所有元素应用毛玻璃透明效果
+                </ItemDescription>
+              </ItemContent>
+              <ItemActions>
+                <button
+                  onClick={() => {
+                    const newValue = !frostedGlassEnabled;
+                    setFrostedGlassEnabled(newValue);
+                    localStorage.setItem("frostedGlassEnabled", newValue.toString());
+                    window.dispatchEvent(new Event("frostedGlassChanged"));
+                  }}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+                    frostedGlassEnabled ? "bg-foreground" : "bg-muted"
+                  } cursor-pointer`}
+                  role="switch"
+                  aria-checked={frostedGlassEnabled}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-background transition-transform ${
+                      frostedGlassEnabled ? "translate-x-6" : "translate-x-1"
+                    }`}
+                  />
+                </button>
+              </ItemActions>
+            </Item>
+
             <Item
               variant="outline"
               className="border-0 border-t border-border/60"
