@@ -1,6 +1,5 @@
 use crate::models::{FrpcProcesses, LogMessage, ProcessGuardState};
 use crate::utils::sanitize_log;
-use std::fs;
 use std::io::{BufRead, BufReader};
 use std::process::{Command as StdCommand, Stdio};
 use std::thread;
@@ -43,6 +42,7 @@ pub async fn start_frpc(
 
     #[cfg(unix)]
     {
+        use std::fs;
         use std::os::unix::fs::PermissionsExt;
         let metadata = fs::metadata(&frpc_path).map_err(|e| e.to_string())?;
         let mut perms = metadata.permissions();

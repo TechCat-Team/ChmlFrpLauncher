@@ -579,13 +579,14 @@ function App() {
     <>
       <div
         ref={appContainerRef}
-        className={`flex flex-col h-screen overflow-hidden text-foreground rounded-[12px] ${
+        className={`flex flex-col h-screen w-screen overflow-hidden text-foreground rounded-[12px] ${
           backgroundImage && frostedGlassEnabled ? "frosted-glass-enabled" : ""
         }`}
         style={{
           ...backgroundStyle,
           borderRadius: '12px',
           overflow: 'hidden',
+          position: 'relative',
         }}
       >
         <div
@@ -593,6 +594,7 @@ function App() {
           style={{
             ...overlayStyle,
             borderRadius: '12px',
+            pointerEvents: 'none',
           }}
         />
         {(!isMacOS || showTitleBar) && (
