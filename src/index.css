@@ -480,3 +480,9 @@
     background: rgba(15, 16, 20, 0.95) !important;
   }
 }
+
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}

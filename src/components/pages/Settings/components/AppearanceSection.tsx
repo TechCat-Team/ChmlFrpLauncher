@@ -1,3 +1,4 @@
+import { flushSync } from "react-dom";
 import { Palette } from "lucide-react";
 import {
   Item,
@@ -59,6 +60,52 @@ export function AppearanceSection({
 }: AppearanceSectionProps) {
   const backgroundType = getBackgroundType(backgroundImage);
   const isVideo = backgroundType === "video";
+
+  const toggleTheme = async (newTheme: ThemeMode, event: React.MouseEvent) => {
+    if (!document.startViewTransition) {
+      setTheme(newTheme);
+      return;
+    }
+
+    const x = event.clientX;
+    const y = event.clientY;
+    const endRadius = Math.hypot(
+      Math.max(x, window.innerWidth - x),
+      Math.max(y, window.innerHeight - y),
+    );
+
+    const transition = document.startViewTransition(() => {
+      flushSync(() => {
+        setTheme(newTheme);
+      });
+      // Manually sync DOM for transition to ensure it captures the new state
+      const root = document.documentElement;
+      if (newTheme === "dark") {
+        root.classList.add("dark");
+      } else {
+        root.classList.remove("dark");
+      }
+    });
+
+    await transition.ready;
+
+    const clipPath = [
+      `circle(0px at ${x}px ${y}px)`,
+      `circle(${endRadius}px at ${x}px ${y}px)`,
+    ];
+
+    document.documentElement.animate(
+      {
+        clipPath: clipPath,
+      },
+      {
+        duration: 500,
+        easing: "ease-in",
+        pseudoElement: "::view-transition-new(root)",
+      },
+    );
+  };
+
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-2 text-sm font-medium text-foreground">
@@ -108,7 +155,7 @@ export function AppearanceSection({
             <ItemActions>
               <div className="flex gap-2">
                 <button
-                  onClick={() => setTheme("light")}
+                  onClick={(e) => toggleTheme("light", e)}
                   className={`px-3 py-1.5 text-xs rounded transition-colors ${
                     theme === "light"
                       ? "bg-foreground text-background"
@@ -118,7 +165,7 @@ export function AppearanceSection({
                   浅色
                 </button>
                 <button
-                  onClick={() => setTheme("dark")}
+                  onClick={(e) => toggleTheme("dark", e)}
                   className={`px-3 py-1.5 text-xs rounded transition-colors ${
                     theme === "dark"
                       ? "bg-foreground text-background"
