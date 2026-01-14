@@ -17,7 +17,7 @@ pub struct CustomTunnel {
     pub config_file: String,
     pub server_addr: Option<String>,
     pub server_port: Option<u16>,
-    pub tunnels: Vec<String>, // 配置文件中的隧道名列表
+    pub tunnels: Vec<String>,        // 配置文件中的隧道名列表
     pub tunnel_type: Option<String>, // 隧道类型（tcp/udp/http/https）
     pub local_ip: Option<String>,
     pub local_port: Option<u16>,
@@ -34,13 +34,13 @@ pub async fn save_custom_tunnel(
 ) -> Result<CustomTunnel, String> {
     // 解析配置文件获取隧道名
     let parsed_info = parse_ini_config(&config_content)?;
-    
+
     if parsed_info.tunnel_names.is_empty() {
         return Err("配置文件中未找到隧道名称".to_string());
     }
 
     let tunnel_name = parsed_info.tunnel_names[0].clone();
-    
+
     // 验证隧道名称只包含安全字符
     if !tunnel_name
         .chars()
@@ -61,10 +61,7 @@ pub async fn save_custom_tunnel(
     let config_file_name = format!("{}.ini", tunnel_name);
     let config_file_path = app_dir.join(&config_file_name);
 
-    eprintln!(
-        "[自定义隧道] 配置文件路径: {:?}",
-        config_file_path
-    );
+    eprintln!("[自定义隧道] 配置文件路径: {:?}", config_file_path);
 
     fs::write(&config_file_path, &config_content)
         .map_err(|e| format!("写入配置文件失败: {}", e))?;
@@ -92,9 +89,7 @@ pub async fn save_custom_tunnel(
 
 /// 获取所有自定义隧道列表
 #[tauri::command]
-pub async fn get_custom_tunnels(
-    app_handle: tauri::AppHandle,
-) -> Result<Vec<CustomTunnel>, String> {
+pub async fn get_custom_tunnels(app_handle: tauri::AppHandle) -> Result<Vec<CustomTunnel>, String> {
     let app_dir = app_handle
         .path()
         .app_data_dir()
@@ -106,11 +101,11 @@ pub async fn get_custom_tunnels(
         return Ok(Vec::new());
     }
 
-    let content = fs::read_to_string(&list_file)
-        .map_err(|e| format!("读取自定义隧道列表失败: {}", e))?;
+    let content =
+        fs::read_to_string(&list_file).map_err(|e| format!("读取自定义隧道列表失败: {}", e))?;
 
-    let tunnels: Vec<CustomTunnel> = serde_json::from_str(&content)
-        .map_err(|e| format!("解析自定义隧道列表失败: {}", e))?;
+    let tunnels: Vec<CustomTunnel> =
+        serde_json::from_str(&content).map_err(|e| format!("解析自定义隧道列表失败: {}", e))?;
 
     Ok(tunnels)
 }
@@ -125,7 +120,7 @@ pub async fn delete_custom_tunnel(
     // 停止隧道（如果正在运行）
     let custom_tunnel_id = format!("custom_{}", tunnel_id);
     let tunnel_id_hash = string_to_i32(&custom_tunnel_id);
-    
+
     {
         let mut procs = processes
             .processes
@@ -152,19 +147,18 @@ pub async fn delete_custom_tunnel(
     // 从列表中移除
     let list_file = app_dir.join("custom_tunnels.json");
     if list_file.exists() {
-        let content = fs::read_to_string(&list_file)
-            .map_err(|e| format!("读取自定义隧道列表失败: {}", e))?;
+        let content =
+            fs::read_to_string(&list_file).map_err(|e| format!("读取自定义隧道列表失败: {}", e))?;
 
-        let mut tunnels: Vec<CustomTunnel> = serde_json::from_str(&content)
-            .map_err(|e| format!("解析自定义隧道列表失败: {}", e))?;
+        let mut tunnels: Vec<CustomTunnel> =
+            serde_json::from_str(&content).map_err(|e| format!("解析自定义隧道列表失败: {}", e))?;
 
         tunnels.retain(|t| t.id != tunnel_id);
 
         let content = serde_json::to_string_pretty(&tunnels)
             .map_err(|e| format!("序列化自定义隧道列表失败: {}", e))?;
 
-        fs::write(&list_file, content)
-            .map_err(|e| format!("保存自定义隧道列表失败: {}", e))?;
+        fs::write(&list_file, content).map_err(|e| format!("保存自定义隧道列表失败: {}", e))?;
     }
 
     eprintln!("[自定义隧道] 删除成功: {}", tunnel_id);
@@ -184,9 +178,10 @@ pub async fn start_custom_tunnel(
     let tunnel_id_hash = string_to_i32(&custom_tunnel_id);
 
     {
-        let procs = processes.processes.lock().map_err(|e| {
-            format!("获取进程锁失败: {}", e)
-        })?;
+        let procs = processes
+            .processes
+            .lock()
+            .map_err(|e| format!("获取进程锁失败: {}", e))?;
         if procs.contains_key(&tunnel_id_hash) {
             return Err("该隧道已在运行中".to_string());
         }
@@ -240,9 +235,7 @@ pub async fn start_custom_tunnel(
         cmd.creation_flags(0x08000000);
     }
 
-    let mut child = cmd
-        .spawn()
-        .map_err(|e| format!("启动 frpc 失败: {}", e))?;
+    let mut child = cmd.spawn().map_err(|e| format!("启动 frpc 失败: {}", e))?;
 
     let pid = child.id();
 
@@ -267,7 +260,7 @@ pub async fn start_custom_tunnel(
                 for line in reader.lines().flatten() {
                     let clean_line = strip_ansi_escapes::strip_str(&line);
                     let timestamp = chrono::Local::now().format("%H:%M:%S").to_string();
-                    
+
                     // 检查日志是否需要停止守护
                     let guard_state_for_check = app_handle_clone.state::<ProcessGuardState>();
                     let _ = tauri::async_runtime::block_on(async {
@@ -276,9 +269,10 @@ pub async fn start_custom_tunnel(
                             tunnel_id_hash,
                             clean_line.clone(),
                             guard_state_for_check,
-                        ).await
+                        )
+                        .await
                     });
-                    
+
                     let _ = app_handle_clone.emit(
                         "frpc-log",
                         LogMessage {
@@ -302,7 +296,7 @@ pub async fn start_custom_tunnel(
                 for line in reader.lines().flatten() {
                     let clean_line = strip_ansi_escapes::strip_str(&line);
                     let timestamp = chrono::Local::now().format("%H:%M:%S").to_string();
-                    
+
                     // 检查错误日志是否需要停止守护
                     let guard_state_for_check = app_handle_clone.state::<ProcessGuardState>();
                     let _ = tauri::async_runtime::block_on(async {
@@ -311,9 +305,10 @@ pub async fn start_custom_tunnel(
                             tunnel_id_hash,
                             clean_line.clone(),
                             guard_state_for_check,
-                        ).await
+                        )
+                        .await
                     });
-                    
+
                     let _ = app_handle_clone.emit(
                         "frpc-log",
                         LogMessage {
@@ -355,12 +350,9 @@ pub async fn stop_custom_tunnel(
     let custom_tunnel_id = format!("custom_{}", tunnel_id);
     let tunnel_id_hash = string_to_i32(&custom_tunnel_id);
 
-    let _ = crate::commands::process_guard::remove_guarded_process(
-        tunnel_id_hash,
-        guard_state,
-        true,
-    )
-    .await;
+    let _ =
+        crate::commands::process_guard::remove_guarded_process(tunnel_id_hash, guard_state, true)
+            .await;
 
     let mut procs = processes
         .processes
@@ -451,7 +443,7 @@ fn parse_ini_config(content: &str) -> Result<IniParsedInfo, String> {
         // 检测段落
         if line.starts_with('[') && line.ends_with(']') {
             current_section = line[1..line.len() - 1].to_string();
-            
+
             // 如果不是common段，则是隧道段
             if current_section != "common" && !current_section.is_empty() {
                 tunnel_count += 1;
@@ -517,10 +509,9 @@ fn save_custom_tunnel_list(
     let list_file = app_dir.join("custom_tunnels.json");
 
     let mut tunnels: Vec<CustomTunnel> = if list_file.exists() {
-        let content = fs::read_to_string(&list_file)
-            .map_err(|e| format!("读取自定义隧道列表失败: {}", e))?;
-        serde_json::from_str(&content)
-            .map_err(|e| format!("解析自定义隧道列表失败: {}", e))?
+        let content =
+            fs::read_to_string(&list_file).map_err(|e| format!("读取自定义隧道列表失败: {}", e))?;
+        serde_json::from_str(&content).map_err(|e| format!("解析自定义隧道列表失败: {}", e))?
     } else {
         Vec::new()
     };
@@ -535,8 +526,7 @@ fn save_custom_tunnel_list(
     let content = serde_json::to_string_pretty(&tunnels)
         .map_err(|e| format!("序列化自定义隧道列表失败: {}", e))?;
 
-    fs::write(&list_file, content)
-        .map_err(|e| format!("保存自定义隧道列表失败: {}", e))?;
+    fs::write(&list_file, content).map_err(|e| format!("保存自定义隧道列表失败: {}", e))?;
 
     Ok(())
 }
@@ -549,8 +539,7 @@ fn string_to_i32(s: &str) -> i32 {
     let mut hasher = DefaultHasher::new();
     s.hash(&mut hasher);
     let hash = hasher.finish();
-    
+
     // 确保返回正数
     (hash as i32).abs()
 }
-

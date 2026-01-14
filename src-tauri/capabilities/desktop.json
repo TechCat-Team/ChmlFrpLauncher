@@ -16,6 +16,8 @@
     "fs:allow-write-file",
     "fs:allow-write-text-file",
     "opener:allow-default-urls",
-    "opener:allow-open-url"
+    "opener:allow-open-url",
+    "deep-link:default",
+    "deep-link:allow-get-current"
   ]
 }

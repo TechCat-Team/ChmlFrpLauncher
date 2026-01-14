@@ -8,24 +8,24 @@ use tauri::{Emitter, Manager};
 // 从 API 获取下载信息
 pub async fn get_download_info() -> Result<DownloadInfo, String> {
     let api_url = "https://cf-v1.uapis.cn/download/frpc/frpc_info.json";
-    
+
     let os = std::env::consts::OS;
     let arch = std::env::consts::ARCH;
 
     let mut client_builder = reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(30))
         .user_agent("ChmlFrpLauncher/1.0");
-    
+
     // 检查是否需要绕过代理
     let bypass_proxy = std::env::var("BYPASS_PROXY")
         .unwrap_or_else(|_| "true".to_string())
         .parse::<bool>()
         .unwrap_or(true);
-    
+
     if bypass_proxy {
         client_builder = client_builder.no_proxy();
     }
-    
+
     let client = client_builder
         .build()
         .map_err(|e| format!("Failed to create client: {}", e))?;
@@ -37,7 +37,10 @@ pub async fn get_download_info() -> Result<DownloadInfo, String> {
         .map_err(|e| format!("Failed to fetch frpc info: {}", e))?;
 
     if !response.status().is_success() {
-        return Err(format!("API request failed with status: {}", response.status()));
+        return Err(format!(
+            "API request failed with status: {}",
+            response.status()
+        ));
     }
 
     let info_response: FrpcInfoResponse = response
@@ -50,7 +53,7 @@ pub async fn get_download_info() -> Result<DownloadInfo, String> {
     }
 
     let mut matched_downloads: Vec<&FrpcDownload> = Vec::new();
-    
+
     // 首先尝试通过 platform 字段匹配（更精确）
     let platform = match (os, arch) {
         ("windows", "x86_64") => "win_amd64.exe",
@@ -80,7 +83,7 @@ pub async fn get_download_info() -> Result<DownloadInfo, String> {
             "macos" => "darwin",
             _ => os,
         };
-        
+
         for download in &info_response.data.downloads {
             if download.os == target_os {
                 let matches_arch = match (os, arch) {
@@ -98,7 +101,7 @@ pub async fn get_download_info() -> Result<DownloadInfo, String> {
                     ("macos", "aarch64") => download.arch == "aarch64",
                     _ => false,
                 };
-                
+
                 if matches_arch {
                     matched_downloads.push(download);
                 }
@@ -115,10 +118,7 @@ pub async fn get_download_info() -> Result<DownloadInfo, String> {
         matched_downloads[0]
     } else {
         // 如果有多个匹配项，选择 size 最大的（通常是最新版本）
-        matched_downloads
-            .iter()
-            .max_by_key(|d| d.size)
-            .unwrap()
+        matched_downloads.iter().max_by_key(|d| d.size).unwrap()
     };
 
     Ok(DownloadInfo {
@@ -187,17 +187,17 @@ pub async fn download_frpc(app_handle: tauri::AppHandle) -> Result<String, Strin
         .pool_idle_timeout(std::time::Duration::from_secs(90))
         .tcp_keepalive(std::time::Duration::from_secs(60))
         .user_agent("ChmlFrpLauncher/1.0");
-    
+
     // 检查是否需要绕过代理
     let bypass_proxy = std::env::var("BYPASS_PROXY")
         .unwrap_or_else(|_| "true".to_string())
         .parse::<bool>()
         .unwrap_or(true);
-    
+
     if bypass_proxy {
         client_builder = client_builder.no_proxy();
     }
-    
+
     let client = client_builder
         .build()
         .map_err(|e| format!("Failed to create client: {}", e))?;
@@ -212,7 +212,7 @@ pub async fn download_frpc(app_handle: tauri::AppHandle) -> Result<String, Strin
                 total_size = len;
             }
         }
-        
+
         if total_size == 0 {
             eprintln!("HEAD 请求未获取文件大小，将从 GET 响应头获取");
         }
@@ -381,28 +381,28 @@ pub async fn download_frpc(app_handle: tauri::AppHandle) -> Result<String, Strin
     eprintln!("开始验证文件 hash...");
     let mut file_for_hash = std::fs::File::open(&frpc_path)
         .map_err(|e| format!("无法打开文件进行 hash 验证: {}", e))?;
-    
+
     let mut hasher = Sha256::new();
     let mut buffer = vec![0u8; 8192]; // 8KB 缓冲区
-    
+
     loop {
         let bytes_read = file_for_hash
             .read(&mut buffer)
             .map_err(|e| format!("读取文件失败: {}", e))?;
-        
+
         if bytes_read == 0 {
             break;
         }
-        
+
         hasher.update(&buffer[..bytes_read]);
     }
-    
+
     let computed_hash = hasher.finalize();
     let computed_hash_hex = hex::encode(computed_hash);
-    
+
     eprintln!("预期 hash: {}", expected_hash);
     eprintln!("计算 hash: {}", computed_hash_hex);
-    
+
     if computed_hash_hex.to_lowercase() != expected_hash.to_lowercase() {
         // 删除损坏的文件
         let _ = fs::remove_file(&frpc_path);
@@ -411,7 +411,7 @@ pub async fn download_frpc(app_handle: tauri::AppHandle) -> Result<String, Strin
             expected_hash, computed_hash_hex
         ));
     }
-    
+
     eprintln!("文件 hash 验证成功");
 
     // 在 Unix 系统上设置执行权限
@@ -427,4 +427,3 @@ pub async fn download_frpc(app_handle: tauri::AppHandle) -> Result<String, Strin
 
     Ok(frpc_path.to_string_lossy().to_string())
 }
-

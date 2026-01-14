@@ -24,7 +24,7 @@ pub async fn set_process_guard_enabled(
     guard_state: State<'_, ProcessGuardState>,
 ) -> Result<String, String> {
     guard_state.enabled.store(enabled, Ordering::SeqCst);
-    
+
     if !enabled {
         if let Ok(mut guarded) = guard_state.guarded_processes.lock() {
             guarded.clear();
@@ -33,8 +33,11 @@ pub async fn set_process_guard_enabled(
             stopped.clear();
         }
     }
-    
-    Ok(format!("守护进程已{}", if enabled { "启用" } else { "禁用" }))
+
+    Ok(format!(
+        "守护进程已{}",
+        if enabled { "启用" } else { "禁用" }
+    ))
 }
 
 #[tauri::command]
@@ -53,12 +56,12 @@ pub async fn add_guarded_process(
     if !guard_state.enabled.load(Ordering::SeqCst) {
         return Ok(());
     }
-    
+
     let mut guarded = guard_state
         .guarded_processes
         .lock()
         .map_err(|e| format!("获取守护进程锁失败: {}", e))?;
-    
+
     guarded.insert(
         tunnel_id,
         ProcessGuardInfo {
@@ -66,11 +69,11 @@ pub async fn add_guarded_process(
             tunnel_type: TunnelType::Api { user_token },
         },
     );
-    
+
     if let Ok(mut stopped) = guard_state.manually_stopped.lock() {
         stopped.remove(&tunnel_id);
     }
-    
+
     Ok(())
 }
 
@@ -83,12 +86,12 @@ pub async fn add_guarded_custom_tunnel(
     if !guard_state.enabled.load(Ordering::SeqCst) {
         return Ok(());
     }
-    
+
     let mut guarded = guard_state
         .guarded_processes
         .lock()
         .map_err(|e| format!("获取守护进程锁失败: {}", e))?;
-    
+
     guarded.insert(
         tunnel_id_hash,
         ProcessGuardInfo {
@@ -96,11 +99,11 @@ pub async fn add_guarded_custom_tunnel(
             tunnel_type: TunnelType::Custom { original_id },
         },
     );
-    
+
     if let Ok(mut stopped) = guard_state.manually_stopped.lock() {
         stopped.remove(&tunnel_id_hash);
     }
-    
+
     Ok(())
 }
 
@@ -114,15 +117,15 @@ pub async fn remove_guarded_process(
         .guarded_processes
         .lock()
         .map_err(|e| format!("获取守护进程锁失败: {}", e))?;
-    
+
     guarded.remove(&tunnel_id);
-    
+
     if is_manual_stop {
         if let Ok(mut stopped) = guard_state.manually_stopped.lock() {
             stopped.insert(tunnel_id);
         }
     }
-    
+
     Ok(())
 }
 
@@ -147,15 +150,15 @@ pub async fn check_log_and_stop_guard(
     if let Some(pattern) = should_stop_guard_by_log(&log_message) {
         eprintln!("[守护进程] 检测到隧道 {} 出现错误: {}", tunnel_id, pattern);
         eprintln!("[守护进程] 停止对隧道 {} 的守护", tunnel_id);
-        
+
         // 从守护列表中移除（不标记为手动停止，因为这是自动停止）
         let mut guarded = guard_state
             .guarded_processes
             .lock()
             .map_err(|e| format!("获取守护进程锁失败: {}", e))?;
-        
+
         guarded.remove(&tunnel_id);
-        
+
         // 发送日志消息通知用户
         let timestamp = chrono::Local::now().format("%H:%M:%S").to_string();
         let _ = app_handle.emit(
@@ -167,55 +170,55 @@ pub async fn check_log_and_stop_guard(
             },
         );
     }
-    
+
     Ok(())
 }
 
 pub fn start_guard_monitor(app_handle: tauri::AppHandle) {
     thread::spawn(move || {
         let mut last_log_time = std::time::Instant::now();
-        
+
         loop {
             thread::sleep(Duration::from_secs(3));
-            
+
             let guard_state = app_handle.state::<ProcessGuardState>();
             let processes = app_handle.state::<FrpcProcesses>();
-            
+
             let is_enabled = guard_state.enabled.load(Ordering::SeqCst);
-            
+
             if last_log_time.elapsed().as_secs() >= 30 {
                 last_log_time = std::time::Instant::now();
             }
-            
+
             if !is_enabled {
                 continue;
             }
-            
+
             let guarded_list: Vec<ProcessGuardInfo> = {
                 match guard_state.guarded_processes.lock() {
                     Ok(guarded) => guarded.values().cloned().collect(),
                     Err(_) => continue,
                 }
             };
-            
+
             if guarded_list.is_empty() {
                 continue;
             }
-            
+
             for info in guarded_list {
                 let tunnel_id = info.tunnel_id;
-                
+
                 let is_manually_stopped = {
                     match guard_state.manually_stopped.lock() {
                         Ok(stopped) => stopped.contains(&tunnel_id),
                         Err(_) => continue,
                     }
                 };
-                
+
                 if is_manually_stopped {
                     continue;
                 }
-                
+
                 let is_running = {
                     match processes.processes.lock() {
                         Ok(mut procs) => {
@@ -238,7 +241,7 @@ pub fn start_guard_monitor(app_handle: tauri::AppHandle) {
                         Err(_) => continue,
                     }
                 };
-                
+
                 if !is_running {
                     let timestamp = chrono::Local::now().format("%H:%M:%S").to_string();
                     let _ = app_handle.emit(
@@ -249,16 +252,16 @@ pub fn start_guard_monitor(app_handle: tauri::AppHandle) {
                             timestamp,
                         },
                     );
-                    
+
                     let app_clone = app_handle.clone();
                     let tunnel_type = info.tunnel_type.clone();
-                    
+
                     thread::spawn(move || {
                         thread::sleep(Duration::from_secs(1));
-                        
+
                         let processes_state = app_clone.state::<FrpcProcesses>();
                         let guard_state_state = app_clone.state::<ProcessGuardState>();
-                        
+
                         let result = match tunnel_type {
                             TunnelType::Api { user_token } => {
                                 tauri::async_runtime::block_on(async {
@@ -284,7 +287,7 @@ pub fn start_guard_monitor(app_handle: tauri::AppHandle) {
                                 })
                             }
                         };
-                        
+
                         match result {
                             Ok(_) => {
                                 let timestamp = chrono::Local::now().format("%H:%M:%S").to_string();
@@ -306,9 +309,10 @@ pub fn start_guard_monitor(app_handle: tauri::AppHandle) {
                                         timestamp,
                                     },
                                 );
-                                
+
                                 let guard_state_final = app_clone.state::<ProcessGuardState>();
-                                if let Ok(mut guarded) = guard_state_final.guarded_processes.lock() {
+                                if let Ok(mut guarded) = guard_state_final.guarded_processes.lock()
+                                {
                                     guarded.remove(&tunnel_id);
                                 };
                             }
@@ -319,4 +323,3 @@ pub fn start_guard_monitor(app_handle: tauri::AppHandle) {
         }
     });
 }
-

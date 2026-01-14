@@ -18,7 +18,7 @@ pub struct PingResult {
 pub async fn ping_host(host: String) -> Result<PingResult, String> {
     tokio::task::spawn_blocking(move || {
         let start = Instant::now();
-        
+
         let output = StdCommand::new("ping")
             .arg(PING_COUNT_FLAG)
             .arg("1")
@@ -31,10 +31,10 @@ pub async fn ping_host(host: String) -> Result<PingResult, String> {
             Ok(output) => {
                 let stdout = String::from_utf8_lossy(&output.stdout);
                 let stderr = String::from_utf8_lossy(&output.stderr);
-                
+
                 if output.status.success() {
                     let latency = parse_ping_latency(&stdout, elapsed);
-                    
+
                     Ok(PingResult {
                         success: true,
                         latency: Some(latency),
@@ -46,21 +46,22 @@ pub async fn ping_host(host: String) -> Result<PingResult, String> {
                     } else {
                         stdout.to_string()
                     };
-                    
+
                     Ok(PingResult {
                         success: false,
                         latency: None,
-                        error: Some(format!("Ping failed: {}", error_msg.lines().next().unwrap_or("Unknown error"))),
+                        error: Some(format!(
+                            "Ping failed: {}",
+                            error_msg.lines().next().unwrap_or("Unknown error")
+                        )),
                     })
                 }
             }
-            Err(e) => {
-                Ok(PingResult {
-                    success: false,
-                    latency: None,
-                    error: Some(format!("Failed to execute ping: {}", e)),
-                })
-            }
+            Err(e) => Ok(PingResult {
+                success: false,
+                latency: None,
+                error: Some(format!("Failed to execute ping: {}", e)),
+            }),
         }
     })
     .await
@@ -81,7 +82,7 @@ fn parse_ping_latency(output: &str, elapsed: Duration) -> f64 {
             }
         }
     }
-    
+
     #[cfg(not(target_os = "windows"))]
     {
         if let Some(time_str) = output.split("time=").nth(1) {
@@ -92,7 +93,6 @@ fn parse_ping_latency(output: &str, elapsed: Duration) -> f64 {
             }
         }
     }
-    
+
     elapsed.as_secs_f64() * 1000.0
 }
-

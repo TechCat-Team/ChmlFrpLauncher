@@ -29,4 +29,3 @@ pub fn sanitize_log(message: &str, user_token: &str) -> String {
 
     result
 }
-

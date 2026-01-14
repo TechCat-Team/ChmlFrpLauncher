@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { toast } from "sonner";
 import { Sidebar } from "@/components/Sidebar";
 import { TitleBar } from "@/components/TitleBar";
@@ -6,13 +6,15 @@ import { Home } from "@/components/pages/Home";
 import { TunnelList } from "@/components/pages/TunnelList";
 import { Logs } from "@/components/pages/Logs";
 import { Settings } from "@/components/pages/Settings";
-import { getStoredUser, type StoredUser } from "@/services/api";
+import { getStoredUser, type StoredUser, fetchTunnels, fetchUserInfo, saveStoredUser } from "@/services/api";
 import { frpcDownloader } from "@/services/frpcDownloader.ts";
 import { updateService } from "@/services/updateService";
 import { Progress } from "@/components/ui/progress";
 import { logStore } from "@/services/logStore";
 import { AntivirusWarningDialog } from "@/components/dialogs/AntivirusWarningDialog";
 import { CloseConfirmDialog } from "@/components/dialogs/CloseConfirmDialog";
+import { deepLinkService, type DeepLinkData } from "@/services/deepLinkService";
+import { frpcManager } from "@/services/frpcManager";
 
 let globalDownloadFlag = false;
 
@@ -75,6 +77,9 @@ function App() {
   };
 
   const [theme, setTheme] = useState<string>(() => getInitialTheme());
+  
+  const pendingDeepLinkRef = useRef<DeepLinkData | null>(null);
+  const isAppReadyRef = useRef(false);
 
   useEffect(() => {
     logStore.startListening();
@@ -184,7 +189,6 @@ function App() {
   }, []);
 
   useEffect(() => {
-    // 禁用右键菜单
     const handleContextMenu = (e: MouseEvent) => {
       e.preventDefault();
       return false;
@@ -428,7 +432,6 @@ function App() {
           const errorMsg =
             error instanceof Error ? error.message : String(error);
           
-          // 检测是否可能是 Windows 杀毒软件拦截
           const isWindows = typeof navigator !== "undefined" && 
             navigator.userAgent.toLowerCase().includes("windows");
           const isPossibleAntivirusBlock = 
@@ -452,7 +455,6 @@ function App() {
           );
           downloadToastRef.current = null;
 
-          // 如果是 Windows 系统且可能是杀毒软件拦截，显示友好提示
           if (isWindows && isPossibleAntivirusBlock) {
             setTimeout(() => {
               setShowAntivirusWarning(true);
@@ -475,6 +477,171 @@ function App() {
       }
     };
   }, []);
+
+  const handleDeepLinkInternal = useCallback(async (data: DeepLinkData) => {
+    try {
+      const currentUser = getStoredUser();
+      let tokenToUse = data.usertoken || currentUser?.usertoken;
+
+      if (data.usertoken && !currentUser?.usertoken) {
+          toast.loading("正在使用 token 登录...", {
+            duration: Infinity,
+          });
+
+          try {
+            const userInfo = await fetchUserInfo(data.usertoken);
+            
+            const newUser: StoredUser = {
+              username: userInfo.username,
+              usergroup: userInfo.usergroup,
+              userimg: userInfo.userimg || null,
+              usertoken: data.usertoken,
+              tunnelCount: userInfo.tunnelCount,
+              tunnel: userInfo.tunnel,
+            };
+
+            saveStoredUser(newUser);
+            setUser(newUser);
+            tokenToUse = data.usertoken;
+
+            toast.dismiss();
+            toast.success("登录成功");
+            
+            await new Promise(resolve => setTimeout(resolve, 300));
+          } catch (error) {
+            toast.dismiss();
+            const errorMsg =
+              error instanceof Error ? error.message : "登录失败";
+            toast.error(`使用 token 登录失败: ${errorMsg}`);
+            console.error("Deep-link 登录失败:", error);
+            return;
+          }
+        }
+
+        if (!tokenToUse) {
+          toast.error("请先登录账户");
+          return;
+        }
+
+        const tunnels = await fetchTunnels(tokenToUse);
+        const tunnel = tunnels.find((t) => t.id === data.tunnelId);
+
+        if (!tunnel) {
+          toast.error(`未找到 ID 为 ${data.tunnelId} 的隧道，或该隧道不属于当前用户`);
+          return;
+        }
+
+        const isRunning = await frpcManager.isTunnelRunning(data.tunnelId);
+        if (isRunning) {
+          toast.info(`隧道 ${tunnel.name} 已在运行中`);
+          return;
+        }
+
+        toast.loading(`正在启动隧道 ${tunnel.name}...`, {
+          duration: Infinity,
+        });
+
+        await frpcManager.startTunnel(data.tunnelId, tokenToUse);
+
+        const isHttpType =
+          tunnel.type.toUpperCase() === "HTTP" ||
+          tunnel.type.toUpperCase() === "HTTPS";
+        const linkAddress = isHttpType
+          ? tunnel.dorp
+          : `${tunnel.ip}:${tunnel.dorp}`;
+
+        let hasHandledSuccess = false;
+        const unsubscribe = logStore.subscribe((logs) => {
+          if (hasHandledSuccess) {
+            return;
+          }
+
+          const successLog = logs.find(
+            (log) =>
+              log.tunnel_id === data.tunnelId &&
+              log.message.includes("映射启动成功")
+          );
+
+          if (successLog) {
+            hasHandledSuccess = true;
+
+            toast.dismiss();
+            toast.success(
+              <div className="space-y-2">
+                <div className="text-sm font-medium">
+                  隧道 {tunnel.name} 启动成功，点击复制链接地址
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground font-mono">
+                    {linkAddress}
+                  </span>
+                  <button
+                    onClick={async () => {
+                      try {
+                        await navigator.clipboard.writeText(linkAddress);
+                        toast.success("链接地址已复制到剪贴板");
+                      } catch {
+                        toast.error("复制失败");
+                      }
+                    }}
+                    className="text-xs px-2 py-1 bg-foreground/10 hover:bg-foreground/20 rounded transition-colors"
+                  >
+                    复制
+                  </button>
+                </div>
+              </div>,
+              {
+                duration: 10000,
+              }
+            );
+
+            unsubscribe();
+          }
+        });
+
+        setTimeout(() => {
+          if (!hasHandledSuccess) {
+            unsubscribe();
+            toast.dismiss();
+            toast.error(`隧道 ${tunnel.name} 启动超时，请检查日志`);
+          }
+        }, 30000);
+      } catch (error) {
+        toast.dismiss();
+        const errorMsg =
+          error instanceof Error ? error.message : "启动隧道失败";
+        toast.error(errorMsg);
+        console.error("Deep-link 启动隧道失败:", error);
+      }
+  }, []);
+
+  useEffect(() => {
+    const wrappedHandler = async (data: DeepLinkData) => {
+      if (!isAppReadyRef.current) {
+        console.log("应用未准备好，缓存 deep-link 事件:", data);
+        pendingDeepLinkRef.current = data;
+        return;
+      }
+      
+      await handleDeepLinkInternal(data);
+    };
+
+    deepLinkService.startListening(wrappedHandler);
+
+    return () => {
+      deepLinkService.stopListening();
+    };
+  }, [handleDeepLinkInternal]);
+  
+  useEffect(() => {
+    if (isAppReadyRef.current && pendingDeepLinkRef.current && user?.usertoken) {
+      const pendingData = pendingDeepLinkRef.current;
+      pendingDeepLinkRef.current = null;
+      setTimeout(() => {
+        handleDeepLinkInternal(pendingData);
+      }, 500);
+    }
+  }, [user?.usertoken, handleDeepLinkInternal]);
 
   const handleTabChange = (tab: string) => {
     if (tab === "tunnels" && !user) return;
@@ -546,7 +713,6 @@ function App() {
 
   const overlayStyle = useMemo(() => {
     if (!backgroundImage) {
-      // 没有背景图片时，不显示覆盖层
       return {};
     }
     return {
@@ -558,9 +724,7 @@ function App() {
   }, [backgroundImage, overlayOpacity, blur, theme]);
 
   useEffect(() => {
-    // 当主题变化时，延迟更新背景色以确保 CSS 变量已更新
     const updateBackgroundColors = () => {
-      // 更新覆盖层颜色（如果有背景图）
       if (backgroundImage) {
         const overlayElement = document.querySelector(
           ".background-overlay",
@@ -571,7 +735,6 @@ function App() {
         }
       }
       
-      // 更新主背景色（如果没有背景图）
       if (!backgroundImage && appContainerRef.current) {
         appContainerRef.current.style.backgroundColor =
           getBackgroundColorWithOpacity(100);

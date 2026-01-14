@@ -35,6 +35,7 @@
     "security": {
       "csp": null
     },
+    "withGlobalTauri": true,
     "trayIcon": {
       "id": "main",
       "iconPath": "icons/icon.png",
@@ -67,6 +68,11 @@
         "https://cf-v2.uapis.cn/launcher/update",
         "https://github.com/TechCat-Team/ChmlFrpLauncher/releases/latest/download/latest.json"
       ]
+    },
+    "deep-link": {
+      "desktop": {
+        "schemes": ["chmlfrp"]
+      }
     }
   }
 }

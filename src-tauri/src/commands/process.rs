@@ -17,9 +17,10 @@ pub async fn start_frpc(
     guard_state: State<'_, ProcessGuardState>,
 ) -> Result<String, String> {
     {
-        let procs = processes.processes.lock().map_err(|e| {
-            format!("获取进程锁失败: {}", e)
-        })?;
+        let procs = processes
+            .processes
+            .lock()
+            .map_err(|e| format!("获取进程锁失败: {}", e))?;
         if procs.contains_key(&tunnel_id) {
             return Err("该隧道已在运行中".to_string());
         }
@@ -59,15 +60,14 @@ pub async fn start_frpc(
         .arg(tunnel_id.to_string())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
-    
+
     // Windows上隐藏控制台窗口
     #[cfg(target_os = "windows")]
     {
         cmd.creation_flags(0x08000000);
     }
-    
-    let mut child = cmd.spawn()
-        .map_err(|e| format!("启动 frpc 失败: {}", e))?;
+
+    let mut child = cmd.spawn().map_err(|e| format!("启动 frpc 失败: {}", e))?;
 
     let pid = child.id();
 
@@ -98,18 +98,20 @@ pub async fn start_frpc(
                     let sanitized_line = sanitize_log(&clean_line, &user_token_clone);
 
                     let timestamp = chrono::Local::now().format("%H:%M:%S").to_string();
-                    
+
                     // 检查日志是否需要停止守护
-                    let guard_state_for_check = app_handle_clone.state::<crate::models::ProcessGuardState>();
+                    let guard_state_for_check =
+                        app_handle_clone.state::<crate::models::ProcessGuardState>();
                     let _ = tauri::async_runtime::block_on(async {
                         crate::commands::process_guard::check_log_and_stop_guard(
                             app_handle_clone.clone(),
                             tunnel_id_clone,
                             sanitized_line.clone(),
                             guard_state_for_check,
-                        ).await
+                        )
+                        .await
                     });
-                    
+
                     if let Err(_) = app_handle_clone.emit(
                         "frpc-log",
                         LogMessage {
@@ -122,7 +124,7 @@ pub async fn start_frpc(
                     }
                 }
             }) {
-            Ok(_) => {},
+            Ok(_) => {}
             Err(e) => eprintln!("[错误] 创建 stdout 监听线程失败: {}", e),
         }
     }
@@ -144,18 +146,20 @@ pub async fn start_frpc(
                     let sanitized_line = sanitize_log(&clean_line, &user_token_clone);
 
                     let timestamp = chrono::Local::now().format("%H:%M:%S").to_string();
-                    
+
                     // 检查错误日志是否需要停止守护
-                    let guard_state_for_check = app_handle_clone.state::<crate::models::ProcessGuardState>();
+                    let guard_state_for_check =
+                        app_handle_clone.state::<crate::models::ProcessGuardState>();
                     let _ = tauri::async_runtime::block_on(async {
                         crate::commands::process_guard::check_log_and_stop_guard(
                             app_handle_clone.clone(),
                             tunnel_id_clone,
                             sanitized_line.clone(),
                             guard_state_for_check,
-                        ).await
+                        )
+                        .await
                     });
-                    
+
                     if let Err(_) = app_handle_clone.emit(
                         "frpc-log",
                         LogMessage {
@@ -168,7 +172,7 @@ pub async fn start_frpc(
                     }
                 }
             }) {
-            Ok(_) => {},
+            Ok(_) => {}
             Err(e) => eprintln!("[错误] 创建 stderr 监听线程失败: {}", e),
         }
     }
@@ -180,14 +184,10 @@ pub async fn start_frpc(
             .map_err(|e| format!("获取进程锁失败: {}", e))?;
         procs.insert(tunnel_id, child);
     }
-    
-    let _ = crate::commands::process_guard::add_guarded_process(
-        tunnel_id,
-        user_token,
-        guard_state,
-    )
-    .await;
-    
+
+    let _ = crate::commands::process_guard::add_guarded_process(tunnel_id, user_token, guard_state)
+        .await;
+
     Ok(format!("frpc 已启动 (PID: {})", pid))
 }
 
@@ -197,12 +197,8 @@ pub async fn stop_frpc(
     processes: State<'_, FrpcProcesses>,
     guard_state: State<'_, ProcessGuardState>,
 ) -> Result<String, String> {
-    let _ = crate::commands::process_guard::remove_guarded_process(
-        tunnel_id,
-        guard_state,
-        true,
-    )
-    .await;
+    let _ =
+        crate::commands::process_guard::remove_guarded_process(tunnel_id, guard_state, true).await;
 
     let mut procs = processes
         .processes
@@ -230,9 +226,10 @@ pub async fn is_frpc_running(
     tunnel_id: i32,
     processes: State<'_, FrpcProcesses>,
 ) -> Result<bool, String> {
-    let mut procs = processes.processes.lock().map_err(|e| {
-        format!("获取进程锁失败: {}", e)
-    })?;
+    let mut procs = processes
+        .processes
+        .lock()
+        .map_err(|e| format!("获取进程锁失败: {}", e))?;
 
     if let Some(child) = procs.get_mut(&tunnel_id) {
         match child.try_wait() {
@@ -252,7 +249,10 @@ pub async fn is_frpc_running(
 }
 
 #[tauri::command]
-pub async fn test_log_event(app_handle: tauri::AppHandle, tunnel_id: i32) -> Result<String, String> {
+pub async fn test_log_event(
+    app_handle: tauri::AppHandle,
+    tunnel_id: i32,
+) -> Result<String, String> {
     eprintln!("[测试] 发送测试日志事件");
     let timestamp = chrono::Local::now().format("%H:%M:%S").to_string();
 
@@ -305,4 +305,3 @@ pub async fn get_running_tunnels(processes: State<'_, FrpcProcesses>) -> Result<
 
     Ok(running_tunnels)
 }
-

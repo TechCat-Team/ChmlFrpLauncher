@@ -22,4 +22,3 @@ pub async fn set_autostart(
             .map_err(|e| format!("禁用开机自启失败: {}", e))
     }
 }
-

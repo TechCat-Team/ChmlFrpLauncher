@@ -1,8 +1,8 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::process::Child;
-use std::sync::{Arc, Mutex};
 use std::sync::atomic::AtomicBool;
+use std::sync::{Arc, Mutex};
 
 // 下载进度结构
 #[derive(Serialize, Clone)]
@@ -110,4 +110,3 @@ pub struct HttpRequestOptions {
     pub body: Option<String>,
     pub bypass_proxy: Option<bool>,
 }
-
