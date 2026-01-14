@@ -17,7 +17,9 @@ export function useUpdateCheck() {
       try {
         const result = await updateService.checkUpdate();
         if (result.available) {
-          toast.info(createUpdateInfoToast(result.version || ""), { duration: 8000 });
+          toast.info(createUpdateInfoToast(result.version || ""), {
+            duration: 8000,
+          });
 
           try {
             await updateService.installUpdate();
@@ -40,4 +42,3 @@ export function useUpdateCheck() {
     return () => clearTimeout(timer);
   }, []);
 }
-

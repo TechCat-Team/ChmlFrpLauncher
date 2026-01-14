@@ -170,8 +170,7 @@ export function useTunnelProgress(
           }, 20000);
         }
       } catch (err) {
-        const message =
-          err instanceof Error ? err.message : "自动修复失败";
+        const message = err instanceof Error ? err.message : "自动修复失败";
         toast.error(message, { duration: 5000 });
         const tunnelKey = `api_${tunnelId}`;
         setTunnelProgress((prev) => {
@@ -258,8 +257,11 @@ export function useTunnelProgress(
           return prev;
         }
 
-        const newProgress =
-          current || { progress: 0, isError: false, isSuccess: false };
+        const newProgress = current || {
+          progress: 0,
+          isError: false,
+          isSuccess: false,
+        };
 
         if (message.includes("frpc 进程已启动")) {
           newProgress.startTime = Date.now();
@@ -347,9 +349,12 @@ export function useTunnelProgress(
 
             if (tunnelName && tunnelName.trim() !== "") {
               processedErrorsRef.current.add(errorKey);
-              setTimeout(() => {
-                processedErrorsRef.current.delete(errorKey);
-              }, 5 * 60 * 1000);
+              setTimeout(
+                () => {
+                  processedErrorsRef.current.delete(errorKey);
+                },
+                5 * 60 * 1000,
+              );
 
               handleDuplicateTunnelError(tunnelId, tunnelName.trim());
             } else {
@@ -445,4 +450,3 @@ export function useTunnelProgress(
     successTimeoutRefs,
   };
 }
-

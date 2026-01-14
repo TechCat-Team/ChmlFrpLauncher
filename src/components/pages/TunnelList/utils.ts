@@ -49,4 +49,3 @@ export function restoreProgressFromLogs(
 
   return progressMap;
 }
-

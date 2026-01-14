@@ -27,9 +27,7 @@ export function CloseConfirmDialog({
         {/* 头部 */}
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h2 className="text-lg font-bold text-foreground">
-              关闭窗口
-            </h2>
+            <h2 className="text-lg font-bold text-foreground">关闭窗口</h2>
             <p className="text-xs text-muted-foreground mt-1">
               您希望关闭窗口后应用如何运行？
             </p>

@@ -17,19 +17,19 @@ interface FlowDataCardProps {
 function generateDefaultData() {
   const data = [];
   const today = new Date();
-  
+
   for (let i = 6; i >= 0; i--) {
     const date = new Date(today);
     date.setDate(today.getDate() - i);
     const dateStr = `${date.getMonth() + 1}/${date.getDate()}`;
-    
+
     data.push({
       date: dateStr,
       上传: 0,
       下载: 0,
     });
   }
-  
+
   return data;
 }
 
@@ -39,13 +39,20 @@ export function FlowDataCard({
   flowError,
 }: FlowDataCardProps) {
   // 将流量数据转换为 MB
-  const chartData = flowData.length > 0
-    ? flowData.map((item) => ({
-        date: item.time,
-        上传: typeof item.traffic_in === 'number' ? item.traffic_in / (1024 * 1024) : 0,
-        下载: typeof item.traffic_out === 'number' ? item.traffic_out / (1024 * 1024) : 0,
-      }))
-    : generateDefaultData();
+  const chartData =
+    flowData.length > 0
+      ? flowData.map((item) => ({
+          date: item.time,
+          上传:
+            typeof item.traffic_in === "number"
+              ? item.traffic_in / (1024 * 1024)
+              : 0,
+          下载:
+            typeof item.traffic_out === "number"
+              ? item.traffic_out / (1024 * 1024)
+              : 0,
+        }))
+      : generateDefaultData();
 
   const chartConfig = {
     上传: {
@@ -98,7 +105,10 @@ export function FlowDataCard({
                   />
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" className="stroke-border/30" />
+              <CartesianGrid
+                strokeDasharray="3 3"
+                className="stroke-border/30"
+              />
               <XAxis
                 dataKey="date"
                 tickLine={false}
@@ -145,4 +155,3 @@ export function FlowDataCard({
     </div>
   );
 }
-

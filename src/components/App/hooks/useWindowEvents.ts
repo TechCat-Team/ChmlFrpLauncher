@@ -30,12 +30,18 @@ export function useWindowEvents() {
       }
     };
 
-    window.addEventListener("showCloseConfirmDialog", handleShowCloseConfirmDialog);
+    window.addEventListener(
+      "showCloseConfirmDialog",
+      handleShowCloseConfirmDialog,
+    );
     window.addEventListener("minimizeToTray", handleMinimizeToTray);
     window.addEventListener("closeApp", handleCloseApp);
 
     return () => {
-      window.removeEventListener("showCloseConfirmDialog", handleShowCloseConfirmDialog);
+      window.removeEventListener(
+        "showCloseConfirmDialog",
+        handleShowCloseConfirmDialog,
+      );
       window.removeEventListener("minimizeToTray", handleMinimizeToTray);
       window.removeEventListener("closeApp", handleCloseApp);
     };
@@ -50,25 +56,29 @@ export function useWindowEvents() {
         const { invoke } = await import("@tauri-apps/api/core");
         const appWindow = getCurrentWindow();
 
-        const unlisten = await appWindow.listen("window-close-requested", async () => {
-          const closeBehavior = localStorage.getItem("closeBehavior") || "ask";
-          
-          if (closeBehavior === "ask") {
-            setShowCloseConfirmDialog(true);
-          } else if (closeBehavior === "minimize_to_tray") {
-            try {
-              await invoke("hide_window");
-            } catch (error) {
-              console.error("Failed to hide window:", error);
+        const unlisten = await appWindow.listen(
+          "window-close-requested",
+          async () => {
+            const closeBehavior =
+              localStorage.getItem("closeBehavior") || "ask";
+
+            if (closeBehavior === "ask") {
+              setShowCloseConfirmDialog(true);
+            } else if (closeBehavior === "minimize_to_tray") {
+              try {
+                await invoke("hide_window");
+              } catch (error) {
+                console.error("Failed to hide window:", error);
+              }
+            } else {
+              try {
+                await invoke("quit_app");
+              } catch (error) {
+                console.error("Failed to quit app:", error);
+              }
             }
-          } else {
-            try {
-              await invoke("quit_app");
-            } catch (error) {
-              console.error("Failed to quit app:", error);
-            }
-          }
-        });
+          },
+        );
 
         unlistenFn = unlisten;
       } catch (error) {
@@ -90,4 +100,3 @@ export function useWindowEvents() {
     setShowCloseConfirmDialog,
   };
 }
-

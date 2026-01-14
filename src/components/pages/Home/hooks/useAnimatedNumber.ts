@@ -122,4 +122,3 @@ export function useAnimatedNumber(
 
   return { displayValue, isAnimating };
 }
-

@@ -57,9 +57,7 @@ export function AntivirusWarningDialog({
               <AlertTriangle className="w-5 h-5 text-background" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-foreground">
-                下载被拦截
-              </h2>
+              <h2 className="text-lg font-bold text-foreground">下载被拦截</h2>
               <p className="text-xs text-muted-foreground">
                 杀毒软件阻止了下载
               </p>
@@ -81,7 +79,9 @@ export function AntivirusWarningDialog({
           </p>
 
           <div className="space-y-2">
-            <p className="text-sm font-medium text-foreground">frpc 安装目录：</p>
+            <p className="text-sm font-medium text-foreground">
+              frpc 安装目录：
+            </p>
             <div className="flex items-center gap-2">
               <div className="flex-1 px-3 py-2 rounded-lg border border-border/50 bg-background/50 text-xs font-mono text-foreground break-all">
                 {frpcDir || "加载中..."}
@@ -130,4 +130,3 @@ export function AntivirusWarningDialog({
     </div>
   );
 }
-

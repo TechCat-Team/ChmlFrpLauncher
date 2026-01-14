@@ -7,9 +7,7 @@ import { customTunnelService } from "@/services/customTunnelService";
 import type { TunnelProgress, UnifiedTunnel } from "../types";
 
 interface UseTunnelToggleProps {
-  setTunnelProgress: Dispatch<
-    SetStateAction<Map<string, TunnelProgress>>
-  >;
+  setTunnelProgress: Dispatch<SetStateAction<Map<string, TunnelProgress>>>;
   setRunningTunnels: Dispatch<SetStateAction<Set<string>>>;
   timeoutRefs: React.MutableRefObject<
     Map<string, ReturnType<typeof setTimeout>>
@@ -30,13 +28,13 @@ export function useTunnelToggle({
   );
 
   const handleToggle = async (tunnel: UnifiedTunnel, enabled: boolean) => {
-    const tunnelKey = tunnel.type === "api" 
-      ? `api_${tunnel.data.id}` 
-      : `custom_${tunnel.data.id}`;
-    
-    const tunnelName = tunnel.type === "api" 
-      ? tunnel.data.name 
-      : tunnel.data.name;
+    const tunnelKey =
+      tunnel.type === "api"
+        ? `api_${tunnel.data.id}`
+        : `custom_${tunnel.data.id}`;
+
+    const tunnelName =
+      tunnel.type === "api" ? tunnel.data.name : tunnel.data.name;
 
     if (tunnel.type === "api") {
       const user = getStoredUser();
@@ -140,4 +138,3 @@ export function useTunnelToggle({
     handleToggle,
   };
 }
-

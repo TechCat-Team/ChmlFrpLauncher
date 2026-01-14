@@ -6,7 +6,14 @@ import { useUpdate } from "./hooks/useUpdate";
 import { useFrpcDownload } from "./hooks/useFrpcDownload";
 import { useCloseBehavior } from "./hooks/useCloseBehavior";
 import { useProcessGuard } from "./hooks/useProcessGuard";
-import { getInitialBypassProxy, getInitialShowTitleBar, getInitialEffectType, getInitialVideoStartSound, getInitialVideoVolume, type EffectType } from "./utils";
+import {
+  getInitialBypassProxy,
+  getInitialShowTitleBar,
+  getInitialEffectType,
+  getInitialVideoStartSound,
+  getInitialVideoVolume,
+  type EffectType,
+} from "./utils";
 import { AppearanceSection } from "./components/AppearanceSection";
 import { NetworkSection } from "./components/NetworkSection";
 import { SystemSection } from "./components/SystemSection";
@@ -17,12 +24,7 @@ export function Settings() {
     typeof navigator !== "undefined" &&
     navigator.platform.toUpperCase().indexOf("MAC") >= 0;
 
-  const {
-    followSystem,
-    setFollowSystem,
-    theme,
-    setTheme,
-  } = useTheme();
+  const { followSystem, setFollowSystem, theme, setTheme } = useTheme();
 
   const {
     backgroundImage,
@@ -35,11 +37,8 @@ export function Settings() {
     handleClearBackgroundImage,
   } = useBackgroundImage();
 
-  const {
-    autostartEnabled,
-    autostartLoading,
-    handleToggleAutostart,
-  } = useAutostart();
+  const { autostartEnabled, autostartLoading, handleToggleAutostart } =
+    useAutostart();
 
   const {
     autoCheckUpdate,
@@ -51,16 +50,9 @@ export function Settings() {
 
   const { isDownloading, handleRedownloadFrpc } = useFrpcDownload();
 
-  const {
-    closeToTrayEnabled,
-    handleToggleCloseToTray,
-  } = useCloseBehavior();
+  const { closeToTrayEnabled, handleToggleCloseToTray } = useCloseBehavior();
 
-  const {
-    guardEnabled,
-    guardLoading,
-    handleToggleGuard,
-  } = useProcessGuard();
+  const { guardEnabled, guardLoading, handleToggleGuard } = useProcessGuard();
 
   const [bypassProxy, setBypassProxy] = useState<boolean>(() =>
     getInitialBypassProxy(),
@@ -162,4 +154,3 @@ export function Settings() {
     </div>
   );
 }
-

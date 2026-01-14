@@ -5,7 +5,9 @@ import { cn } from "@/lib/utils";
 
 export function TitleBar() {
   const [isMaximized, setIsMaximized] = useState(false);
-  const isMacOS = typeof navigator !== "undefined" && navigator.platform.toUpperCase().indexOf("MAC") >= 0;
+  const isMacOS =
+    typeof navigator !== "undefined" &&
+    navigator.platform.toUpperCase().indexOf("MAC") >= 0;
 
   useEffect(() => {
     let mounted = true;
@@ -54,7 +56,6 @@ export function TitleBar() {
     };
   }, [isMacOS]);
 
-
   return (
     <div
       data-tauri-drag-region
@@ -63,20 +64,19 @@ export function TitleBar() {
         "bg-sidebar/30 dark:bg-sidebar/40 backdrop-blur-md",
         "border-sidebar-border/20 dark:border-sidebar-border/25",
         "transition-colors duration-200",
-        isMacOS && "pl-20"
+        isMacOS && "pl-20",
       )}
     >
       <div
         data-tauri-drag-region
         className={cn(
           "flex items-center gap-2.5 flex-1 min-w-0 cursor-default",
-          isMacOS ? "px-3" : "px-4"
+          isMacOS ? "px-3" : "px-4",
         )}
-      >
-      </div>
+      ></div>
 
       {!isMacOS ? (
-        <div 
+        <div
           className="flex items-center gap-0.5 flex-shrink-0 pr-2"
           onMouseDown={(e) => e.stopPropagation()}
         >
@@ -95,7 +95,7 @@ export function TitleBar() {
               "text-foreground/30 hover:text-foreground/70 hover:bg-foreground/5",
               "dark:text-foreground/40 dark:hover:text-foreground/80 dark:hover:bg-foreground/7",
               "active:scale-95 active:opacity-70",
-              "cursor-pointer"
+              "cursor-pointer",
             )}
             aria-label="最小化"
           >
@@ -120,7 +120,7 @@ export function TitleBar() {
               "text-foreground/30 hover:text-foreground/70 hover:bg-foreground/5",
               "dark:text-foreground/40 dark:hover:text-foreground/80 dark:hover:bg-foreground/7",
               "active:scale-95 active:opacity-70",
-              "cursor-pointer"
+              "cursor-pointer",
             )}
             aria-label={isMaximized ? "还原" : "最大化"}
           >
@@ -142,7 +142,7 @@ export function TitleBar() {
               "text-foreground/30 hover:text-foreground hover:bg-destructive/10 hover:text-destructive",
               "dark:text-foreground/40 dark:hover:text-destructive dark:hover:bg-destructive/15",
               "active:scale-95 active:opacity-70",
-              "cursor-pointer"
+              "cursor-pointer",
             )}
             aria-label="关闭"
           >
@@ -155,4 +155,3 @@ export function TitleBar() {
     </div>
   );
 }
-

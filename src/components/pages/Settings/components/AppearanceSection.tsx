@@ -336,7 +336,10 @@ export function AppearanceSection({
                   onClick={() => {
                     const newValue = !videoStartSound;
                     setVideoStartSound(newValue);
-                    localStorage.setItem("videoStartSound", newValue.toString());
+                    localStorage.setItem(
+                      "videoStartSound",
+                      newValue.toString(),
+                    );
                     window.dispatchEvent(new Event("videoStartSoundChanged"));
                   }}
                   className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 ${
@@ -372,7 +375,10 @@ export function AppearanceSection({
                       onChange={(e) => {
                         const newValue = parseInt(e.target.value, 10);
                         setVideoVolume(newValue);
-                        localStorage.setItem("videoVolume", newValue.toString());
+                        localStorage.setItem(
+                          "videoVolume",
+                          newValue.toString(),
+                        );
                         window.dispatchEvent(new Event("videoVolumeChanged"));
                       }}
                       className="flex-1 h-2 bg-muted rounded-lg appearance-none cursor-pointer accent-foreground"
@@ -393,4 +399,3 @@ export function AppearanceSection({
     </div>
   );
 }
-

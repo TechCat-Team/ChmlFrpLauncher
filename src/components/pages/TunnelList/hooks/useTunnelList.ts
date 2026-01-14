@@ -8,17 +8,20 @@ import type { UnifiedTunnel } from "../types";
 export function useTunnelList() {
   const [tunnels, setTunnels] = useState<UnifiedTunnel[]>(() => {
     // 将缓存的API隧道转换为统一格式
-    return tunnelListCache.tunnels.map((t) => ({ type: "api" as const, data: t }));
+    return tunnelListCache.tunnels.map((t) => ({
+      type: "api" as const,
+      data: t,
+    }));
   });
   const [loading, setLoading] = useState(() => {
     return tunnelListCache.tunnels.length === 0;
   });
   const [error, setError] = useState("");
   const [runningTunnels, setRunningTunnels] = useState<Set<string>>(new Set());
-  
+
   // 使用ref保存最新的tunnels
   const tunnelsRef = useRef(tunnels);
-  
+
   useEffect(() => {
     tunnelsRef.current = tunnels;
   }, [tunnels]);
@@ -45,7 +48,7 @@ export function useTunnelList() {
 
       // 检查运行状态
       const running = new Set<string>();
-      
+
       for (const tunnel of allTunnels) {
         if (tunnel.type === "api") {
           const isRunning = await frpcManager.isTunnelRunning(tunnel.data.id);
@@ -54,7 +57,7 @@ export function useTunnelList() {
           }
         } else {
           const isRunning = await customTunnelService.isCustomTunnelRunning(
-            tunnel.data.id
+            tunnel.data.id,
           );
           if (isRunning) {
             running.add(`custom_${tunnel.data.id}`);
@@ -88,23 +91,27 @@ export function useTunnelList() {
       const unlisten = await listen<{ tunnel_id: number; timestamp: string }>(
         "tunnel-auto-restarted",
         async (event) => {
-          console.log(`[守护进程] 收到隧道 ${event.payload.tunnel_id} 自动重启通知，立即刷新状态`);
-          
+          console.log(
+            `[守护进程] 收到隧道 ${event.payload.tunnel_id} 自动重启通知，立即刷新状态`,
+          );
+
           // 使用ref获取最新的tunnels
           const currentTunnels = tunnelsRef.current;
-          
+
           // 立即检查所有隧道的运行状态
           const running = new Set<string>();
-          
+
           for (const tunnel of currentTunnels) {
             if (tunnel.type === "api") {
-              const isRunning = await frpcManager.isTunnelRunning(tunnel.data.id);
+              const isRunning = await frpcManager.isTunnelRunning(
+                tunnel.data.id,
+              );
               if (isRunning) {
                 running.add(`api_${tunnel.data.id}`);
               }
             } else {
               const isRunning = await customTunnelService.isCustomTunnelRunning(
-                tunnel.data.id
+                tunnel.data.id,
               );
               if (isRunning) {
                 running.add(`custom_${tunnel.data.id}`);
@@ -112,17 +119,17 @@ export function useTunnelList() {
             }
           }
           setRunningTunnels(running);
-        }
+        },
       );
-      
+
       return unlisten;
     };
-    
+
     let unlistenFn: (() => void) | undefined;
     setupAutoRestartListener().then((fn) => {
       unlistenFn = fn;
     });
-    
+
     return () => {
       if (unlistenFn) {
         unlistenFn();
@@ -136,7 +143,7 @@ export function useTunnelList() {
 
     const checkRunningStatus = async () => {
       const running = new Set<string>();
-      
+
       for (const tunnel of tunnels) {
         if (tunnel.type === "api") {
           const isRunning = await frpcManager.isTunnelRunning(tunnel.data.id);
@@ -145,7 +152,7 @@ export function useTunnelList() {
           }
         } else {
           const isRunning = await customTunnelService.isCustomTunnelRunning(
-            tunnel.data.id
+            tunnel.data.id,
           );
           if (isRunning) {
             running.add(`custom_${tunnel.data.id}`);
@@ -169,4 +176,3 @@ export function useTunnelList() {
     refreshTunnels: loadTunnels,
   };
 }
-

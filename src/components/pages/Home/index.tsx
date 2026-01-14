@@ -70,4 +70,3 @@ export function Home({ user, onUserChange }: HomeProps) {
     </div>
   );
 }
-

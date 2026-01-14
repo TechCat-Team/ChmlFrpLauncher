@@ -8,18 +8,19 @@ import { logStore } from "@/services/logStore";
 export function useAppInitialization() {
   useEffect(() => {
     logStore.startListening();
-    
+
     const initProcessGuard = async () => {
       try {
         const { invoke } = await import("@tauri-apps/api/core");
-        const guardEnabled = localStorage.getItem("processGuardEnabled") === "true";
+        const guardEnabled =
+          localStorage.getItem("processGuardEnabled") === "true";
         await invoke("set_process_guard_enabled", { enabled: guardEnabled });
         console.log(`[守护进程] 初始化状态: ${guardEnabled ? "启用" : "禁用"}`);
       } catch (error) {
         console.error("Failed to initialize process guard:", error);
       }
     };
-    
+
     initProcessGuard();
   }, []);
 
@@ -36,4 +37,3 @@ export function useAppInitialization() {
     };
   }, []);
 }
-

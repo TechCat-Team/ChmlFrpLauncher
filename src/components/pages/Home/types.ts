@@ -11,4 +11,3 @@ export interface HomeProps {
 }
 
 export type { UserInfo, FlowPoint, SignInInfo, StoredUser };
-

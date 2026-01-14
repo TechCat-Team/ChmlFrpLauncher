@@ -9,7 +9,6 @@ export interface TunnelProgress {
 }
 
 // 统一的隧道类型，包含API隧道和自定义隧道
-export type UnifiedTunnel = 
+export type UnifiedTunnel =
   | { type: "api"; data: Tunnel }
   | { type: "custom"; data: CustomTunnel };
-

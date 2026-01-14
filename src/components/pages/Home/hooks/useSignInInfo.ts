@@ -135,4 +135,3 @@ export function useSignInInfo(userInfo: UserInfo | null) {
     handleMouseLeave,
   };
 }
-

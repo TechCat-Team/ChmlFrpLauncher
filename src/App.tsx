@@ -22,11 +22,14 @@ function App() {
   const [activeTab, setActiveTab] = useState("home");
   const [user, setUser] = useState<StoredUser | null>(() => getStoredUser());
   const appContainerRef = useRef<HTMLDivElement>(null);
-  const isMacOS = typeof navigator !== "undefined" && navigator.platform.toUpperCase().indexOf("MAC") >= 0;
+  const isMacOS =
+    typeof navigator !== "undefined" &&
+    navigator.platform.toUpperCase().indexOf("MAC") >= 0;
 
   // Hooks
   useAppTheme(); // Manages theme in DOM
-  const { showCloseConfirmDialog, setShowCloseConfirmDialog } = useWindowEvents();
+  const { showCloseConfirmDialog, setShowCloseConfirmDialog } =
+    useWindowEvents();
   const { showTitleBar } = useTitleBar();
   const {
     backgroundImage,
@@ -41,7 +44,7 @@ function App() {
     backgroundType,
     getBackgroundColorWithOpacity,
   } = useBackground();
-  
+
   useAppInitialization();
   useDeepLink(user, setUser);
   useUpdateCheck();
@@ -98,15 +101,19 @@ function App() {
       <div
         ref={appContainerRef}
         className={`flex flex-col h-screen w-screen overflow-hidden text-foreground rounded-[12px] ${
-          backgroundImage && effectType === "frosted" ? "frosted-glass-enabled" : ""
+          backgroundImage && effectType === "frosted"
+            ? "frosted-glass-enabled"
+            : ""
         } ${
-          backgroundImage && effectType === "translucent" ? "translucent-enabled" : ""
+          backgroundImage && effectType === "translucent"
+            ? "translucent-enabled"
+            : ""
         }`}
         style={{
           ...backgroundStyle(),
-          borderRadius: '12px',
-          overflow: 'hidden',
-          position: 'relative',
+          borderRadius: "12px",
+          overflow: "hidden",
+          position: "relative",
         }}
       >
         <BackgroundLayer
@@ -128,7 +135,10 @@ function App() {
             <TitleBar />
           </div>
         )}
-        <div className="relative flex w-full flex-1 overflow-hidden rounded-b-[12px]" style={{ zIndex: 10 }}>
+        <div
+          className="relative flex w-full flex-1 overflow-hidden rounded-b-[12px]"
+          style={{ zIndex: 10 }}
+        >
           <Sidebar
             activeTab={activeTab}
             onTabChange={handleTabChange}
@@ -137,12 +147,12 @@ function App() {
           />
 
           <div className="flex-1 flex flex-col overflow-hidden relative">
-          {isMacOS && !showTitleBar ? (
-            <div
-              data-tauri-drag-region
-              className="absolute top-0 left-0 right-0 h-8 z-10"
-            />
-          ) : null}
+            {isMacOS && !showTitleBar ? (
+              <div
+                data-tauri-drag-region
+                className="absolute top-0 left-0 right-0 h-8 z-10"
+              />
+            ) : null}
             <div className="flex-1 overflow-auto p-6 md:p-8">
               <div className="max-w-6xl mx-auto w-full h-full">
                 <div className="h-full flex flex-col">{renderContent()}</div>

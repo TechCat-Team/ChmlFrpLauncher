@@ -111,9 +111,10 @@ export function Logs() {
 
         if (userAgent.includes("Win")) {
           osPlatform = "Windows";
-          osArch = userAgent.includes("WOW64") || userAgent.includes("x64")
-            ? "x64"
-            : "x86";
+          osArch =
+            userAgent.includes("WOW64") || userAgent.includes("x64")
+              ? "x64"
+              : "x86";
         } else if (userAgent.includes("Mac")) {
           osPlatform = "macOS";
           osArch = userAgent.includes("Intel") ? "x64" : "ARM64";
@@ -161,8 +162,14 @@ export function Logs() {
                 .map((id) => {
                   const tunnel = tunnels.find((t) => t.id === id);
                   if (!tunnel) return null;
-                  const localAddr = tunnel.localip && tunnel.nport ? `${tunnel.localip}:${tunnel.nport}` : "未知";
-                  const remoteAddr = tunnel.ip && tunnel.dorp ? `${tunnel.ip}:${tunnel.dorp}` : "未知";
+                  const localAddr =
+                    tunnel.localip && tunnel.nport
+                      ? `${tunnel.localip}:${tunnel.nport}`
+                      : "未知";
+                  const remoteAddr =
+                    tunnel.ip && tunnel.dorp
+                      ? `${tunnel.ip}:${tunnel.dorp}`
+                      : "未知";
                   return `  隧道${id}(${tunnel.name}): ${localAddr} → ${remoteAddr}`;
                 })
                 .filter((line): line is string => line !== null)
@@ -173,7 +180,9 @@ export function Logs() {
         ];
 
         // 过滤掉 null 值并连接
-        const header = headerLines.filter((line): line is string => line !== null).join("\n");
+        const header = headerLines
+          .filter((line): line is string => line !== null)
+          .join("\n");
 
         const logContent = logsToSave
           .map(
@@ -189,7 +198,9 @@ export function Logs() {
       }
     } catch (error) {
       console.error("Failed to save logs:", error);
-      toast.error(`保存日志失败: ${error instanceof Error ? error.message : String(error)}`);
+      toast.error(
+        `保存日志失败: ${error instanceof Error ? error.message : String(error)}`,
+      );
     }
   };
 

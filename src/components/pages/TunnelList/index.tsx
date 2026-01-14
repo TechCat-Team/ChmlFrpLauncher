@@ -1,6 +1,15 @@
 import { useState, useMemo } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
+import {
+  Empty,
+  EmptyHeader,
+  EmptyTitle,
+  EmptyDescription,
+  EmptyMedia,
+  EmptyContent,
+} from "@/components/ui/empty";
+import { Network } from "lucide-react";
 import { useTunnelList } from "./hooks/useTunnelList";
 import { useTunnelProgress } from "./hooks/useTunnelProgress";
 import { useTunnelToggle } from "./hooks/useTunnelToggle";
@@ -22,15 +31,11 @@ export function TunnelList() {
   // 只将API隧道传给useTunnelProgress
   const apiTunnels = useMemo(
     () => tunnels.filter((t) => t.type === "api").map((t) => t.data),
-    [tunnels]
+    [tunnels],
   );
 
-  const {
-    tunnelProgress,
-    setTunnelProgress,
-    timeoutRefs,
-    successTimeoutRefs,
-  } = useTunnelProgress(apiTunnels, runningTunnels, setRunningTunnels);
+  const { tunnelProgress, setTunnelProgress, timeoutRefs, successTimeoutRefs } =
+    useTunnelProgress(apiTunnels, runningTunnels, setRunningTunnels);
 
   const { togglingTunnels, handleToggle } = useTunnelToggle({
     setTunnelProgress,
@@ -67,18 +72,41 @@ export function TunnelList() {
         <div className="flex-1 flex items-center justify-center text-sm text-muted-foreground">
           {error}
         </div>
+      ) : tunnels.length === 0 ? (
+        <Empty className="flex-1">
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <Network className="size-6" />
+            </EmptyMedia>
+            <EmptyTitle>暂无隧道</EmptyTitle>
+            <EmptyDescription>
+              您还没有创建任何隧道，点击下方按钮开始创建您的第一个隧道。
+            </EmptyDescription>
+          </EmptyHeader>
+          <EmptyContent>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCreateDialogOpen(true)}
+            >
+              新建隧道
+            </Button>
+          </EmptyContent>
+        </Empty>
       ) : (
         <ScrollArea className="flex-1 min-h-0 pr-1">
           <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
             {tunnels.map((tunnel) => {
-              const tunnelKey = tunnel.type === "api" 
-                ? `api_${tunnel.data.id}` 
-                : `custom_${tunnel.data.id}`;
+              const tunnelKey =
+                tunnel.type === "api"
+                  ? `api_${tunnel.data.id}`
+                  : `custom_${tunnel.data.id}`;
               const isRunning = runningTunnels.has(tunnelKey);
               const isToggling = togglingTunnels.has(tunnelKey);
-              const progress = tunnel.type === "api" 
-                ? tunnelProgress.get(tunnelKey) 
-                : undefined;
+              const progress =
+                tunnel.type === "api"
+                  ? tunnelProgress.get(tunnelKey)
+                  : undefined;
               return (
                 <TunnelCard
                   key={tunnelKey}
@@ -103,4 +131,3 @@ export function TunnelList() {
     </div>
   );
 }
-

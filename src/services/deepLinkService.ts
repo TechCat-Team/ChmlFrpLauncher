@@ -25,17 +25,20 @@ class DeepLinkService {
 
     this.handler = handler;
 
-    this.unlisten = await listen<string>("deep-link://new-url", async (event) => {
-      const url = event.payload;
-      try {
-        const data = this.parseDeepLink(url);
-        if (data !== null && this.handler) {
-          await this.handler(data);
+    this.unlisten = await listen<string>(
+      "deep-link://new-url",
+      async (event) => {
+        const url = event.payload;
+        try {
+          const data = this.parseDeepLink(url);
+          if (data !== null && this.handler) {
+            await this.handler(data);
+          }
+        } catch (error) {
+          console.error("处理 deep-link 失败:", error);
         }
-      } catch (error) {
-        console.error("处理 deep-link 失败:", error);
-      }
-    });
+      },
+    );
   }
 
   /**
@@ -63,7 +66,7 @@ class DeepLinkService {
 
       const urlObj = new URL(urlToParse);
       const pathParts = urlObj.pathname.split("/").filter(Boolean);
-      
+
       if (pathParts.length >= 2 && pathParts[1] === "start") {
         const usertoken = pathParts[0];
         const tunnelId = parseInt(pathParts[2], 10);
@@ -71,7 +74,7 @@ class DeepLinkService {
           return { tunnelId, usertoken };
         }
       }
-      
+
       if (pathParts.length > 0) {
         if (pathParts[0] === "start" || pathParts[0] === "tunnel") {
           if (pathParts.length > 1) {
@@ -87,14 +90,14 @@ class DeepLinkService {
           }
         }
       }
-      
+
       if (urlObj.hostname && !isNaN(parseInt(urlObj.hostname, 10))) {
         const tunnelId = parseInt(urlObj.hostname, 10);
         if (tunnelId > 0) {
           return { tunnelId };
         }
       }
-      
+
       const match = url.match(/\/(\d+)/);
       if (match) {
         const tunnelId = parseInt(match[1], 10);
@@ -102,7 +105,7 @@ class DeepLinkService {
           return { tunnelId };
         }
       }
-      
+
       const numberMatch = url.match(/(\d+)/);
       if (numberMatch) {
         const tunnelId = parseInt(numberMatch[1], 10);
@@ -110,7 +113,7 @@ class DeepLinkService {
           return { tunnelId };
         }
       }
-      
+
       return null;
     } catch (error) {
       const numberMatch = url.match(/(\d+)/);
@@ -127,4 +130,3 @@ class DeepLinkService {
 }
 
 export const deepLinkService = new DeepLinkService();
-

@@ -58,4 +58,3 @@ export function useFlowData(userInfo: UserInfo | null) {
     flowError,
   };
 }
-

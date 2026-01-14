@@ -1,9 +1,6 @@
 import { useState, useEffect } from "react";
 import type { ThemeMode } from "../types";
-import {
-  getInitialFollowSystem,
-  getInitialTheme,
-} from "../utils";
+import { getInitialFollowSystem, getInitialTheme } from "../utils";
 
 export function useTheme() {
   const [followSystem, setFollowSystem] = useState<boolean>(() =>
@@ -63,4 +60,3 @@ export function useTheme() {
     setTheme,
   };
 }
-

@@ -1,7 +1,10 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { readFile } from "@tauri-apps/plugin-fs";
 import type { EffectType } from "@/components/pages/Settings/utils";
-import { getInitialVideoStartSound, getInitialVideoVolume } from "@/components/pages/Settings/utils";
+import {
+  getInitialVideoStartSound,
+  getInitialVideoVolume,
+} from "@/components/pages/Settings/utils";
 
 /**
  * 背景管理 hook
@@ -28,8 +31,10 @@ export function useBackground() {
     if (stored === "frosted" || stored === "translucent" || stored === "none") {
       return stored;
     }
-    const frostedEnabled = localStorage.getItem("frostedGlassEnabled") === "true";
-    const translucentEnabled = localStorage.getItem("translucentEnabled") === "true";
+    const frostedEnabled =
+      localStorage.getItem("frostedGlassEnabled") === "true";
+    const translucentEnabled =
+      localStorage.getItem("translucentEnabled") === "true";
     if (frostedEnabled) return "frosted";
     if (translucentEnabled) return "translucent";
     return "none";
@@ -47,7 +52,12 @@ export function useBackground() {
 
   const backgroundType = useMemo(() => {
     if (!backgroundImage) return null;
-    if (backgroundImage.startsWith("data:video/") || backgroundImage.startsWith("file://") || backgroundImage.startsWith("app://")) return "video";
+    if (
+      backgroundImage.startsWith("data:video/") ||
+      backgroundImage.startsWith("file://") ||
+      backgroundImage.startsWith("app://")
+    )
+      return "video";
     if (backgroundImage.startsWith("data:image/")) return "image";
     return "image";
   }, [backgroundImage]);
@@ -65,7 +75,11 @@ export function useBackground() {
         setBlur(value);
       } else if (e.key === "effectType") {
         const value = e.newValue;
-        if (value === "frosted" || value === "translucent" || value === "none") {
+        if (
+          value === "frosted" ||
+          value === "translucent" ||
+          value === "none"
+        ) {
           setEffectType(value);
         }
       } else if (e.key === "videoStartSound") {
@@ -105,14 +119,15 @@ export function useBackground() {
 
     const handleEffectTypeChange = () => {
       const stored = localStorage.getItem("effectType");
-      if (stored === "frosted" || stored === "translucent" || stored === "none") {
+      if (
+        stored === "frosted" ||
+        stored === "translucent" ||
+        stored === "none"
+      ) {
         setEffectType(stored);
       }
     };
-    window.addEventListener(
-      "effectTypeChanged",
-      handleEffectTypeChange,
-    );
+    window.addEventListener("effectTypeChanged", handleEffectTypeChange);
 
     const handleVideoStartSoundChange = () => {
       const stored = localStorage.getItem("videoStartSound");
@@ -130,10 +145,7 @@ export function useBackground() {
       const value = stored ? parseInt(stored, 10) : 50;
       setVideoVolume(value);
     };
-    window.addEventListener(
-      "videoVolumeChanged",
-      handleVideoVolumeChange,
-    );
+    window.addEventListener("videoVolumeChanged", handleVideoVolumeChange);
 
     return () => {
       window.removeEventListener("storage", handleStorageChange);
@@ -145,18 +157,12 @@ export function useBackground() {
         "backgroundOverlayChanged",
         handleBackgroundOverlayChange,
       );
-      window.removeEventListener(
-        "effectTypeChanged",
-        handleEffectTypeChange,
-      );
+      window.removeEventListener("effectTypeChanged", handleEffectTypeChange);
       window.removeEventListener(
         "videoStartSoundChanged",
         handleVideoStartSoundChange,
       );
-      window.removeEventListener(
-        "videoVolumeChanged",
-        handleVideoVolumeChange,
-      );
+      window.removeEventListener("videoVolumeChanged", handleVideoVolumeChange);
     };
   }, []);
 
@@ -174,7 +180,7 @@ export function useBackground() {
               throw new Error("File is empty");
             }
             if (!isMounted) return;
-            
+
             const blob = new Blob([fileData], { type: "video/mp4" });
             const blobUrl = URL.createObjectURL(blob);
             if (currentBlobUrl) {
@@ -185,7 +191,7 @@ export function useBackground() {
             setVideoLoadError(false);
           } catch {
             if (!isMounted) return;
-            
+
             if (retryCount < 2) {
               setTimeout(() => {
                 if (isMounted) {
@@ -194,7 +200,7 @@ export function useBackground() {
               }, 1000);
               return;
             }
-            
+
             if (currentBlobUrl) {
               URL.revokeObjectURL(currentBlobUrl);
               currentBlobUrl = null;
@@ -210,7 +216,7 @@ export function useBackground() {
               throw new Error("File is empty");
             }
             if (!isMounted) return;
-            
+
             const blob = new Blob([fileData], { type: "video/mp4" });
             const blobUrl = URL.createObjectURL(blob);
             if (currentBlobUrl) {
@@ -221,7 +227,7 @@ export function useBackground() {
             setVideoLoadError(false);
           } catch {
             if (!isMounted) return;
-            
+
             if (retryCount < 2) {
               setTimeout(() => {
                 if (isMounted) {
@@ -230,7 +236,7 @@ export function useBackground() {
               }, 1000);
               return;
             }
-            
+
             if (currentBlobUrl) {
               URL.revokeObjectURL(currentBlobUrl);
               currentBlobUrl = null;
@@ -268,24 +274,29 @@ export function useBackground() {
     if (backgroundType !== "video" || !videoRef.current) return;
 
     const video = videoRef.current;
-    
+
     video.volume = videoVolume / 100;
     video.muted = !videoStartSound || hasPlayedFirstLoopRef.current;
-    
+
     if (videoStartSound && !hasPlayedFirstLoopRef.current && video.paused) {
       video.play().catch(() => {});
     }
   }, [backgroundType, videoStartSound, videoVolume]);
 
   useEffect(() => {
-    if (backgroundType !== "video" || !videoRef.current || !videoStartSound || hasPlayedFirstLoopRef.current) {
+    if (
+      backgroundType !== "video" ||
+      !videoRef.current ||
+      !videoStartSound ||
+      hasPlayedFirstLoopRef.current
+    ) {
       return;
     }
 
     const video = videoRef.current;
     let lastTime = video.currentTime || 0;
     let hasReachedNearEnd = false;
-    
+
     const handleTimeUpdate = () => {
       if (hasPlayedFirstLoopRef.current) {
         return;
@@ -317,12 +328,12 @@ export function useBackground() {
       }
     };
 
-    video.addEventListener('timeupdate', handleTimeUpdate);
-    video.addEventListener('seeking', handleSeeking);
+    video.addEventListener("timeupdate", handleTimeUpdate);
+    video.addEventListener("seeking", handleSeeking);
 
     return () => {
-      video.removeEventListener('timeupdate', handleTimeUpdate);
-      video.removeEventListener('seeking', handleSeeking);
+      video.removeEventListener("timeupdate", handleTimeUpdate);
+      video.removeEventListener("seeking", handleSeeking);
     };
   }, [backgroundType, videoStartSound, videoSrc]);
 
@@ -332,7 +343,12 @@ export function useBackground() {
   }, [videoLoadError]);
 
   useEffect(() => {
-    if (backgroundType !== "video" || !backgroundImage || videoLoadError || !videoRef.current) {
+    if (
+      backgroundType !== "video" ||
+      !backgroundImage ||
+      videoLoadError ||
+      !videoRef.current
+    ) {
       return;
     }
 
@@ -362,42 +378,45 @@ export function useBackground() {
       setVideoLoadError(false);
     } else {
       startTimeout();
-      video.addEventListener('canplay', handleCanPlay);
-      video.addEventListener('loadedmetadata', handleCanPlay);
+      video.addEventListener("canplay", handleCanPlay);
+      video.addEventListener("loadedmetadata", handleCanPlay);
     }
 
     return () => {
       if (timeoutId) {
         clearTimeout(timeoutId);
       }
-      video.removeEventListener('canplay', handleCanPlay);
-      video.removeEventListener('loadedmetadata', handleCanPlay);
+      video.removeEventListener("canplay", handleCanPlay);
+      video.removeEventListener("loadedmetadata", handleCanPlay);
     };
   }, [backgroundType, backgroundImage, videoLoadError, handleVideoError]);
 
-  const getBackgroundColorWithOpacity = useCallback((opacity: number): string => {
-    if (typeof window === "undefined")
+  const getBackgroundColorWithOpacity = useCallback(
+    (opacity: number): string => {
+      if (typeof window === "undefined")
+        return `rgba(246, 247, 249, ${opacity / 100})`;
+      const root = document.documentElement;
+      const bgColor = getComputedStyle(root)
+        .getPropertyValue("--background")
+        .trim();
+
+      if (bgColor.startsWith("#")) {
+        const hex = bgColor.slice(1);
+        const r = parseInt(hex.slice(0, 2), 16);
+        const g = parseInt(hex.slice(2, 4), 16);
+        const b = parseInt(hex.slice(4, 6), 16);
+        return `rgba(${r}, ${g}, ${b}, ${opacity / 100})`;
+      }
+
+      const rgbMatch = bgColor.match(/\d+/g);
+      if (rgbMatch && rgbMatch.length >= 3) {
+        return `rgba(${rgbMatch[0]}, ${rgbMatch[1]}, ${rgbMatch[2]}, ${opacity / 100})`;
+      }
+
       return `rgba(246, 247, 249, ${opacity / 100})`;
-    const root = document.documentElement;
-    const bgColor = getComputedStyle(root)
-      .getPropertyValue("--background")
-      .trim();
-
-    if (bgColor.startsWith("#")) {
-      const hex = bgColor.slice(1);
-      const r = parseInt(hex.slice(0, 2), 16);
-      const g = parseInt(hex.slice(2, 4), 16);
-      const b = parseInt(hex.slice(4, 6), 16);
-      return `rgba(${r}, ${g}, ${b}, ${opacity / 100})`;
-    }
-
-    const rgbMatch = bgColor.match(/\d+/g);
-    if (rgbMatch && rgbMatch.length >= 3) {
-      return `rgba(${rgbMatch[0]}, ${rgbMatch[1]}, ${rgbMatch[2]}, ${opacity / 100})`;
-    }
-
-    return `rgba(246, 247, 249, ${opacity / 100})`;
-  }, []);
+    },
+    [],
+  );
 
   return {
     backgroundImage,
@@ -413,4 +432,3 @@ export function useBackground() {
     getBackgroundColorWithOpacity,
   };
 }
-

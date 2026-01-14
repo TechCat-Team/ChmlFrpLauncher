@@ -1,7 +1,13 @@
 import { useEffect, useRef, useCallback } from "react";
 import { toast } from "sonner";
 import { deepLinkService, type DeepLinkData } from "@/services/deepLinkService";
-import { getStoredUser, type StoredUser, fetchTunnels, fetchUserInfo, saveStoredUser } from "@/services/api";
+import {
+  getStoredUser,
+  type StoredUser,
+  fetchTunnels,
+  fetchUserInfo,
+  saveStoredUser,
+} from "@/services/api";
 import { frpcDownloader } from "@/services/frpcDownloader.ts";
 import { frpcManager } from "@/services/frpcManager";
 import { logStore } from "@/services/logStore";
@@ -16,23 +22,27 @@ import {
  * Deep Link 处理 hook
  * 处理深度链接启动隧道的逻辑
  */
-export function useDeepLink(user: StoredUser | null, setUser: (user: StoredUser | null) => void) {
+export function useDeepLink(
+  user: StoredUser | null,
+  setUser: (user: StoredUser | null) => void,
+) {
   const pendingDeepLinkRef = useRef<DeepLinkData | null>(null);
   const isAppReadyRef = useRef(false);
 
-  const handleDeepLinkInternal = useCallback(async (data: DeepLinkData) => {
-    try {
-      const currentUser = getStoredUser();
-      let tokenToUse = data.usertoken || currentUser?.usertoken;
+  const handleDeepLinkInternal = useCallback(
+    async (data: DeepLinkData) => {
+      try {
+        const currentUser = getStoredUser();
+        let tokenToUse = data.usertoken || currentUser?.usertoken;
 
-      if (data.usertoken && !currentUser?.usertoken) {
+        if (data.usertoken && !currentUser?.usertoken) {
           toast.loading("正在使用 token 登录...", {
             duration: Infinity,
           });
 
           try {
             const userInfo = await fetchUserInfo(data.usertoken);
-            
+
             const newUser: StoredUser = {
               username: userInfo.username,
               usergroup: userInfo.usergroup,
@@ -48,8 +58,8 @@ export function useDeepLink(user: StoredUser | null, setUser: (user: StoredUser 
 
             toast.dismiss();
             toast.success("登录成功");
-            
-            await new Promise(resolve => setTimeout(resolve, 300));
+
+            await new Promise((resolve) => setTimeout(resolve, 300));
           } catch (error) {
             toast.dismiss();
             const errorMsg =
@@ -69,7 +79,9 @@ export function useDeepLink(user: StoredUser | null, setUser: (user: StoredUser 
         const tunnel = tunnels.find((t) => t.id === data.tunnelId);
 
         if (!tunnel) {
-          toast.error(`未找到 ID 为 ${data.tunnelId} 的隧道，或该隧道不属于当前用户`);
+          toast.error(
+            `未找到 ID 为 ${data.tunnelId} 的隧道，或该隧道不属于当前用户`,
+          );
           return;
         }
 
@@ -92,7 +104,7 @@ export function useDeepLink(user: StoredUser | null, setUser: (user: StoredUser 
                 createDownloadProgressToast(
                   progress.percentage,
                   progress.downloaded,
-                  progress.total
+                  progress.total,
                 ),
                 {
                   duration: Infinity,
@@ -137,7 +149,7 @@ export function useDeepLink(user: StoredUser | null, setUser: (user: StoredUser 
           const successLog = logs.find(
             (log) =>
               log.tunnel_id === data.tunnelId &&
-              log.message.includes("映射启动成功")
+              log.message.includes("映射启动成功"),
           );
 
           if (successLog) {
@@ -155,7 +167,7 @@ export function useDeepLink(user: StoredUser | null, setUser: (user: StoredUser 
               }),
               {
                 duration: 10000,
-              }
+              },
             );
 
             unsubscribe();
@@ -176,7 +188,9 @@ export function useDeepLink(user: StoredUser | null, setUser: (user: StoredUser 
         toast.error(errorMsg);
         console.error("Deep-link 启动隧道失败:", error);
       }
-  }, [setUser]);
+    },
+    [setUser],
+  );
 
   useEffect(() => {
     const wrappedHandler = async (data: DeepLinkData) => {
@@ -184,7 +198,7 @@ export function useDeepLink(user: StoredUser | null, setUser: (user: StoredUser 
         pendingDeepLinkRef.current = data;
         return;
       }
-      
+
       await handleDeepLinkInternal(data);
     };
 
@@ -194,9 +208,13 @@ export function useDeepLink(user: StoredUser | null, setUser: (user: StoredUser 
       deepLinkService.stopListening();
     };
   }, [handleDeepLinkInternal]);
-  
+
   useEffect(() => {
-    if (isAppReadyRef.current && pendingDeepLinkRef.current && user?.usertoken) {
+    if (
+      isAppReadyRef.current &&
+      pendingDeepLinkRef.current &&
+      user?.usertoken
+    ) {
       const pendingData = pendingDeepLinkRef.current;
       pendingDeepLinkRef.current = null;
       setTimeout(() => {
@@ -212,4 +230,3 @@ export function useDeepLink(user: StoredUser | null, setUser: (user: StoredUser 
 
   return { isAppReady: isAppReadyRef.current };
 }
-

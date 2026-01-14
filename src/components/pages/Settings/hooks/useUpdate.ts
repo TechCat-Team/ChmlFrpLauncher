@@ -86,4 +86,3 @@ export function useUpdate() {
     handleToggleAutoCheckUpdate,
   };
 }
-

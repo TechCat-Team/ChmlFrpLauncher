@@ -45,7 +45,18 @@ export function useBackgroundImage() {
         filters: [
           {
             name: "图片和视频",
-            extensions: ["png", "jpg", "jpeg", "gif", "webp", "bmp", "mp4", "webm", "ogv", "mov"],
+            extensions: [
+              "png",
+              "jpg",
+              "jpeg",
+              "gif",
+              "webp",
+              "bmp",
+              "mp4",
+              "webm",
+              "ogv",
+              "mov",
+            ],
           },
           {
             name: "图片",
@@ -60,7 +71,7 @@ export function useBackgroundImage() {
 
       if (selected && typeof selected === "string") {
         const isVideo = isVideoFile(selected);
-        
+
         if (isVideo) {
           try {
             const { invoke } = await import("@tauri-apps/api/core");
@@ -73,7 +84,8 @@ export function useBackgroundImage() {
               duration: 2000,
             });
           } catch (error) {
-            const errorMsg = error instanceof Error ? error.message : String(error);
+            const errorMsg =
+              error instanceof Error ? error.message : String(error);
             toast.error(`复制视频文件失败: ${errorMsg}`, {
               duration: 3000,
             });
@@ -125,4 +137,3 @@ export function useBackgroundImage() {
     handleClearBackgroundImage,
   };
 }
-

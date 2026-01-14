@@ -52,7 +52,9 @@ export function SignInInfoPopup({
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-3">
             <div className="rounded-xl border border-border/50 bg-foreground/[0.02] p-3 transition-all hover:border-border hover:bg-foreground/[0.04] animate-card-delay-1">
-              <p className="text-xs text-muted-foreground mb-1">今日是否已签到</p>
+              <p className="text-xs text-muted-foreground mb-1">
+                今日是否已签到
+              </p>
               <p
                 className={`text-base font-semibold transition-colors ${signInInfo.is_signed_in_today ? "text-green-600 dark:text-green-500" : "text-orange-600 dark:text-orange-500"}`}
               >
@@ -68,7 +70,9 @@ export function SignInInfoPopup({
               </p>
             </div>
             <div className="rounded-xl border border-border/50 bg-foreground/[0.02] p-3 transition-all hover:border-border hover:bg-foreground/[0.04] animate-card-delay-3">
-              <p className="text-xs text-muted-foreground mb-1">用户总签到次数</p>
+              <p className="text-xs text-muted-foreground mb-1">
+                用户总签到次数
+              </p>
               <p className="text-base font-semibold text-foreground animate-number-count">
                 {signInInfoVisible && animatedTotalSignIns.isAnimating
                   ? animatedTotalSignIns.displayValue
@@ -99,4 +103,3 @@ export function SignInInfoPopup({
     </div>
   );
 }
-

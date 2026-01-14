@@ -20,7 +20,7 @@ export class CustomTunnelService {
    */
   async saveCustomTunnel(
     tunnelName: string,
-    configContent: string
+    configContent: string,
   ): Promise<CustomTunnel> {
     return await invoke<CustomTunnel>("save_custom_tunnel", {
       tunnelName,
@@ -70,4 +70,3 @@ export class CustomTunnelService {
 
 // 导出单例
 export const customTunnelService = new CustomTunnelService();
-

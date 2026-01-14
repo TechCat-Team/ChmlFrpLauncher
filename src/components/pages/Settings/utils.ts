@@ -65,7 +65,8 @@ export const getInitialEffectType = (): EffectType => {
     return stored;
   }
   const frostedEnabled = localStorage.getItem("frostedGlassEnabled") === "true";
-  const translucentEnabled = localStorage.getItem("translucentEnabled") === "true";
+  const translucentEnabled =
+    localStorage.getItem("translucentEnabled") === "true";
   if (frostedEnabled) return "frosted";
   if (translucentEnabled) return "translucent";
   return "none";
@@ -98,7 +99,9 @@ export const isVideoMimeType = (mimeType: string): boolean => {
   return mimeType.startsWith("video/");
 };
 
-export const getBackgroundType = (dataUrl: string | null): "image" | "video" | null => {
+export const getBackgroundType = (
+  dataUrl: string | null,
+): "image" | "video" | null => {
   if (!dataUrl) return null;
   if (dataUrl.startsWith("data:video/")) return "video";
   if (dataUrl.startsWith("data:image/")) return "image";
@@ -121,4 +124,3 @@ export const getInitialVideoVolume = (): number => {
   const stored = localStorage.getItem("videoVolume");
   return stored ? parseInt(stored, 10) : 50;
 };
-

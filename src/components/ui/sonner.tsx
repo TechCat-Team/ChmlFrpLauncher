@@ -34,7 +34,7 @@ const Toaster = ({ ...props }: ToasterProps) => {
       }
       {...props}
     />,
-    document.body
+    document.body,
   );
 };
 

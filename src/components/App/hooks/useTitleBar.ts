@@ -17,12 +17,17 @@ export function useTitleBar() {
       setShowTitleBar(stored !== "false");
     };
 
-    window.addEventListener("titleBarVisibilityChanged", handleTitleBarVisibilityChange);
+    window.addEventListener(
+      "titleBarVisibilityChanged",
+      handleTitleBarVisibilityChange,
+    );
     return () => {
-      window.removeEventListener("titleBarVisibilityChanged", handleTitleBarVisibilityChange);
+      window.removeEventListener(
+        "titleBarVisibilityChanged",
+        handleTitleBarVisibilityChange,
+      );
     };
   }, []);
 
   return { showTitleBar };
 }
-

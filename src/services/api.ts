@@ -307,11 +307,7 @@ export async function offlineTunnel(
   const bypassProxy = getBypassProxy();
 
   // 在 Tauri 环境中，如果启用绕过代理，使用 Tauri 命令
-  if (
-    typeof window !== "undefined" &&
-    "__TAURI__" in window &&
-    bypassProxy
-  ) {
+  if (typeof window !== "undefined" && "__TAURI__" in window && bypassProxy) {
     const { invoke } = await import("@tauri-apps/api/core");
     const url = endpoint.startsWith("/")
       ? `${API_BASE_URL}${endpoint}`
@@ -367,12 +363,9 @@ export async function deleteTunnel(
     throw new Error("登录信息已过期，请重新登录");
   }
 
-  await request<unknown>(
-    `/delete_tunnel?tunnelid=${tunnelId}`,
-    {
-      headers: { authorization: bearer },
-    }
-  );
+  await request<unknown>(`/delete_tunnel?tunnelid=${tunnelId}`, {
+    headers: { authorization: bearer },
+  });
 }
 
 export interface Node {
@@ -469,7 +462,7 @@ export async function fetchNodeInfo(
     `/nodeinfo?node=${encodeURIComponent(nodeName)}`,
     {
       headers: { authorization: `Bearer ${bearer}` },
-    }
+    },
   );
 
   if (data) return data;
@@ -487,15 +480,12 @@ export async function createTunnel(
     throw new Error("登录信息已过期，请重新登录");
   }
 
-  await request<unknown>(
-    "/create_tunnel",
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        authorization: bearer,
-      },
-      body: JSON.stringify(params),
-    }
-  );
+  await request<unknown>("/create_tunnel", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      authorization: bearer,
+    },
+    body: JSON.stringify(params),
+  });
 }

@@ -6,4 +6,3 @@ export const homePageCache = {
   flowData: [] as FlowPoint[],
   signInInfo: null as SignInInfo | null,
 };
-

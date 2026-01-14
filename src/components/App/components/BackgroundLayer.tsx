@@ -76,7 +76,13 @@ export function BackgroundLayer({
       WebkitBackdropFilter: `blur(${blur}px)`,
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [backgroundImage, overlayOpacity, blur, getBackgroundColorWithOpacity, isDark]);
+  }, [
+    backgroundImage,
+    overlayOpacity,
+    blur,
+    getBackgroundColorWithOpacity,
+    isDark,
+  ]);
 
   useEffect(() => {
     const updateBackgroundColors = () => {
@@ -89,7 +95,7 @@ export function BackgroundLayer({
             getBackgroundColorWithOpacity(overlayOpacity);
         }
       }
-      
+
       if (!backgroundImage && appContainerRef.current) {
         appContainerRef.current.style.backgroundColor =
           getBackgroundColorWithOpacity(100);
@@ -99,7 +105,13 @@ export function BackgroundLayer({
     requestAnimationFrame(() => {
       requestAnimationFrame(updateBackgroundColors);
     });
-  }, [overlayOpacity, backgroundImage, getBackgroundColorWithOpacity, appContainerRef, isDark]);
+  }, [
+    overlayOpacity,
+    backgroundImage,
+    getBackgroundColorWithOpacity,
+    appContainerRef,
+    isDark,
+  ]);
 
   return (
     <>
@@ -116,26 +128,33 @@ export function BackgroundLayer({
           className="absolute inset-0 w-full h-full object-cover"
           style={{
             zIndex: 0,
-            borderRadius: '12px',
-            pointerEvents: 'none',
-            width: '100%',
-            height: '100%',
-            objectFit: 'cover',
+            borderRadius: "12px",
+            pointerEvents: "none",
+            width: "100%",
+            height: "100%",
+            objectFit: "cover",
           }}
         >
-          <source src={videoSrc} type={backgroundImage?.startsWith("file://") || backgroundImage?.startsWith("app://") ? "video/mp4" : (backgroundImage?.split(';')[0]?.split(':')[1] || "video/mp4")} />
+          <source
+            src={videoSrc}
+            type={
+              backgroundImage?.startsWith("file://") ||
+              backgroundImage?.startsWith("app://")
+                ? "video/mp4"
+                : backgroundImage?.split(";")[0]?.split(":")[1] || "video/mp4"
+            }
+          />
         </video>
       )}
       <div
         className="absolute inset-0 background-overlay rounded-[12px]"
         style={{
           ...overlayStyle,
-          borderRadius: '12px',
-          pointerEvents: 'none',
+          borderRadius: "12px",
+          pointerEvents: "none",
           zIndex: 1,
         }}
       />
     </>
   );
 }
-

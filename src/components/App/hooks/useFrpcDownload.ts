@@ -48,7 +48,7 @@ export function useFrpcDownload(): {
               createDownloadProgressToast(
                 progress.percentage,
                 progress.downloaded,
-                progress.total
+                progress.total,
               ),
               {
                 id: downloadToastRef.current,
@@ -71,10 +71,11 @@ export function useFrpcDownload(): {
         if (downloadToastRef.current !== null) {
           const errorMsg =
             error instanceof Error ? error.message : String(error);
-          
-          const isWindows = typeof navigator !== "undefined" && 
+
+          const isWindows =
+            typeof navigator !== "undefined" &&
             navigator.userAgent.toLowerCase().includes("windows");
-          const isPossibleAntivirusBlock = 
+          const isPossibleAntivirusBlock =
             errorMsg.includes("写入文件失败") ||
             errorMsg.includes("无法打开文件") ||
             errorMsg.includes("permission denied") ||
@@ -113,4 +114,3 @@ export function useFrpcDownload(): {
 
   return { showAntivirusWarning, setShowAntivirusWarning };
 }
-
