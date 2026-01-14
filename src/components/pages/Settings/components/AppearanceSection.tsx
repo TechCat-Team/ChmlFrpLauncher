@@ -7,6 +7,8 @@ import {
   ItemDescription,
   ItemActions,
 } from "@/components/ui/item";
+import { Button } from "@/components/ui/button";
+import { Select } from "@/components/ui/select";
 import type { ThemeMode } from "../types";
 import type { EffectType } from "../utils";
 import { getBackgroundType } from "../utils";
@@ -61,14 +63,15 @@ export function AppearanceSection({
   const backgroundType = getBackgroundType(backgroundImage);
   const isVideo = backgroundType === "video";
 
-  const toggleTheme = async (newTheme: ThemeMode, event: React.MouseEvent) => {
+  const toggleTheme = async (newTheme: ThemeMode, event?: React.MouseEvent) => {
     if (!document.startViewTransition) {
       setTheme(newTheme);
       return;
     }
 
-    const x = event.clientX;
-    const y = event.clientY;
+    // Use switch center position if event is not provided
+    const x = event?.clientX ?? window.innerWidth / 2;
+    const y = event?.clientY ?? window.innerHeight / 2;
     const endRadius = Math.hypot(
       Math.max(x, window.innerWidth - x),
       Math.max(y, window.innerHeight - y),
@@ -149,32 +152,26 @@ export function AppearanceSection({
             <ItemContent>
               <ItemTitle>主题</ItemTitle>
               <ItemDescription className="text-xs">
-                选择界面配色方案
+                {theme === "dark" ? "深色模式" : "浅色模式"}
               </ItemDescription>
             </ItemContent>
             <ItemActions>
-              <div className="flex gap-2">
-                <button
-                  onClick={(e) => toggleTheme("light", e)}
-                  className={`px-3 py-1.5 text-xs rounded transition-colors ${
-                    theme === "light"
-                      ? "bg-foreground text-background"
-                      : "border border-border/60 hover:bg-muted/40"
+              <button
+                onClick={(e) =>
+                  toggleTheme(theme === "dark" ? "light" : "dark", e)
+                }
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+                  theme === "dark" ? "bg-foreground" : "bg-muted"
+                } cursor-pointer`}
+                role="switch"
+                aria-checked={theme === "dark"}
+              >
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-background transition-transform ${
+                    theme === "dark" ? "translate-x-6" : "translate-x-1"
                   }`}
-                >
-                  浅色
-                </button>
-                <button
-                  onClick={(e) => toggleTheme("dark", e)}
-                  className={`px-3 py-1.5 text-xs rounded transition-colors ${
-                    theme === "dark"
-                      ? "bg-foreground text-background"
-                      : "border border-border/60 hover:bg-muted/40"
-                  }`}
-                >
-                  深色
-                </button>
-              </div>
+                />
+              </button>
             </ItemActions>
           </Item>
         )}
@@ -222,24 +219,28 @@ export function AppearanceSection({
           </ItemContent>
           <ItemActions>
             <div className="flex gap-2">
-              <button
-                onClick={onSelectBackgroundImage}
-                disabled={isSelectingImage}
-                className={`px-3 py-1.5 text-xs rounded transition-colors ${
-                  isSelectingImage
-                    ? "bg-muted text-muted-foreground cursor-not-allowed"
-                    : "bg-foreground text-background hover:opacity-90"
-                }`}
-              >
-                {isSelectingImage ? "选择中..." : "选择文件"}
-              </button>
+              {!backgroundImage && (
+                <Button
+                  onClick={onSelectBackgroundImage}
+                  disabled={isSelectingImage}
+                  size="sm"
+                  className={`h-auto px-3 py-1.5 text-xs ${
+                    isSelectingImage
+                      ? "bg-muted text-muted-foreground"
+                      : "bg-foreground text-background hover:opacity-90"
+                  }`}
+                >
+                  {isSelectingImage ? "选择中..." : "选择文件"}
+                </Button>
+              )}
               {backgroundImage && (
-                <button
+                <Button
                   onClick={onClearBackgroundImage}
-                  className="px-3 py-1.5 text-xs rounded transition-colors border border-border/60 hover:bg-muted/40"
+                  size="sm"
+                  className="h-auto px-3 py-1.5 text-xs"
                 >
                   清除
-                </button>
+                </Button>
               )}
             </div>
           </ItemActions>
@@ -258,50 +259,23 @@ export function AppearanceSection({
                 </ItemDescription>
               </ItemContent>
               <ItemActions>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => {
-                      setEffectType("none");
-                      localStorage.setItem("effectType", "none");
-                      window.dispatchEvent(new Event("effectTypeChanged"));
-                    }}
-                    className={`px-3 py-1.5 text-xs rounded transition-colors ${
-                      effectType === "none"
-                        ? "bg-foreground text-background"
-                        : "border border-border/60 hover:bg-muted/40"
-                    }`}
-                  >
-                    无
-                  </button>
-                  <button
-                    onClick={() => {
-                      setEffectType("frosted");
-                      localStorage.setItem("effectType", "frosted");
-                      window.dispatchEvent(new Event("effectTypeChanged"));
-                    }}
-                    className={`px-3 py-1.5 text-xs rounded transition-colors ${
-                      effectType === "frosted"
-                        ? "bg-foreground text-background"
-                        : "border border-border/60 hover:bg-muted/40"
-                    }`}
-                  >
-                    毛玻璃
-                  </button>
-                  <button
-                    onClick={() => {
-                      setEffectType("translucent");
-                      localStorage.setItem("effectType", "translucent");
-                      window.dispatchEvent(new Event("effectTypeChanged"));
-                    }}
-                    className={`px-3 py-1.5 text-xs rounded transition-colors ${
-                      effectType === "translucent"
-                        ? "bg-foreground text-background"
-                        : "border border-border/60 hover:bg-muted/40"
-                    }`}
-                  >
-                    半透明
-                  </button>
-                </div>
+                <Select
+                  options={[
+                    { value: "none", label: "无" },
+                    { value: "frosted", label: "毛玻璃" },
+                    { value: "translucent", label: "半透明" },
+                  ]}
+                  value={effectType}
+                  onChange={(value) => {
+                    const newEffectType = value as EffectType;
+                    setEffectType(newEffectType);
+                    localStorage.setItem("effectType", newEffectType);
+                    window.dispatchEvent(new Event("effectTypeChanged"));
+                  }}
+                  placeholder="选择视觉效果"
+                  size="sm"
+                  className="w-28"
+                />
               </ItemActions>
             </Item>
 

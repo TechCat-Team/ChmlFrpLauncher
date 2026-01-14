@@ -76,4 +76,3 @@ export function UserInfoCard({ userInfo }: UserInfoCardProps) {
     </div>
   );
 }
-

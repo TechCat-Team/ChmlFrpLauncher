@@ -96,16 +96,18 @@ export function TunnelCard({
                   <h3 className="font-semibold text-foreground truncate text-sm">
                     {tunnel.data.name}
                   </h3>
-                  <div className={`w-1.5 h-1.5 rounded-full ${
-                    isApi && tunnel.data.nodestate !== 'online' 
-                      ? "bg-red-500" 
-                      : isRunning 
-                        ? "bg-green-500 animate-pulse" 
-                        : "bg-muted-foreground/30"
-                  }`} />
+                  <div
+                    className={`w-1.5 h-1.5 rounded-full ${
+                      isApi && tunnel.data.nodestate !== "online"
+                        ? "bg-red-500"
+                        : isRunning
+                          ? "bg-foreground"
+                          : "bg-muted-foreground/30"
+                    }`}
+                  />
                 </div>
                 <div className="flex items-center gap-2">
-                   <span className="text-[10px] font-medium px-1.5 py-0.5 rounded border border-border/50 text-muted-foreground bg-muted/10 uppercase tracking-wider">
+                  <span className="text-[10px] font-medium px-1.5 py-0.5 rounded border border-border/50 text-muted-foreground bg-muted/10 uppercase tracking-wider">
                     {isCustom
                       ? tunnel.data.tunnel_type || "自定义"
                       : tunnel.data.type}
@@ -205,4 +207,3 @@ export function TunnelCard({
     </ContextMenu>
   );
 }
-

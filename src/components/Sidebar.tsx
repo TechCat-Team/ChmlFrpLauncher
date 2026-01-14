@@ -169,9 +169,7 @@ export function Sidebar({
                         isActive ? "text-foreground" : "group-hover:scale-110",
                       )}
                     />
-                    <span className="tracking-tight">
-                      {item.label}
-                    </span>
+                    <span className="tracking-tight">{item.label}</span>
                   </button>
                 </li>
               );

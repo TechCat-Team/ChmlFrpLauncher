@@ -11,6 +11,7 @@ interface SelectProps {
   onChange?: (value: string | number) => void;
   placeholder?: string;
   className?: string;
+  size?: "sm" | "default";
 }
 
 export function Select({
@@ -19,6 +20,7 @@ export function Select({
   onChange,
   placeholder = "选择...",
   className = "",
+  size = "default",
 }: SelectProps) {
   const [isOpen, setIsOpen] = useState(false);
   const selectRef = useRef<HTMLDivElement>(null);
@@ -38,13 +40,16 @@ export function Select({
   }, []);
 
   const selectedOption = options.find((opt) => opt.value === value);
+  const isSmall = size === "sm";
 
   return (
     <div ref={selectRef} className={`relative ${className}`}>
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full px-3 py-2 text-sm bg-card border border-border/60 rounded-lg text-left hover:border-foreground/20 transition-colors flex items-center justify-between"
+        className={`w-full ${
+          isSmall ? "px-2.5 py-1.5 text-xs" : "px-3 py-2 text-sm"
+        } bg-card border border-border/60 rounded-lg text-left hover:border-foreground/20 transition-colors flex items-center justify-between`}
       >
         <span
           className={
@@ -54,7 +59,9 @@ export function Select({
           {selectedOption ? selectedOption.label : placeholder}
         </span>
         <svg
-          className={`w-4 h-4 transition-transform ${isOpen ? "rotate-180" : ""}`}
+          className={`${
+            isSmall ? "w-3 h-3" : "w-4 h-4"
+          } transition-transform ${isOpen ? "rotate-180" : ""}`}
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
@@ -78,7 +85,9 @@ export function Select({
                 onChange?.(option.value);
                 setIsOpen(false);
               }}
-              className={`w-full px-3 py-2 text-sm text-left hover:bg-foreground/5 transition-colors ${
+              className={`w-full ${
+                isSmall ? "px-2.5 py-1.5 text-xs" : "px-3 py-2 text-sm"
+              } text-left hover:bg-foreground/5 transition-colors ${
                 option.value === value
                   ? "bg-foreground/10 text-foreground font-medium"
                   : "text-foreground"
