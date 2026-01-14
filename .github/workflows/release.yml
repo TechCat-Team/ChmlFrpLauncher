@@ -15,7 +15,7 @@ jobs:
       matrix:
         include:
           - platform: macos-latest
-          - platform: macos-13
+          - platform: macos-15-intel
           - platform: ubuntu-latest
           - platform: windows-latest
 
