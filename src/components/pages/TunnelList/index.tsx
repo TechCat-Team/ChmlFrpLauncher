@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import {
@@ -28,21 +28,40 @@ export function TunnelList() {
     refreshTunnels,
   } = useTunnelList();
 
-  // 只将API隧道传给useTunnelProgress
   const apiTunnels = useMemo(
     () => tunnels.filter((t) => t.type === "api").map((t) => t.data),
     [tunnels],
   );
 
-  const { tunnelProgress, setTunnelProgress, timeoutRefs, successTimeoutRefs } =
-    useTunnelProgress(apiTunnels, runningTunnels, setRunningTunnels);
+  const clearStartingTunnelRef = useRef<((tunnelKey: string) => void) | null>(null);
 
-  const { togglingTunnels, handleToggle } = useTunnelToggle({
+  const handleTunnelStartSuccess = useCallback((tunnelKey: string) => {
+    clearStartingTunnelRef.current?.(tunnelKey);
+  }, []);
+
+  const handleTunnelStartError = useCallback((tunnelKey: string) => {
+    clearStartingTunnelRef.current?.(tunnelKey);
+  }, []);
+
+  const { tunnelProgress, setTunnelProgress, timeoutRefs, successTimeoutRefs } =
+    useTunnelProgress(
+      apiTunnels,
+      runningTunnels,
+      setRunningTunnels,
+      handleTunnelStartSuccess,
+      handleTunnelStartError,
+    );
+
+  const { togglingTunnels, handleToggle, clearStartingTunnel } = useTunnelToggle({
     setTunnelProgress,
     setRunningTunnels,
     timeoutRefs,
     successTimeoutRefs,
   });
+
+  useEffect(() => {
+    clearStartingTunnelRef.current = clearStartingTunnel;
+  }, [clearStartingTunnel]);
 
   return (
     <div className="flex flex-col h-full gap-4">
