@@ -479,6 +479,41 @@
   .dark .translucent-enabled .bg-card\/95.backdrop-blur-md {
     background: rgba(15, 16, 20, 0.95) !important;
   }
+
+  /* 更新对话框内容样式 */
+  .update-content h1,
+  .update-content h2,
+  .update-content h3 {
+    @apply font-semibold;
+  }
+
+  .update-content h1 {
+    @apply text-lg;
+  }
+
+  .update-content h2 {
+    @apply text-base;
+  }
+
+  .update-content h3 {
+    @apply text-sm;
+  }
+
+  .update-content ul {
+    @apply list-none;
+  }
+
+  .update-content li {
+    @apply flex items-start gap-2;
+  }
+
+  .update-content strong {
+    @apply font-semibold;
+  }
+
+  .update-content p {
+    @apply text-sm text-muted-foreground leading-relaxed;
+  }
 }
 
 ::view-transition-old(root),

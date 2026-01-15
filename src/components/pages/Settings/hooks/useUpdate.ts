@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
-import { updateService } from "@/services/updateService";
+import { updateService, type UpdateInfo } from "@/services/updateService";
 
 export function useUpdate() {
   const [autoCheckUpdate, setAutoCheckUpdate] = useState(() =>
@@ -8,6 +8,7 @@ export function useUpdate() {
   );
   const [checkingUpdate, setCheckingUpdate] = useState(false);
   const [currentVersion, setCurrentVersion] = useState<string>("");
+  const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
 
   useEffect(() => {
     const loadVersion = async () => {
@@ -31,25 +32,12 @@ export function useUpdate() {
       const result = await updateService.checkUpdate();
 
       if (result.available) {
-        toast.success(
-          `发现新版本: ${result.version}\n更新将在后台下载，完成后会提示您安装`,
-          { id: toastId, duration: 8000 },
-        );
-
-        try {
-          await updateService.installUpdate();
-          toast.success("更新已下载完成，应用将在重启后更新", {
-            duration: 5000,
-          });
-        } catch (installError) {
-          const errorMsg =
-            installError instanceof Error
-              ? installError.message
-              : String(installError);
-          toast.error(`下载更新失败: ${errorMsg}`, {
-            duration: 5000,
-          });
-        }
+        toast.dismiss(toastId);
+        setUpdateInfo({
+          version: result.version || "",
+          date: result.date,
+          body: result.body,
+        });
       } else {
         toast.success("当前已是最新版本", {
           id: toastId,
@@ -82,6 +70,8 @@ export function useUpdate() {
     autoCheckUpdate,
     checkingUpdate,
     currentVersion,
+    updateInfo,
+    setUpdateInfo,
     handleCheckUpdate,
     handleToggleAutoCheckUpdate,
   };

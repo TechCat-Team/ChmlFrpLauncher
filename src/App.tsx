@@ -8,6 +8,7 @@ import { Settings } from "@/components/pages/Settings";
 import { getStoredUser, type StoredUser } from "@/services/api";
 import { AntivirusWarningDialog } from "@/components/dialogs/AntivirusWarningDialog";
 import { CloseConfirmDialog } from "@/components/dialogs/CloseConfirmDialog";
+import { UpdateDialog } from "@/components/dialogs/UpdateDialog";
 import { useAppTheme } from "@/components/App/hooks/useAppTheme";
 import { useWindowEvents } from "@/components/App/hooks/useWindowEvents";
 import { useAppInitialization } from "@/components/App/hooks/useAppInitialization";
@@ -16,6 +17,8 @@ import { useBackground } from "@/components/App/hooks/useBackground";
 import { useDeepLink } from "@/components/App/hooks/useDeepLink";
 import { useFrpcDownload } from "@/components/App/hooks/useFrpcDownload";
 import { useUpdateCheck } from "@/components/App/hooks/useUpdateCheck";
+import { updateService } from "@/services/updateService";
+import { toast } from "sonner";
 import { BackgroundLayer } from "@/components/App/components/BackgroundLayer";
 
 function App() {
@@ -47,8 +50,10 @@ function App() {
 
   useAppInitialization();
   useDeepLink(user, setUser);
-  useUpdateCheck();
+  const { updateInfo, setUpdateInfo } = useUpdateCheck();
   const { showAntivirusWarning, setShowAntivirusWarning } = useFrpcDownload();
+  const [isDownloadingUpdate, setIsDownloadingUpdate] = useState(false);
+  const [downloadProgress, setDownloadProgress] = useState(0);
 
   const handleTabChange = (tab: string) => {
     if (tab === "tunnels" && !user) return;
@@ -95,6 +100,36 @@ function App() {
       videoRef.current.play().catch(() => {});
     }
   }, [videoRef, videoVolume]);
+
+  const handleUpdate = useCallback(async () => {
+    if (!updateInfo) return;
+
+    setIsDownloadingUpdate(true);
+    setDownloadProgress(0);
+
+    try {
+      await updateService.installUpdate((progress) => {
+        setDownloadProgress(progress);
+      });
+      toast.success("更新已下载完成，应用将在重启后更新", {
+        duration: 5000,
+      });
+      setUpdateInfo(null);
+      setIsDownloadingUpdate(false);
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      toast.error(`下载更新失败: ${errorMsg}`, {
+        duration: 5000,
+      });
+      setIsDownloadingUpdate(false);
+    }
+  }, [updateInfo, setUpdateInfo]);
+
+  const handleCloseUpdateDialog = useCallback(() => {
+    if (!isDownloadingUpdate) {
+      setUpdateInfo(null);
+    }
+  }, [isDownloadingUpdate, setUpdateInfo]);
 
   return (
     <>
@@ -182,6 +217,19 @@ function App() {
           window.dispatchEvent(new CustomEvent("closeApp"));
         }}
       />
+
+      {updateInfo && (
+        <UpdateDialog
+          isOpen={!!updateInfo}
+          onClose={handleCloseUpdateDialog}
+          onUpdate={handleUpdate}
+          version={updateInfo.version}
+          date={updateInfo.date}
+          body={updateInfo.body}
+          isDownloading={isDownloadingUpdate}
+          downloadProgress={downloadProgress}
+        />
+      )}
     </>
   );
 }

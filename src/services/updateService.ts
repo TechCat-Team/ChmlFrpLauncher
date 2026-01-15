@@ -42,8 +42,11 @@ export class UpdateService {
 
   /**
    * 安装更新
+   * @param onProgress 下载进度回调函数
    */
-  async installUpdate(): Promise<void> {
+  async installUpdate(
+    onProgress?: (progress: number) => void,
+  ): Promise<void> {
     try {
       const update = await check({
         headers: {},
@@ -52,6 +55,17 @@ export class UpdateService {
       if (update?.available) {
         await update.downloadAndInstall((progressEvent: DownloadEvent) => {
           console.log("更新进度:", progressEvent);
+          if (onProgress && progressEvent.event === "Progress") {
+            const data = progressEvent.data as { chunkLength?: number; contentLength?: number; downloadedBytes?: number };
+            if (data.contentLength && data.downloadedBytes !== undefined) {
+              const percentage = (data.downloadedBytes / data.contentLength) * 100;
+              onProgress(percentage);
+            } else if (data.chunkLength && data.contentLength) {
+              // 备用方案：使用 chunkLength 估算进度
+              const percentage = (data.chunkLength / data.contentLength) * 100;
+              onProgress(Math.min(percentage, 100));
+            }
+          }
         });
       } else {
         throw new Error("没有可用的更新");
