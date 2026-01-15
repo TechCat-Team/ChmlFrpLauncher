@@ -76,19 +76,13 @@ function App() {
   };
 
   const backgroundStyle = useCallback(() => {
-    if (backgroundImage && backgroundType === "image") {
+    if (!backgroundImage) {
       return {
-        backgroundImage: `url(${backgroundImage})`,
-        backgroundSize: "cover",
-        backgroundPosition: "center",
-        backgroundRepeat: "no-repeat",
-        backgroundAttachment: "fixed",
+        backgroundColor: getBackgroundColorWithOpacity(100),
       };
     }
-    return {
-      backgroundColor: getBackgroundColorWithOpacity(100),
-    };
-  }, [backgroundImage, backgroundType, getBackgroundColorWithOpacity]);
+    return {};
+  }, [backgroundImage, getBackgroundColorWithOpacity]);
 
   const handleVideoError = useCallback(() => {
     // Video error is handled in useBackground hook

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { cn } from "@/lib/utils";
 import {
   Dialog,
@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/tooltip";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
+import { openUrl } from "@tauri-apps/plugin-opener";
 import {
   fetchNodes,
   fetchNodeInfo,
@@ -284,6 +285,25 @@ export function CreateTunnelDialog({
     }
   };
 
+  const handleCopyNodeIp = useCallback(async (ip: string) => {
+    try {
+      await navigator.clipboard.writeText(ip);
+      toast.success("节点IP已复制");
+    } catch (error) {
+      console.error("Failed to copy IP:", error);
+      toast.error("复制失败");
+    }
+  }, []);
+
+  const handleOpenCnameDoc = useCallback(async () => {
+    try {
+      await openUrl("https://docs.chmlfrp.net/docs/dns/cname.html");
+    } catch (error) {
+      console.error("Failed to open URL:", error);
+      toast.error("打开链接失败");
+    }
+  }, []);
+
   // 按节点组分组
   const vipNodes = nodes.filter((node) => node.nodegroup === "vip");
   const userNodes = nodes.filter((node) => node.nodegroup === "user");
@@ -308,9 +328,12 @@ export function CreateTunnelDialog({
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent
         className={cn(
-          "max-h-[90vh] flex flex-col transition-all duration-500 ease-in-out",
+          "max-h-[90vh] flex flex-col transition-all duration-300 ease-in-out",
           step === 1 ? "max-w-6xl" : step === 2 ? "max-w-4xl" : "max-w-xl",
         )}
+        style={{
+          transitionProperty: "width, height, max-width, max-height",
+        }}
       >
         <DialogHeader className="shrink-0 gap-1.5">
           <DialogTitle
@@ -893,8 +916,58 @@ export function CreateTunnelDialog({
             onSubmit={handleSubmit}
             className="flex-1 flex flex-col min-h-0 pt-3 animate-in fade-in slide-in-from-bottom-2 duration-300"
           >
-            <div className="flex-1 min-h-0 overflow-y-auto pr-4">
+            <div className="flex-1 min-h-0 overflow-y-auto pr-4 transition-all duration-300 ease-in-out">
               <div className="space-y-4 pb-3">
+                {nodeInfo && (
+                  <div
+                    className={cn(
+                      "overflow-hidden transition-all duration-300 ease-in-out",
+                      (portType === "HTTP" || portType === "HTTPS")
+                        ? "max-h-[200px] opacity-100"
+                        : "max-h-0 opacity-0",
+                    )}
+                  >
+                    <div className="flex items-start gap-2 p-3 rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800/50">
+                      <svg
+                        className="w-4 h-4 mt-0.5 text-blue-600 dark:text-blue-400 flex-shrink-0"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                        />
+                      </svg>
+                      <p className="text-xs text-blue-700 dark:text-blue-300 leading-relaxed">
+                        使用{portType === "HTTP" || portType === "HTTPS" ? portType : "HTTP"}隧道需要将您的{" "}
+                        <span className="font-mono font-semibold">
+                          {domain || "您的域名"}
+                        </span>{" "}
+                        域名通过
+                        <button
+                          type="button"
+                          onClick={handleOpenCnameDoc}
+                          className="underline decoration-dotted underline-offset-2 hover:decoration-solid focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 rounded px-0.5 mx-0.5"
+                        >
+                          CNAME解析
+                        </button>
+                        至{" "}
+                        <button
+                          type="button"
+                          onClick={() => handleCopyNodeIp(nodeInfo.ip)}
+                          className="font-mono font-semibold underline decoration-dotted underline-offset-2 hover:decoration-solid focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 rounded px-0.5 cursor-pointer"
+                          title="点击复制"
+                        >
+                          {nodeInfo.ip}
+                        </button>{" "}
+                        才能正常访问。
+                      </p>
+                    </div>
+                  </div>
+                )}
                 <div className="space-y-2">
                   <Label htmlFor="tunnelName" className="text-sm font-medium">
                     隧道名称

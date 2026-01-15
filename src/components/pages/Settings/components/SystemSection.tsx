@@ -53,7 +53,7 @@ export function SystemSection({
             <button
               onClick={() => onToggleAutostart(!autostartEnabled)}
               disabled={autostartLoading}
-              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors outline-none outline-0 ${
                 autostartEnabled ? "bg-foreground" : "bg-muted"
               } ${autostartLoading ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
               role="switch"
@@ -81,7 +81,7 @@ export function SystemSection({
           <ItemActions>
             <button
               onClick={() => onToggleAutoCheckUpdate(!autoCheckUpdate)}
-              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors outline-none outline-0 ${
                 autoCheckUpdate ? "bg-foreground" : "bg-muted"
               } cursor-pointer`}
               role="switch"
@@ -109,7 +109,7 @@ export function SystemSection({
           <ItemActions>
             <button
               onClick={() => onToggleCloseToTray(!closeToTrayEnabled)}
-              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors outline-none outline-0 ${
                 closeToTrayEnabled ? "bg-foreground" : "bg-muted"
               } cursor-pointer`}
               role="switch"
@@ -135,7 +135,7 @@ export function SystemSection({
             <button
               onClick={() => onToggleGuard(!guardEnabled)}
               disabled={guardLoading}
-              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors outline-none outline-0 ${
                 guardEnabled ? "bg-foreground" : "bg-muted"
               } ${guardLoading ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
               role="switch"

@@ -135,7 +135,7 @@ export function AppearanceSection({
           <ItemActions>
             <button
               onClick={() => setFollowSystem(!followSystem)}
-              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors outline-none outline-0 ${
                 followSystem ? "bg-foreground" : "bg-muted"
               } cursor-pointer`}
               role="switch"
@@ -166,7 +166,7 @@ export function AppearanceSection({
                 onClick={(e) =>
                   toggleTheme(theme === "dark" ? "light" : "dark", e)
                 }
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors outline-none outline-0 ${
                   theme === "dark" ? "bg-foreground" : "bg-muted"
                 } cursor-pointer`}
                 role="switch"
@@ -197,7 +197,7 @@ export function AppearanceSection({
             <ItemActions>
               <button
                 onClick={() => setShowTitleBar(!showTitleBar)}
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors outline-none outline-0 ${
                   showTitleBar ? "bg-foreground" : "bg-muted"
                 } cursor-pointer`}
                 role="switch"
@@ -369,7 +369,7 @@ export function AppearanceSection({
                     );
                     window.dispatchEvent(new Event("videoStartSoundChanged"));
                   }}
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors outline-none outline-0 ${
                     videoStartSound ? "bg-foreground" : "bg-muted"
                   } cursor-pointer`}
                   role="switch"

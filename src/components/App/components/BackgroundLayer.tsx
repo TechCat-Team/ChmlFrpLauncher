@@ -72,14 +72,11 @@ export function BackgroundLayer({
     }
     return {
       backgroundColor: getBackgroundColorWithOpacity(overlayOpacity),
-      backdropFilter: `blur(${blur}px)`,
-      WebkitBackdropFilter: `blur(${blur}px)`,
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     backgroundImage,
     overlayOpacity,
-    blur,
     getBackgroundColorWithOpacity,
     isDark,
   ]);
@@ -113,8 +110,32 @@ export function BackgroundLayer({
     isDark,
   ]);
 
+  const backgroundBlurStyle = useMemo(() => {
+    if (!backgroundImage || blur === 0) {
+      return {};
+    }
+    return {
+      filter: `blur(${blur}px)`,
+      WebkitFilter: `blur(${blur}px)`,
+    };
+  }, [backgroundImage, blur]);
+
   return (
     <>
+      {backgroundType === "image" && backgroundImage && (
+        <div
+          className="absolute inset-0 w-full h-full rounded-[12px]"
+          style={{
+            backgroundImage: `url(${backgroundImage})`,
+            backgroundSize: "cover",
+            backgroundPosition: "center",
+            backgroundRepeat: "no-repeat",
+            ...backgroundBlurStyle,
+            zIndex: 0,
+            pointerEvents: "none",
+          }}
+        />
+      )}
       {backgroundType === "video" && videoSrc && !videoLoadError && (
         <video
           ref={videoRef}
@@ -127,6 +148,7 @@ export function BackgroundLayer({
           onLoadedData={onVideoLoadedData}
           className="absolute inset-0 w-full h-full object-cover"
           style={{
+            ...backgroundBlurStyle,
             zIndex: 0,
             borderRadius: "12px",
             pointerEvents: "none",
