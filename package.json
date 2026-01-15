@@ -1,7 +1,7 @@
 {
   "name": "chmlfrplauncher",
   "private": true,
-  "version": "0.3.4",
+  "version": "0.3.9",
   "type": "module",
   "scripts": {
     "dev": "vite",
