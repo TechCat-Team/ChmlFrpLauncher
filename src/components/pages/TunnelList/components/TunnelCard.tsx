@@ -1,12 +1,21 @@
+import { useState, useEffect } from "react";
 import { Progress } from "@/components/ui/progress";
 import {
   ContextMenu,
   ContextMenuContent,
   ContextMenuItem,
   ContextMenuTrigger,
+  ContextMenuSeparator,
 } from "@/components/ui/context-menu";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+  TooltipProvider,
+} from "@/components/ui/tooltip";
 import { deleteTunnel } from "@/services/api";
 import { customTunnelService } from "@/services/customTunnelService";
+import { autoStartTunnelsService } from "@/services/autoStartTunnelsService";
 import type { TunnelProgress, UnifiedTunnel } from "../types";
 import { toast } from "sonner";
 import { Monitor, Globe } from "lucide-react";
@@ -34,6 +43,25 @@ export function TunnelCard({
 
   const isCustom = tunnel.type === "custom";
   const isApi = tunnel.type === "api";
+
+  const [autoStartEnabled, setAutoStartEnabled] = useState(false);
+
+  useEffect(() => {
+    const loadAutoStartSetting = async () => {
+      try {
+        const tunnelType = isApi ? "api" : "custom";
+        const enabled = await autoStartTunnelsService.isTunnelEnabled(
+          tunnelType,
+          tunnel.data.id,
+        );
+        setAutoStartEnabled(enabled);
+      } catch (error) {
+        console.error("加载隧道自动启动设置失败:", error);
+      }
+    };
+
+    loadAutoStartSetting();
+  }, [tunnel, isApi]);
 
   const handleCopyLink = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -70,6 +98,28 @@ export function TunnelCard({
       const message = error instanceof Error ? error.message : "删除隧道失败";
       toast.error(message);
       console.error("删除隧道失败:", error);
+    }
+  };
+
+  const handleToggleAutoStart = async () => {
+    try {
+      const newValue = !autoStartEnabled;
+      const tunnelType = isApi ? "api" : "custom";
+      await autoStartTunnelsService.setTunnelEnabled(
+        tunnelType,
+        tunnel.data.id,
+        newValue,
+      );
+      setAutoStartEnabled(newValue);
+      toast.success(
+        newValue
+          ? "已启用：启动软件时自动启动此隧道"
+          : "已禁用：此隧道不会自动启动",
+      );
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "设置失败";
+      toast.error(message);
+      console.error("设置隧道自动启动失败:", error);
     }
   };
 
@@ -192,15 +242,35 @@ export function TunnelCard({
           </div>
         </div>
       </ContextMenuTrigger>
-      <ContextMenuContent className="w-32">
-        <ContextMenuItem
-          variant="destructive"
-          onClick={handleDelete}
-          className="text-xs"
-        >
-          删除隧道
-        </ContextMenuItem>
-      </ContextMenuContent>
+      <TooltipProvider delayDuration={300}>
+        <ContextMenuContent className="w-32">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <ContextMenuItem
+                onClick={handleToggleAutoStart}
+                className="text-xs"
+              >
+                {autoStartEnabled ? "✓ " : ""}自动启动
+              </ContextMenuItem>
+            </TooltipTrigger>
+            <TooltipContent side="right" className="max-w-xs">
+              <p className="text-xs">
+                {autoStartEnabled
+                  ? "已启用：启动软件时自动启动此隧道"
+                  : "未启用：点击可开启启动软件时自动启动此隧道"}
+              </p>
+            </TooltipContent>
+          </Tooltip>
+          <ContextMenuSeparator />
+          <ContextMenuItem
+            variant="destructive"
+            onClick={handleDelete}
+            className="text-xs"
+          >
+            删除隧道
+          </ContextMenuItem>
+        </ContextMenuContent>
+      </TooltipProvider>
     </ContextMenu>
   );
 }
