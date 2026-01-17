@@ -229,7 +229,7 @@ function App() {
           </>
         ) : (
           /* 经典侧边栏布局 */
-          <div className="relative flex flex-1 overflow-hidden z-40">
+          <div className="relative flex flex-1 overflow-hidden">
             <Sidebar
               activeTab={activeTab}
               onTabChange={handleTabChange}

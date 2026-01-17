@@ -337,21 +337,21 @@ export function Sidebar({
     return (
       <div
         className={cn(
-          "w-56 border-r border-border/40 flex flex-col h-full",
+          "w-56 border-r border-border/40 flex flex-col h-full relative",
           isFrosted
             ? "bg-card/70 backdrop-blur-md"
             : isTranslucent
               ? "bg-card/65"
               : "bg-card",
         )}
-        style={
-          isFrosted
+        style={{
+          ...(isFrosted
             ? {
                 backdropFilter: "blur(12px)",
                 WebkitBackdropFilter: "blur(12px)",
               }
-            : undefined
-        }
+            : {}),
+        }}
       >
         {isMacOS && !showTitleBar ? (
           <div
