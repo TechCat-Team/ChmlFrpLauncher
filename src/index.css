@@ -369,14 +369,17 @@
 
   /* 导航图标平滑过渡，避免收缩/展开时跳动 */
   .nav-icon {
-    transition: transform 200ms cubic-bezier(0.4, 0, 0.2, 1), margin 200ms cubic-bezier(0.4, 0, 0.2, 1);
+    transition:
+      transform 200ms cubic-bezier(0.4, 0, 0.2, 1),
+      margin 200ms cubic-bezier(0.4, 0, 0.2, 1);
     will-change: transform, margin;
     display: inline-block;
   }
 
   /* 彩虹曲线流动动画 */
   @keyframes rainbowCurveFlow1 {
-    0%, 100% {
+    0%,
+    100% {
       transform: translate(0, 0) rotate(0deg) scale(1);
       filter: hue-rotate(0deg) brightness(1.2);
     }
@@ -395,7 +398,8 @@
   }
 
   @keyframes rainbowCurveFlow2 {
-    0%, 100% {
+    0%,
+    100% {
       transform: translate(0, 0) rotate(0deg) scale(1);
       filter: hue-rotate(60deg) brightness(1.2);
     }
@@ -418,7 +422,8 @@
   }
 
   @keyframes rainbowCurveFlow3 {
-    0%, 100% {
+    0%,
+    100% {
       transform: translate(0, 0) rotate(0deg) scale(1);
       filter: hue-rotate(120deg) brightness(1.2);
     }
@@ -437,7 +442,8 @@
   }
 
   @keyframes rainbowCurveFlow4 {
-    0%, 100% {
+    0%,
+    100% {
       transform: translate(0, 0) rotate(0deg) scale(1);
       filter: hue-rotate(180deg) brightness(1.2);
     }
@@ -456,7 +462,8 @@
   }
 
   @keyframes rainbowCenterPulse {
-    0%, 100% {
+    0%,
+    100% {
       transform: scale(1) rotate(0deg);
       opacity: 0.3;
     }

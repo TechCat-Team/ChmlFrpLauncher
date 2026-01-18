@@ -258,7 +258,10 @@ export function Logs() {
 
       <div className="flex-1 border border-border/60 rounded-lg overflow-hidden bg-card">
         <ScrollArea className="h-full" ref={scrollRef}>
-          <div className="p-4 font-mono text-[13px] space-y-1" data-allow-copy="true">
+          <div
+            className="p-4 font-mono text-[13px] space-y-1"
+            data-allow-copy="true"
+          >
             {filteredLogs.length === 0 ? (
               <div className="text-muted-foreground">
                 {selectedTunnelId

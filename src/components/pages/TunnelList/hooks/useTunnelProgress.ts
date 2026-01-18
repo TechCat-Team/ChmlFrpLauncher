@@ -28,7 +28,9 @@ export function useTunnelProgress(
     return cached;
   });
   const [fixingTunnels, setFixingTunnels] = useState<Set<number>>(new Set());
-  const [fixingTlsTunnels, setFixingTlsTunnels] = useState<Set<number>>(new Set());
+  const [fixingTlsTunnels, setFixingTlsTunnels] = useState<Set<number>>(
+    new Set(),
+  );
   const timeoutRefs = useRef<Map<string, ReturnType<typeof setTimeout>>>(
     new Map(),
   );
@@ -523,9 +525,12 @@ export function useTunnelProgress(
             5 * 60 * 1000,
           );
 
-          toast.error("您的账户已被限制，暂时无法启动隧道，详情请前往日志查看", {
-            duration: 8000,
-          });
+          toast.error(
+            "您的账户已被限制，暂时无法启动隧道，详情请前往日志查看",
+            {
+              duration: 8000,
+            },
+          );
 
           // 添加详细错误信息到日志
           const errorMessage =
@@ -580,7 +585,13 @@ export function useTunnelProgress(
     return () => {
       unsubscribe();
     };
-  }, [fixingTunnels, fixingTlsTunnels, handleDuplicateTunnelError, handleTlsError, tunnels]);
+  }, [
+    fixingTunnels,
+    fixingTlsTunnels,
+    handleDuplicateTunnelError,
+    handleTlsError,
+    tunnels,
+  ]);
 
   useEffect(() => {
     const timeouts = timeoutRefs.current;

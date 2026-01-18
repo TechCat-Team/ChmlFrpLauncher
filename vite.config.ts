@@ -12,7 +12,7 @@ export default defineConfig({
     },
   },
   build: {
-    cssMinify: 'lightningcss',
-    minify: 'esbuild',
+    cssMinify: "lightningcss",
+    minify: "esbuild",
   },
 });

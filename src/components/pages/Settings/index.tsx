@@ -29,7 +29,13 @@ export function Settings() {
     typeof navigator !== "undefined" &&
     navigator.platform.toUpperCase().indexOf("MAC") >= 0;
 
-  const { followSystem, setFollowSystem, theme, setTheme, isViewTransitionRef } = useTheme();
+  const {
+    followSystem,
+    setFollowSystem,
+    theme,
+    setTheme,
+    isViewTransitionRef,
+  } = useTheme();
 
   const {
     backgroundImage,
@@ -110,7 +116,7 @@ export function Settings() {
   useEffect(() => {
     localStorage.setItem("sidebarMode", sidebarMode);
     window.dispatchEvent(new Event("sidebarModeChanged"));
-    
+
     // 如果切换到悬浮菜单模式，自动开启顶部栏
     if (sidebarMode === "floating" && !showTitleBar) {
       setShowTitleBar(true);

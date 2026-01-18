@@ -68,13 +68,13 @@ export function useTheme() {
     const root = document.documentElement;
     const hasDarkClass = root.classList.contains("dark");
     const shouldBeDark = theme === "dark";
-    
+
     if (shouldBeDark && !hasDarkClass) {
       root.classList.add("dark");
     } else if (!shouldBeDark && hasDarkClass) {
       root.classList.remove("dark");
     }
-    
+
     if (!followSystem) {
       localStorage.setItem("theme", theme);
     }

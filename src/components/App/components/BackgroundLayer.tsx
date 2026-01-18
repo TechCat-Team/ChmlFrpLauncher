@@ -74,12 +74,7 @@ export function BackgroundLayer({
       backgroundColor: getBackgroundColorWithOpacity(overlayOpacity),
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    backgroundImage,
-    overlayOpacity,
-    getBackgroundColorWithOpacity,
-    isDark,
-  ]);
+  }, [backgroundImage, overlayOpacity, getBackgroundColorWithOpacity, isDark]);
 
   useEffect(() => {
     const updateBackgroundColors = () => {
@@ -121,7 +116,10 @@ export function BackgroundLayer({
   }, [backgroundImage, blur]);
 
   return (
-    <div className="absolute inset-0" style={{ zIndex: 0, pointerEvents: "none" }}>
+    <div
+      className="absolute inset-0"
+      style={{ zIndex: 0, pointerEvents: "none" }}
+    >
       {backgroundType === "image" && backgroundImage && (
         <div
           className="absolute inset-0 w-full h-full rounded-[12px]"

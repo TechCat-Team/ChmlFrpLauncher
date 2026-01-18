@@ -360,7 +360,10 @@ export function Sidebar({
           />
         ) : null}
         <div
-          className={cn("px-6 pb-6", isMacOS && !showTitleBar ? "pt-4" : "pt-8")}
+          className={cn(
+            "px-6 pb-6",
+            isMacOS && !showTitleBar ? "pt-4" : "pt-8",
+          )}
           {...(isMacOS && !showTitleBar && { "data-tauri-drag-region": true })}
         >
           <div className="flex items-center gap-3">
@@ -393,7 +396,7 @@ export function Sidebar({
                       "w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-all duration-200 text-sm font-medium group relative overflow-hidden",
                       isActive
                         ? "bg-primary/10 text-primary shadow-sm"
-                        : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                        : "text-muted-foreground hover:text-foreground hover:bg-muted/50",
                     )}
                   >
                     {isActive && (
@@ -402,7 +405,7 @@ export function Sidebar({
                     <Icon
                       className={cn(
                         "w-[18px] h-[18px] transition-transform duration-200",
-                        isActive ? "text-primary" : "group-hover:scale-110"
+                        isActive ? "text-primary" : "group-hover:scale-110",
                       )}
                     />
                     <span className="tracking-tight">{item.label}</span>
@@ -525,7 +528,7 @@ export function Sidebar({
               className="h-8 flex-shrink-0 flex items-start pt-3 pl-5"
             />
           ) : null}
-          
+
           {/* 头部 Logo 区域 */}
           <div
             className="relative flex items-center overflow-hidden"
@@ -536,9 +539,10 @@ export function Sidebar({
               gap: collapsed ? "0px" : "12px",
               transition: "all 0.5s cubic-bezier(0.32, 0.72, 0, 1)",
             }}
-            {...(isMacOS && !showTitleBar && {
-              "data-tauri-drag-region": true,
-            })}
+            {...(isMacOS &&
+              !showTitleBar && {
+                "data-tauri-drag-region": true,
+              })}
           >
             <div className="flex-shrink-0 flex items-center justify-center">
               <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center shadow-md">
@@ -591,26 +595,28 @@ export function Sidebar({
                       title={collapsed ? item.label : undefined}
                     >
                       {isActive && (
-                        <div 
+                        <div
                           className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-1/2 bg-primary rounded-r-full transition-opacity duration-300"
                           style={{
                             opacity: collapsed ? 0 : 1,
                           }}
                         />
                       )}
-                      
+
                       <Icon
                         className={cn(
                           "w-[18px] h-[18px] transition-transform duration-200 flex-shrink-0",
-                          isActive ? "text-primary" : "group-hover:scale-110"
+                          isActive ? "text-primary" : "group-hover:scale-110",
                         )}
                       />
-                      
+
                       <span
                         className="tracking-tight whitespace-nowrap overflow-hidden"
                         style={{
                           opacity: collapsed ? 0 : 1,
-                          transform: collapsed ? "translateX(-10px)" : "translateX(0)",
+                          transform: collapsed
+                            ? "translateX(-10px)"
+                            : "translateX(0)",
                           transition: "all 0.5s cubic-bezier(0.32, 0.72, 0, 1)",
                         }}
                       >
@@ -745,5 +751,4 @@ export function Sidebar({
       {LoginDialog}
     </>
   );
-
 }
