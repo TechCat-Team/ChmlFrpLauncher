@@ -305,3 +305,35 @@ pub async fn get_running_tunnels(processes: State<'_, FrpcProcesses>) -> Result<
 
     Ok(running_tunnels)
 }
+
+#[tauri::command]
+pub async fn fix_frpc_ini_tls(app_handle: tauri::AppHandle) -> Result<String, String> {
+    let app_dir = app_handle
+        .path()
+        .app_data_dir()
+        .map_err(|e| e.to_string())?;
+
+    let config_path = app_dir.join("frpc.ini");
+
+    if !config_path.exists() {
+        return Err("frpc.ini 文件不存在".to_string());
+    }
+
+    // 读取配置文件内容
+    let content = std::fs::read_to_string(&config_path)
+        .map_err(|e| format!("读取配置文件失败: {}", e))?;
+
+    // 将 tls_enable = false 改为 tls_enable = true
+    let modified_content = content.replace("tls_enable = false", "tls_enable = true");
+
+    // 如果没有变化，说明文件中没有 tls_enable = false
+    if modified_content == content {
+        return Err("配置文件中未找到 tls_enable = false".to_string());
+    }
+
+    // 写回配置文件
+    std::fs::write(&config_path, modified_content)
+        .map_err(|e| format!("写入配置文件失败: {}", e))?;
+
+    Ok("已成功将 tls_enable 设置为 true".to_string())
+}

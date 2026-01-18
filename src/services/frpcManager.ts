@@ -41,6 +41,10 @@ export class FrpcManager {
     }
   }
 
+  async fixFrpcIniTls(): Promise<string> {
+    return await invoke<string>("fix_frpc_ini_tls");
+  }
+
   async listenToLogs(onLog: (log: LogMessage) => void): Promise<void> {
     if (this.unlisten) {
       this.unlisten();

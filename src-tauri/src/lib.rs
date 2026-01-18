@@ -238,7 +238,8 @@ pub fn run() {
             commands::process_guard::add_guarded_process,
             commands::process_guard::add_guarded_custom_tunnel,
             commands::process_guard::remove_guarded_process,
-            commands::process_guard::check_log_and_stop_guard
+            commands::process_guard::check_log_and_stop_guard,
+            commands::fix_frpc_ini_tls
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
