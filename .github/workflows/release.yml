@@ -124,13 +124,13 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
           RUSTC_WRAPPER: sccache
         with:
-          packageManager: pnpm
-          includeRelease: ${{ matrix.platform == 'macos-latest' }}
           tagName: ${{ github.ref_name }}
           releaseName: "ChmlFrpLauncher ${{ github.ref_name }}"
           releaseBody: |
             ## 🚀 更新内容
 
             ${{ steps.changelog.outputs.changelog }}
+          includeUpdaterJson: ${{ matrix.platform == 'macos-latest' }}
+          includeRelease: ${{ matrix.platform == 'macos-latest' }}
           releaseDraft: false
           prerelease: false
