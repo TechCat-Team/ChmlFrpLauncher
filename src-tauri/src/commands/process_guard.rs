@@ -16,6 +16,7 @@ const STOP_GUARD_PATTERNS: &[&str] = &[
     "缺少用户token或隧道id参数",
     "您目前为免费会员",
     "客户端代理参数错误，配置文件与记录不匹配。请不要随意修改配置文件！",
+    "ChmlFrp API Error"
 ];
 
 #[tauri::command]

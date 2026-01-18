@@ -38,6 +38,11 @@ class LogStore {
     this.notifyListeners();
   }
 
+  addLog(log: LogMessage) {
+    this.logs.push(log);
+    this.notifyListeners();
+  }
+
   private notifyListeners() {
     const logsCopy = [...this.logs];
     this.listeners.forEach((listener) => {

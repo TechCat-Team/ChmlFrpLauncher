@@ -375,6 +375,46 @@ export function useTunnelProgress(
               processedErrorsRef.current.add(errorKey);
             }
           }
+        } else if (message.includes("429 Unknown Status")) {
+          const errorKey = `${tunnelId}-429-Unknown-Status`;
+
+          if (processedErrorsRef.current.has(errorKey)) {
+            return prev;
+          }
+
+          processedErrorsRef.current.add(errorKey);
+          setTimeout(
+            () => {
+              processedErrorsRef.current.delete(errorKey);
+            },
+            5 * 60 * 1000,
+          );
+
+          toast.error("您的账户已被限制，暂时无法启动隧道，详情请前往日志查看", {
+            duration: 8000,
+          });
+
+          // 添加详细错误信息到日志
+          const errorMessage =
+            "您的账户由于多次无效的启动隧道，账户被系统暂时限制启动隧道，限制一般会在24小时内自动解除，同时请您检查其他地方有没有挂守护进程这类程序导致映射一直重复启动。如果您有其他问题，请前往任意交流群询问，交流群链接在软件首页底部";
+          const now = new Date();
+          const timestamp = `${now.getHours().toString().padStart(2, "0")}:${now.getMinutes().toString().padStart(2, "0")}:${now.getSeconds().toString().padStart(2, "0")}`;
+          logStore.addLog({
+            tunnel_id: tunnelId,
+            message: errorMessage,
+            timestamp,
+          });
+
+          newProgress.progress = 100;
+          newProgress.isError = true;
+          newProgress.isSuccess = false;
+
+          if (timeoutRefs.current.has(tunnelKey)) {
+            clearTimeout(timeoutRefs.current.get(tunnelKey)!);
+            timeoutRefs.current.delete(tunnelKey);
+          }
+
+          onTunnelStartErrorRef.current?.(tunnelKey);
         }
 
         const updated = new Map(prev).set(tunnelKey, { ...newProgress });
