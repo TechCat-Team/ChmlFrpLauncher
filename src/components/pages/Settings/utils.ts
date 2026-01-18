@@ -1,4 +1,6 @@
-import type { ThemeMode } from "./types";
+import type { ThemeMode, SidebarMode } from "./types";
+
+export type { ThemeMode, SidebarMode };
 
 export const getInitialFollowSystem = (): boolean => {
   if (typeof window === "undefined") return true;
@@ -123,4 +125,11 @@ export const getInitialVideoVolume = (): number => {
   if (typeof window === "undefined") return 50;
   const stored = localStorage.getItem("videoVolume");
   return stored ? parseInt(stored, 10) : 50;
+};
+
+export const getInitialSidebarMode = (): SidebarMode => {
+  if (typeof window === "undefined") return "classic";
+  const stored = localStorage.getItem("sidebarMode") as SidebarMode | null;
+  if (stored === "classic" || stored === "floating") return stored;
+  return "classic";
 };

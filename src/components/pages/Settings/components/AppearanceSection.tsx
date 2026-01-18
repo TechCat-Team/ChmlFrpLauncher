@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/item";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
-import type { ThemeMode } from "../types";
+import type { ThemeMode, SidebarMode } from "../types";
 import type { EffectType } from "../utils";
 import { getBackgroundType } from "../utils";
 import type { MutableRefObject } from "react";
@@ -35,6 +35,8 @@ interface AppearanceSectionProps {
   setVideoStartSound: (value: boolean) => void;
   videoVolume: number;
   setVideoVolume: (value: number) => void;
+  sidebarMode: SidebarMode;
+  setSidebarMode: (value: SidebarMode) => void;
   onSelectBackgroundImage: () => void;
   onClearBackgroundImage: () => void;
 }
@@ -60,6 +62,8 @@ export function AppearanceSection({
   setVideoStartSound,
   videoVolume,
   setVideoVolume,
+  sidebarMode,
+  setSidebarMode,
   onSelectBackgroundImage,
   onClearBackgroundImage,
 }: AppearanceSectionProps) {
@@ -182,8 +186,32 @@ export function AppearanceSection({
           </Item>
         )}
 
-        {/* 只在 macOS 上显示顶部栏开关 */}
-        {isMacOS && (
+        <Item
+          variant="outline"
+          className="border-0 border-b border-border/60 last:border-0"
+        >
+          <ItemContent>
+            <ItemTitle>侧边栏样式</ItemTitle>
+            <ItemDescription className="text-xs">
+              选择侧边栏的显示风格
+            </ItemDescription>
+          </ItemContent>
+          <ItemActions>
+            <Select
+              options={[
+                { value: "classic", label: "经典 (默认)" },
+                { value: "floating", label: "悬浮" },
+              ]}
+              value={sidebarMode}
+              onChange={(value) => setSidebarMode(value as SidebarMode)}
+              size="sm"
+              className="w-32"
+            />
+          </ItemActions>
+        </Item>
+
+        {/* 只在 macOS 上显示顶部栏开关，悬浮菜单模式下隐藏 */}
+        {isMacOS && sidebarMode !== "floating" && (
           <Item
             variant="outline"
             className="border-0 border-b border-border/60"

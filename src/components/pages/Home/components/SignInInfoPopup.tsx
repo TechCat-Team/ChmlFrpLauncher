@@ -1,4 +1,5 @@
 import type { SignInInfo } from "@/services/api";
+import { useState, useEffect } from "react";
 
 interface SignInInfoPopupProps {
   visible: boolean;
@@ -27,11 +28,24 @@ export function SignInInfoPopup({
   animatedTotalSignIns,
   animatedCountOfRecords,
 }: SignInInfoPopupProps) {
+  const [isSmallScreen, setIsSmallScreen] = useState(false);
+
+  useEffect(() => {
+    const checkScreenSize = () => {
+      setIsSmallScreen(window.innerWidth < 1024);
+    };
+
+    checkScreenSize();
+    window.addEventListener("resize", checkScreenSize);
+    return () => window.removeEventListener("resize", checkScreenSize);
+  }, []);
+
   if (!visible) return null;
 
   return (
     <div
-      className={`absolute right-0 top-full mt-1 w-80 rounded-2xl bg-card/95 backdrop-blur-md border border-border/50 p-5 shadow-2xl z-[9999] ${
+      className={`absolute right-0 ${isSmallScreen ? "left-0" : "top-full"} mt-1 w-80 rounded-2xl bg-card/95 backdrop-blur-md border border-border/50 p-5 shadow-2xl z-[9999]
+        ${
         closing
           ? "animate-fade-out"
           : "animate-slide-in-from-top-2 animate-scale-in"

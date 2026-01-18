@@ -121,7 +121,7 @@ export function BackgroundLayer({
   }, [backgroundImage, blur]);
 
   return (
-    <>
+    <div className="absolute inset-0" style={{ zIndex: 0, pointerEvents: "none" }}>
       {backgroundType === "image" && backgroundImage && (
         <div
           className="absolute inset-0 w-full h-full rounded-[12px]"
@@ -155,6 +155,7 @@ export function BackgroundLayer({
             width: "100%",
             height: "100%",
             objectFit: "cover",
+            position: "absolute",
           }}
         >
           <source
@@ -177,6 +178,6 @@ export function BackgroundLayer({
           zIndex: 1,
         }}
       />
-    </>
+    </div>
   );
 }

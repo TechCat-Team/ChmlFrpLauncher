@@ -27,10 +27,46 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_deep_link::init())
         .setup(|app| {
+            let app_handle = app.handle().clone();
+            
+            // 获取自动启动隧道设置
+            let auto_start_tunnels = {
+                let app_data_dir = app_handle.path().app_data_dir().ok();
+                if let Some(dir) = app_data_dir {
+                    let config_path = dir.join("auto_start_tunnels.json");
+                    if config_path.exists() {
+                        if let Ok(content) = std::fs::read_to_string(&config_path) {
+                            if let Ok(config) = serde_json::from_str::<serde_json::Value>(&content) {
+                                config.get("enabled").and_then(|v| v.as_bool()).unwrap_or(false)
+                            } else {
+                                false
+                            }
+                        } else {
+                            false
+                        }
+                    } else {
+                        false
+                    }
+                } else {
+                    false
+                }
+            };
+            
             let show_item = MenuItemBuilder::with_id("show", "显示窗口").build(app)?;
+            let auto_start_item = MenuItemBuilder::with_id(
+                "auto_start_tunnels",
+                if auto_start_tunnels {
+                    "✓ 启动软件时自动启动隧道"
+                } else {
+                    "启动软件时自动启动隧道"
+                },
+            )
+            .build(app)?;
             let quit_item = MenuItemBuilder::with_id("quit", "退出").build(app)?;
             let menu = MenuBuilder::new(app)
                 .item(&show_item)
+                .separator()
+                .item(&auto_start_item)
                 .separator()
                 .item(&quit_item)
                 .build()?;
@@ -43,11 +79,57 @@ pub fn run() {
             let _tray = TrayIconBuilder::new()
                 .icon(tray_icon)
                 .menu(&menu)
-                .on_menu_event(|app, event| match event.id().as_ref() {
+                .on_menu_event(move |app, event| match event.id().as_ref() {
                     "show" => {
                         if let Some(window) = app.get_webview_window("main") {
                             let _ = window.show();
                             let _ = window.set_focus();
+                        }
+                    }
+                    "auto_start_tunnels" => {
+                        let app_handle = app.clone();
+                        
+                        // 获取当前设置
+                        let current_setting = {
+                            let app_data_dir = app_handle.path().app_data_dir().ok();
+                            if let Some(dir) = app_data_dir {
+                                let config_path = dir.join("auto_start_tunnels.json");
+                                if config_path.exists() {
+                                    if let Ok(content) = std::fs::read_to_string(&config_path) {
+                                        if let Ok(config) = serde_json::from_str::<serde_json::Value>(&content) {
+                                            config.get("enabled").and_then(|v| v.as_bool()).unwrap_or(false)
+                                        } else {
+                                            false
+                                        }
+                                    } else {
+                                        false
+                                    }
+                                } else {
+                                    false
+                                }
+                            } else {
+                                false
+                            }
+                        };
+                        
+                        // 切换设置
+                        let new_setting = !current_setting;
+                        
+                        // 保存设置
+                        if let Some(app_data_dir) = app_handle.path().app_data_dir().ok() {
+                            if std::fs::create_dir_all(&app_data_dir).is_ok() {
+                                let config_path = app_data_dir.join("auto_start_tunnels.json");
+                                let config = serde_json::json!({
+                                    "enabled": new_setting
+                                });
+                                if std::fs::write(&config_path, serde_json::to_string_pretty(&config).unwrap()).is_ok() {
+                                    // 发送事件到前端
+                                    let _ = app_handle.emit("auto-start-tunnels-changed", new_setting);
+                                    
+                                    // 注意：菜单项文本可能无法动态更新，需要重新构建菜单
+                                    // 功能仍然正常工作，只是菜单项文本可能不更新
+                                }
+                            }
                         }
                     }
                     "quit" => {
@@ -135,6 +217,9 @@ pub fn run() {
             commands::test_log_event,
             commands::is_autostart_enabled,
             commands::set_autostart,
+            commands::get_auto_start_tunnels,
+            commands::get_tunnel_auto_start,
+            commands::set_tunnel_auto_start,
             commands::http_request,
             commands::hide_window,
             commands::show_window,

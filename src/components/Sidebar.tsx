@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import {
@@ -19,12 +19,18 @@ import {
   type StoredUser,
 } from "@/services/api";
 import { openUrl } from "@tauri-apps/plugin-opener";
+import type { SidebarMode } from "./pages/Settings/types";
+import { getInitialEffectType, type EffectType } from "./pages/Settings/utils";
 
 interface SidebarProps {
   activeTab: string;
   onTabChange: (tab: string) => void;
   user: StoredUser | null;
   onUserChange: (user: StoredUser | null) => void;
+  collapsed?: boolean;
+  onCollapseChange?: (collapsed: boolean) => void;
+  collapsedWidth?: number;
+  mode?: SidebarMode;
 }
 
 export function Sidebar({
@@ -32,14 +38,21 @@ export function Sidebar({
   onTabChange,
   user,
   onUserChange,
+  collapsed: collapsedProp,
+  onCollapseChange: onCollapseChangeProp,
+  collapsedWidth,
+  mode = "classic",
 }: SidebarProps) {
   const [showTitleBar, setShowTitleBar] = useState<boolean>(() => {
     if (typeof window === "undefined") return false;
     const stored = localStorage.getItem("showTitleBar");
-    // 如果从未设置过，默认返回 false（关闭）
     if (stored === null) return false;
     return stored === "true";
   });
+
+  const [effectType, setEffectType] = useState<EffectType>(() =>
+    getInitialEffectType(),
+  );
 
   useEffect(() => {
     const handleTitleBarVisibilityChange = () => {
@@ -47,17 +60,31 @@ export function Sidebar({
       setShowTitleBar(stored !== "false");
     };
 
+    const handleEffectTypeChange = () => {
+      const stored = localStorage.getItem("effectType");
+      if (
+        stored === "frosted" ||
+        stored === "translucent" ||
+        stored === "none"
+      ) {
+        setEffectType(stored);
+      }
+    };
+
     window.addEventListener(
       "titleBarVisibilityChanged",
       handleTitleBarVisibilityChange,
     );
+    window.addEventListener("effectTypeChanged", handleEffectTypeChange);
     return () => {
       window.removeEventListener(
         "titleBarVisibilityChanged",
         handleTitleBarVisibilityChange,
       );
+      window.removeEventListener("effectTypeChanged", handleEffectTypeChange);
     };
   }, []);
+
   const [loginOpen, setLoginOpen] = useState(false);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -65,6 +92,26 @@ export function Sidebar({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const userMenuRef = useRef<HTMLDivElement>(null);
+
+  // 点击外部关闭用户菜单
+  useEffect(() => {
+    if (!userMenuOpen) return;
+
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        userMenuRef.current &&
+        !userMenuRef.current.contains(event.target as Node)
+      ) {
+        setUserMenuOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [userMenuOpen]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -109,11 +156,203 @@ export function Sidebar({
     typeof navigator !== "undefined" &&
     navigator.platform.toUpperCase().indexOf("MAC") >= 0;
 
-  return (
-    <div className="relative w-60 border-r border-sidebar-border/40 bg-sidebar overflow-hidden">
-      <div className="absolute inset-0 bg-gradient-to-br from-foreground/[0.02] via-transparent to-foreground/[0.01] pointer-events-none" />
+  const [internalCollapsed, setInternalCollapsed] = useState<boolean>(false);
+  const isControlled = typeof collapsedProp !== "undefined";
+  const collapsed = isControlled ? !!collapsedProp : internalCollapsed;
+  const setCollapsedState = (v: boolean) => {
+    if (isControlled) {
+      onCollapseChangeProp?.(v);
+    } else {
+      setInternalCollapsed(v);
+    }
+  };
 
-      <div className="relative flex flex-col h-full">
+  const leaveTimerRef = useRef<number | null>(null);
+  const animationTimeoutRef = useRef<number | null>(null);
+
+  const handleMouseEnter = () => {
+    if (mode !== "floating") return;
+    if (leaveTimerRef.current) {
+      clearTimeout(leaveTimerRef.current);
+      leaveTimerRef.current = null;
+    }
+    if (animationTimeoutRef.current) {
+      clearTimeout(animationTimeoutRef.current);
+    }
+    setCollapsedState(false);
+    animationTimeoutRef.current = window.setTimeout(() => {
+      animationTimeoutRef.current = null;
+    }, 300);
+  };
+
+  const handleMouseLeave = () => {
+    if (mode !== "floating") return;
+    if (leaveTimerRef.current) {
+      clearTimeout(leaveTimerRef.current);
+    }
+    if (animationTimeoutRef.current) {
+      clearTimeout(animationTimeoutRef.current);
+    }
+    leaveTimerRef.current = window.setTimeout(() => {
+      setCollapsedState(true);
+      leaveTimerRef.current = null;
+      animationTimeoutRef.current = window.setTimeout(() => {
+        animationTimeoutRef.current = null;
+      }, 450);
+    }, 200);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (leaveTimerRef.current) {
+        clearTimeout(leaveTimerRef.current);
+        leaveTimerRef.current = null;
+      }
+      if (animationTimeoutRef.current) {
+        clearTimeout(animationTimeoutRef.current);
+        animationTimeoutRef.current = null;
+      }
+    };
+  }, []);
+
+  // Shared Dialog Component
+  const LoginDialog = (
+    <Dialog
+      open={loginOpen}
+      onOpenChange={(open) => {
+        setLoginOpen(open);
+        if (!open) {
+          setError("");
+        }
+      }}
+    >
+      <DialogPortal>
+        <DialogOverlay className="z-[9999] backdrop-blur-sm" />
+        <DialogPrimitive.Content className="fixed top-[50%] left-[50%] z-[10000] w-full max-w-md translate-x-[-50%] translate-y-[-50%] rounded-2xl bg-card/95 backdrop-blur-md border border-border/50 p-8 shadow-2xl outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-bottom-4 data-[state=open]:slide-in-from-bottom-4 duration-300">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center shadow-sm">
+                <LogIn className="w-5 h-5 text-primary-foreground" />
+              </div>
+              <div>
+                <h2 className="text-lg font-bold text-foreground">登录账号</h2>
+                <p className="text-xs text-muted-foreground">
+                  登录以访问所有功能
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              className="h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-foreground/10 transition-all duration-200 flex items-center justify-center"
+              onClick={() => setLoginOpen(false)}
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+
+          <form className="space-y-4" onSubmit={handleLogin}>
+            <div className="space-y-2">
+              <label className="text-xs font-medium text-foreground/80 tracking-wide">
+                账户名
+              </label>
+              <input
+                className="w-full rounded-xl border border-border/50 bg-background/50 px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/50 transition-all duration-200"
+                placeholder="请输入账户名"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-xs font-medium text-foreground/80 tracking-wide">
+                密码
+              </label>
+              <input
+                type="password"
+                className="w-full rounded-xl border border-border/50 bg-background/50 px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/50 transition-all duration-200"
+                placeholder="请输入密码"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+              />
+            </div>
+
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="rememberMe"
+                checked={rememberMe}
+                onChange={(e) => setRememberMe(e.target.checked)}
+                className="h-4 w-4 rounded border-border/50 text-primary focus:ring-2 focus:ring-primary/20 cursor-pointer accent-primary"
+              />
+              <label
+                htmlFor="rememberMe"
+                className="text-xs text-foreground/80 cursor-pointer select-none"
+              >
+                保存登录（重启后无需重新登录）
+              </label>
+            </div>
+
+            {error && (
+              <div className="rounded-xl bg-destructive/10 border border-destructive/20 px-4 py-3 animate-in fade-in slide-in-from-top-1 duration-200">
+                <p className="text-xs text-destructive font-medium">{error}</p>
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full rounded-xl bg-primary text-primary-foreground py-3 text-sm font-semibold hover:bg-primary/90 disabled:opacity-60 disabled:cursor-not-allowed transition-all duration-200 shadow-sm hover:shadow-md active:scale-[0.98] mt-6"
+            >
+              {loading ? (
+                <span className="flex items-center justify-center gap-2">
+                  <span className="h-4 w-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
+                  登录中...
+                </span>
+              ) : (
+                "立即登录"
+              )}
+            </button>
+          </form>
+
+          <div className="mt-6 pt-4 border-t border-border/30">
+            <p className="text-xs text-center text-muted-foreground">
+              还没有账号？{" "}
+              <button
+                onClick={() => openUrl("https://www.chmlfrp.net")}
+                className="text-primary font-medium hover:underline"
+              >
+                立即注册
+              </button>
+            </p>
+          </div>
+        </DialogPrimitive.Content>
+      </DialogPortal>
+    </Dialog>
+  );
+
+  if (mode === "classic") {
+    const isFrosted = effectType === "frosted";
+    const isTranslucent = effectType === "translucent";
+    return (
+      <div
+        className={cn(
+          "w-56 border-r border-border/40 flex flex-col h-full relative",
+          isFrosted
+            ? "bg-card/70 backdrop-blur-md"
+            : isTranslucent
+              ? "bg-card/65"
+              : "bg-card",
+        )}
+        style={{
+          ...(isFrosted
+            ? {
+                backdropFilter: "blur(12px)",
+                WebkitBackdropFilter: "blur(12px)",
+              }
+            : {}),
+        }}
+      >
         {isMacOS && !showTitleBar ? (
           <div
             data-tauri-drag-region
@@ -121,29 +360,27 @@ export function Sidebar({
           />
         ) : null}
         <div
-          className={cn(
-            "px-5 pb-5",
-            isMacOS && !showTitleBar ? "pt-4" : "pt-6",
-          )}
+          className={cn("px-6 pb-6", isMacOS && !showTitleBar ? "pt-4" : "pt-8")}
           {...(isMacOS && !showTitleBar && { "data-tauri-drag-region": true })}
         >
-          <div className="flex items-center gap-2.5">
-            <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-foreground to-foreground/80 flex items-center justify-center shadow-sm">
-              <span className="text-background font-bold text-sm">CF</span>
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center shadow-md">
+              <span className="text-primary-foreground font-bold text-base">
+                CF
+              </span>
             </div>
             <div>
-              <h1 className="text-base font-bold text-foreground tracking-tight">
+              <h1 className="text-lg font-bold text-foreground tracking-tight">
                 ChmlFrp
               </h1>
-              <p className="text-[10px] text-foreground/50 tracking-wide">
+              <p className="text-[10px] text-muted-foreground tracking-wide font-medium">
                 LAUNCHER
               </p>
             </div>
           </div>
         </div>
 
-        {/* 导航菜单 */}
-        <nav className="relative flex-1 px-3 py-2">
+        <nav className="flex-1 px-3 py-2">
           <ul className="space-y-1">
             {menuItems.map((item) => {
               const Icon = item.icon;
@@ -153,20 +390,19 @@ export function Sidebar({
                   <button
                     onClick={() => handleMenuClick(item.id)}
                     className={cn(
-                      "w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-all duration-200 text-sm group relative overflow-hidden",
+                      "w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-all duration-200 text-sm font-medium group relative overflow-hidden",
                       isActive
-                        ? "bg-foreground/[0.08] text-foreground font-semibold shadow-sm"
-                        : "text-foreground/60 hover:text-foreground hover:bg-foreground/[0.04]",
+                        ? "bg-primary/10 text-primary shadow-sm"
+                        : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
                     )}
-                    aria-current={isActive ? "page" : undefined}
                   >
                     {isActive && (
-                      <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-1/2 bg-foreground/40 rounded-r-full" />
+                      <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-1/2 bg-primary rounded-r-full" />
                     )}
                     <Icon
                       className={cn(
                         "w-[18px] h-[18px] transition-transform duration-200",
-                        isActive ? "text-foreground" : "group-hover:scale-110",
+                        isActive ? "text-primary" : "group-hover:scale-110"
                       )}
                     />
                     <span className="tracking-tight">{item.label}</span>
@@ -177,10 +413,9 @@ export function Sidebar({
           </ul>
         </nav>
 
-        {/* 用户信息区域 */}
-        <div className="relative border-t border-sidebar-border/30 p-3">
+        <div className="p-4 border-t border-border/30" ref={userMenuRef}>
           <button
-            className="w-full px-3 py-3 text-left hover:bg-foreground/[0.04] transition-all duration-200 flex items-center gap-3 rounded-xl group"
+            className="w-full p-2 text-left hover:bg-muted/50 transition-all duration-200 flex items-center gap-3 rounded-xl group relative"
             onClick={() => {
               if (user) {
                 setUserMenuOpen((v) => !v);
@@ -194,54 +429,45 @@ export function Sidebar({
               <img
                 src={user.userimg}
                 alt={user.username}
-                className="h-10 w-10 rounded-xl object-cover ring-2 ring-foreground/10"
+                className="h-10 w-10 rounded-xl object-cover ring-2 ring-primary/10 group-hover:ring-primary/20 transition-all"
               />
             ) : (
-              <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-foreground/90 to-foreground/70 flex items-center justify-center shadow-sm group-hover:shadow transition-shadow">
-                <LogIn className="w-5 h-5 text-background" />
+              <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-muted to-muted/80 flex items-center justify-center shadow-sm group-hover:shadow transition-shadow">
+                <LogIn className="w-5 h-5 text-muted-foreground" />
               </div>
             )}
             <div className="flex-1 min-w-0">
-              <h1 className="text-sm font-semibold text-sidebar-foreground truncate">
+              <h1 className="text-sm font-semibold text-foreground truncate">
                 {user?.username ?? "未登录"}
               </h1>
-              <p className="text-[11px] text-sidebar-foreground/50 truncate">
+              <p className="text-[11px] text-muted-foreground truncate">
                 {user?.usergroup ?? "点击登录"}
               </p>
             </div>
           </button>
 
           {user && userMenuOpen && (
-            <div className="absolute left-3 right-3 bottom-full mb-2 rounded-2xl border border-border/40 bg-card/98 backdrop-blur-md shadow-2xl z-10 overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-200">
-              {/* 用户信息卡片 */}
-              <div className="px-4 py-3 bg-foreground/[0.02] border-b border-border/30">
-                <div className="flex items-center gap-3">
-                  {user.userimg ? (
-                    <img
-                      src={user.userimg}
-                      alt={user.username}
-                      className="h-10 w-10 rounded-lg object-cover ring-2 ring-foreground/10"
-                    />
-                  ) : (
-                    <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-foreground/90 to-foreground/70 flex items-center justify-center shadow-sm">
-                      <User className="w-5 h-5 text-background" />
-                    </div>
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <h3 className="text-sm font-semibold text-foreground truncate">
-                      {user.username}
-                    </h3>
-                    <p className="text-[11px] text-muted-foreground truncate">
-                      {user.usergroup}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* 菜单选项 */}
-              <div className="p-1.5">
+            <div
+              className={cn(
+                "absolute left-4 right-4 bottom-[calc(100%+8px)] rounded-xl border border-border/40 shadow-xl z-10 overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-200",
+                effectType === "frosted"
+                  ? "bg-card/98 backdrop-blur-md"
+                  : effectType === "translucent"
+                    ? "bg-card/85"
+                    : "bg-card",
+              )}
+              style={
+                effectType === "frosted"
+                  ? {
+                      backdropFilter: "blur(12px)",
+                      WebkitBackdropFilter: "blur(12px)",
+                    }
+                  : undefined
+              }
+            >
+              <div className="p-1">
                 <button
-                  className="w-full text-left text-sm text-foreground px-3 py-2.5 rounded-lg hover:bg-destructive/10 hover:text-destructive transition-all duration-200 flex items-center gap-2.5 group"
+                  className="w-full text-left text-sm text-foreground px-3 py-2 rounded-lg hover:bg-destructive/10 hover:text-destructive transition-all duration-200 flex items-center gap-2 group"
                   onClick={() => {
                     onUserChange(null);
                     setUserMenuOpen(false);
@@ -256,127 +482,268 @@ export function Sidebar({
             </div>
           )}
         </div>
+        {LoginDialog}
+      </div>
+    );
+  }
 
-        <Dialog
-          open={loginOpen}
-          onOpenChange={(open) => {
-            setLoginOpen(open);
-            if (!open) {
-              setError("");
-            }
-          }}
+  const isFrosted = effectType === "frosted";
+  const isTranslucent = effectType === "translucent";
+  return (
+    <>
+      <div
+        className={cn(
+          "relative h-full overflow-hidden border-r border-border/40 animate-in slide-in-from-left-2 duration-300 floating-sidebar",
+          isFrosted
+            ? "bg-card/70 backdrop-blur-md"
+            : isTranslucent
+              ? "bg-card/65"
+              : "bg-card",
+        )}
+        style={{
+          borderRadius: "18px",
+          backdropFilter: isFrosted ? "blur(12px)" : "none",
+          WebkitBackdropFilter: isFrosted ? "blur(12px)" : "none",
+          transition: "width 0.5s cubic-bezier(0.32, 0.72, 0, 1)",
+          width: collapsed ? `${collapsedWidth ?? 66}px` : "224px",
+        }}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+      >
+        <div
+          className="absolute inset-0 bg-gradient-to-r from-sidebar/20 via-sidebar/10 to-transparent pointer-events-none"
+          style={{ borderRadius: "18px" }}
+        />
+
+        <div
+          className="relative flex flex-col h-full z-10"
+          style={{ borderRadius: "18px" }}
         >
-          <DialogPortal>
-            <DialogOverlay className="z-[9999] backdrop-blur-sm" />
-            <DialogPrimitive.Content className="fixed top-[50%] left-[50%] z-[10000] w-full max-w-md translate-x-[-50%] translate-y-[-50%] rounded-2xl bg-card/95 backdrop-blur-md border border-border/50 p-8 shadow-2xl outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-bottom-4 data-[state=open]:slide-in-from-bottom-4 duration-300">
-              {/* 头部 */}
-              <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-foreground to-foreground/80 flex items-center justify-center shadow-sm">
-                    <LogIn className="w-5 h-5 text-background" />
-                  </div>
-                  <div>
-                    <h2 className="text-lg font-bold text-foreground">
-                      登录账号
-                    </h2>
-                    <p className="text-xs text-muted-foreground">
-                      登录以访问所有功能
-                    </p>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  className="h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-foreground/10 transition-all duration-200 flex items-center justify-center"
-                  onClick={() => setLoginOpen(false)}
-                >
-                  <X className="w-4 h-4" />
-                </button>
+          {isMacOS && !showTitleBar ? (
+            <div
+              data-tauri-drag-region
+              className="h-8 flex-shrink-0 flex items-start pt-3 pl-5"
+            />
+          ) : null}
+          
+          {/* 头部 Logo 区域 */}
+          <div
+            className="relative flex items-center overflow-hidden"
+            style={{
+              paddingBottom: "24px",
+              paddingTop: isMacOS && !showTitleBar ? "16px" : "32px",
+              paddingLeft: collapsed ? "15px" : "24px",
+              gap: collapsed ? "0px" : "12px",
+              transition: "all 0.5s cubic-bezier(0.32, 0.72, 0, 1)",
+            }}
+            {...(isMacOS && !showTitleBar && {
+              "data-tauri-drag-region": true,
+            })}
+          >
+            <div className="flex-shrink-0 flex items-center justify-center">
+              <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center shadow-md">
+                <span className="text-primary-foreground font-bold text-sm">
+                  CF
+                </span>
               </div>
+            </div>
+            <div
+              className="whitespace-nowrap"
+              style={{
+                opacity: collapsed ? 0 : 1,
+                transform: collapsed ? "translateX(-10px)" : "translateX(0)",
+                transition: "all 0.5s cubic-bezier(0.32, 0.72, 0, 1)",
+              }}
+            >
+              <h1 className="text-lg font-bold text-foreground tracking-tight">
+                ChmlFrp
+              </h1>
+              <p className="text-[10px] text-muted-foreground tracking-wide font-medium">
+                LAUNCHER
+              </p>
+            </div>
+          </div>
 
-              {/* 表单 */}
-              <form className="space-y-4" onSubmit={handleLogin}>
-                <div className="space-y-2">
-                  <label className="text-xs font-medium text-foreground/80 tracking-wide">
-                    账户名
-                  </label>
-                  <input
-                    className="w-full rounded-xl border border-border/50 bg-background/50 px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-foreground/20 focus:border-foreground/50 transition-all duration-200"
-                    placeholder="请输入账户名"
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-xs font-medium text-foreground/80 tracking-wide">
-                    密码
-                  </label>
-                  <input
-                    type="password"
-                    className="w-full rounded-xl border border-border/50 bg-background/50 px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-foreground/20 focus:border-foreground/50 transition-all duration-200"
-                    placeholder="请输入密码"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                  />
-                </div>
+          <nav className="relative flex-1 px-3 py-2">
+            <ul className="space-y-1">
+              {menuItems.map((item) => {
+                const Icon = item.icon;
+                const isActive = activeTab === item.id;
+                return (
+                  <li key={item.id}>
+                    <button
+                      onClick={() => handleMenuClick(item.id)}
+                      className={cn(
+                        "w-full flex items-center rounded-xl transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] group relative overflow-hidden text-sm font-medium",
+                        isActive
+                          ? "bg-primary/10 text-primary shadow-sm"
+                          : "text-muted-foreground hover:text-foreground hover:bg-muted/50",
+                      )}
+                      style={{
+                        height: "42px",
+                        paddingLeft: collapsed ? "12px" : "14px",
+                        paddingRight: "14px",
+                        paddingTop: "10px",
+                        paddingBottom: "10px",
+                        gap: collapsed ? "0px" : "12px",
+                        justifyContent: "flex-start",
+                      }}
+                      title={collapsed ? item.label : undefined}
+                    >
+                      {isActive && (
+                        <div 
+                          className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-1/2 bg-primary rounded-r-full transition-opacity duration-300"
+                          style={{
+                            opacity: collapsed ? 0 : 1,
+                          }}
+                        />
+                      )}
+                      
+                      <Icon
+                        className={cn(
+                          "w-[18px] h-[18px] transition-transform duration-200 flex-shrink-0",
+                          isActive ? "text-primary" : "group-hover:scale-110"
+                        )}
+                      />
+                      
+                      <span
+                        className="tracking-tight whitespace-nowrap overflow-hidden"
+                        style={{
+                          opacity: collapsed ? 0 : 1,
+                          transform: collapsed ? "translateX(-10px)" : "translateX(0)",
+                          transition: "all 0.5s cubic-bezier(0.32, 0.72, 0, 1)",
+                        }}
+                      >
+                        {item.label}
+                      </span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          </nav>
 
-                <div className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    id="rememberMe"
-                    checked={rememberMe}
-                    onChange={(e) => setRememberMe(e.target.checked)}
-                    className="h-4 w-4 rounded border-border/50 text-foreground focus:ring-2 focus:ring-foreground/20 cursor-pointer"
+          <div
+            className="relative border-t border-sidebar-border/30 overflow-hidden"
+            style={{
+              padding: collapsed ? "12px 0" : "16px", // p-4 = 16px
+              transition: "all 0.5s cubic-bezier(0.32, 0.72, 0, 1)",
+            }}
+            ref={userMenuRef}
+          >
+            <button
+              className="w-full text-left hover:bg-muted/50 flex items-center rounded-xl group relative overflow-hidden"
+              style={{
+                height: "56px",
+                padding: "8px",
+                paddingLeft: collapsed ? "13px" : "8px", // Center 40px in 66px vs Standard padding
+                gap: collapsed ? "0px" : "12px",
+                justifyContent: "flex-start",
+                transition: "all 0.5s cubic-bezier(0.32, 0.72, 0, 1)",
+              }}
+              onClick={() => {
+                if (user) {
+                  setUserMenuOpen((v) => !v);
+                } else {
+                  setError("");
+                  setLoginOpen(true);
+                }
+              }}
+            >
+              <div className="flex-shrink-0 flex items-center justify-center">
+                {user?.userimg ? (
+                  <img
+                    src={user.userimg}
+                    alt={user.username}
+                    className="h-10 w-10 rounded-xl object-cover ring-2 ring-primary/10 group-hover:ring-primary/20 transition-all"
                   />
-                  <label
-                    htmlFor="rememberMe"
-                    className="text-xs text-foreground/80 cursor-pointer select-none"
-                  >
-                    保存登录（重启后无需重新登录）
-                  </label>
-                </div>
-
-                {error && (
-                  <div className="rounded-xl bg-destructive/10 border border-destructive/20 px-4 py-3 animate-in fade-in slide-in-from-top-1 duration-200">
-                    <p className="text-xs text-destructive font-medium">
-                      {error}
-                    </p>
+                ) : (
+                  <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-muted to-muted/80 flex items-center justify-center shadow-sm group-hover:shadow transition-shadow">
+                    <LogIn className="w-5 h-5 text-muted-foreground" />
                   </div>
                 )}
-
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full rounded-xl bg-foreground text-background py-3 text-sm font-semibold hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed transition-all duration-200 shadow-sm hover:shadow-md active:scale-[0.98] mt-6"
-                >
-                  {loading ? (
-                    <span className="flex items-center justify-center gap-2">
-                      <span className="h-4 w-4 border-2 border-background/30 border-t-background rounded-full animate-spin" />
-                      登录中...
-                    </span>
-                  ) : (
-                    "立即登录"
-                  )}
-                </button>
-              </form>
-
-              {/* 底部提示 */}
-              <div className="mt-6 pt-4 border-t border-border/30">
-                <p className="text-xs text-center text-muted-foreground">
-                  还没有账号？{" "}
-                  <button
-                    onClick={() => openUrl("https://www.chmlfrp.net")}
-                    className="text-foreground font-medium hover:underline"
-                  >
-                    立即注册
-                  </button>
+              </div>
+              <div
+                className="overflow-hidden whitespace-nowrap"
+                style={{
+                  opacity: collapsed ? 0 : 1,
+                  transform: collapsed ? "translateX(-10px)" : "translateX(0)",
+                  transition: "all 0.4s cubic-bezier(0.4, 0, 0.2, 1)",
+                }}
+              >
+                <h1 className="text-sm font-semibold text-foreground truncate">
+                  {user?.username ?? "未登录"}
+                </h1>
+                <p className="text-[11px] text-muted-foreground truncate">
+                  {user?.usergroup ?? "点击登录"}
                 </p>
               </div>
-            </DialogPrimitive.Content>
-          </DialogPortal>
-        </Dialog>
+            </button>
+
+            {user && userMenuOpen && (
+              <div
+                className={cn(
+                  "absolute left-3 right-3 bottom-full mb-2 rounded-2xl border border-border/40 shadow-2xl z-[100] overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-200",
+                  isFrosted
+                    ? "bg-card/98 backdrop-blur-md"
+                    : isTranslucent
+                      ? "bg-card/85"
+                      : "bg-card",
+                )}
+                style={
+                  isFrosted
+                    ? {
+                        backdropFilter: "blur(12px)",
+                        WebkitBackdropFilter: "blur(12px)",
+                      }
+                    : undefined
+                }
+              >
+                <div className="px-4 py-3 bg-foreground/[0.02] border-b border-border/30">
+                  <div className="flex items-center gap-3">
+                    {user.userimg ? (
+                      <img
+                        src={user.userimg}
+                        alt={user.username}
+                        className="h-10 w-10 rounded-lg object-cover ring-2 ring-foreground/10"
+                      />
+                    ) : (
+                      <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-foreground/90 to-foreground/70 flex items-center justify-center shadow-sm">
+                        <User className="w-5 h-5 text-background" />
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-sm font-semibold text-foreground truncate">
+                        {user.username}
+                      </h3>
+                      <p className="text-[11px] text-muted-foreground truncate">
+                        {user.usergroup}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-1.5">
+                  <button
+                    className="w-full text-left text-sm text-foreground px-3 py-2.5 rounded-lg hover:bg-destructive/10 hover:text-destructive transition-all duration-200 flex items-center gap-2.5 group"
+                    onClick={() => {
+                      onUserChange(null);
+                      setUserMenuOpen(false);
+                      clearStoredUser();
+                      onTabChange("home");
+                    }}
+                  >
+                    <LogOut className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
+                    <span className="font-medium">退出登录</span>
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
-    </div>
+      {LoginDialog}
+    </>
   );
+
 }

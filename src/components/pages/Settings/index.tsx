@@ -12,7 +12,9 @@ import {
   getInitialEffectType,
   getInitialVideoStartSound,
   getInitialVideoVolume,
+  getInitialSidebarMode,
   type EffectType,
+  type SidebarMode,
 } from "./utils";
 import { AppearanceSection } from "./components/AppearanceSection";
 import { NetworkSection } from "./components/NetworkSection";
@@ -77,6 +79,9 @@ export function Settings() {
   const [videoVolume, setVideoVolume] = useState<number>(() =>
     getInitialVideoVolume(),
   );
+  const [sidebarMode, setSidebarMode] = useState<SidebarMode>(() =>
+    getInitialSidebarMode(),
+  );
 
   useEffect(() => {
     localStorage.setItem("bypassProxy", bypassProxy.toString());
@@ -101,6 +106,16 @@ export function Settings() {
     localStorage.setItem("videoVolume", videoVolume.toString());
     window.dispatchEvent(new Event("videoVolumeChanged"));
   }, [videoVolume]);
+
+  useEffect(() => {
+    localStorage.setItem("sidebarMode", sidebarMode);
+    window.dispatchEvent(new Event("sidebarModeChanged"));
+    
+    // 如果切换到悬浮菜单模式，自动开启顶部栏
+    if (sidebarMode === "floating" && !showTitleBar) {
+      setShowTitleBar(true);
+    }
+  }, [sidebarMode]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleUpdate = useCallback(async () => {
     if (!updateInfo) return;
@@ -160,6 +175,8 @@ export function Settings() {
           setVideoStartSound={setVideoStartSound}
           videoVolume={videoVolume}
           setVideoVolume={setVideoVolume}
+          sidebarMode={sidebarMode}
+          setSidebarMode={setSidebarMode}
           onSelectBackgroundImage={handleSelectBackgroundImage}
           onClearBackgroundImage={handleClearBackgroundImage}
         />

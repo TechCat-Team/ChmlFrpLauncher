@@ -4,7 +4,7 @@ version = 3
 
 [[package]]
 name = "ChmlFrpLauncher"
-version = "0.3.9"
+version = "0.3.12"
 dependencies = [
  "chrono",
  "futures-util",
@@ -4922,7 +4922,6 @@ dependencies = [
  "bytes",
  "libc",
  "mio",
- "parking_lot",
  "pin-project-lite",
  "signal-hook-registry",
  "socket2",

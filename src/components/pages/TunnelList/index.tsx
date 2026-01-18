@@ -13,6 +13,7 @@ import { Network } from "lucide-react";
 import { useTunnelList } from "./hooks/useTunnelList";
 import { useTunnelProgress } from "./hooks/useTunnelProgress";
 import { useTunnelToggle } from "./hooks/useTunnelToggle";
+import { useAutoStartTunnels } from "./hooks/useAutoStartTunnels";
 import { TunnelCard } from "./components/TunnelCard";
 import { CreateTunnelDialog } from "./components/CreateTunnelDialog";
 
@@ -62,6 +63,14 @@ export function TunnelList() {
   useEffect(() => {
     clearStartingTunnelRef.current = clearStartingTunnel;
   }, [clearStartingTunnel]);
+
+  // 自动启动隧道
+  useAutoStartTunnels({
+    tunnels,
+    loading,
+    runningTunnels,
+    onToggle: handleToggle,
+  });
 
   return (
     <div className="flex flex-col h-full gap-4">

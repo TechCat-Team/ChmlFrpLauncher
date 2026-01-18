@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { Sidebar } from "@/components/Sidebar";
 import { TitleBar } from "@/components/TitleBar";
 import { Home } from "@/components/pages/Home";
@@ -20,11 +20,13 @@ import { useUpdateCheck } from "@/components/App/hooks/useUpdateCheck";
 import { updateService } from "@/services/updateService";
 import { toast } from "sonner";
 import { BackgroundLayer } from "@/components/App/components/BackgroundLayer";
+import { getInitialSidebarMode } from "@/components/pages/Settings/utils";
+import type { SidebarMode } from "@/components/pages/Settings/types";
 
 function App() {
   const [activeTab, setActiveTab] = useState("home");
   const [user, setUser] = useState<StoredUser | null>(() => getStoredUser());
-  const appContainerRef = useRef<HTMLDivElement>(null);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() => true);
   const isMacOS =
     typeof navigator !== "undefined" &&
     navigator.platform.toUpperCase().indexOf("MAC") >= 0;
@@ -34,6 +36,10 @@ function App() {
   const { showCloseConfirmDialog, setShowCloseConfirmDialog } =
     useWindowEvents();
   const { showTitleBar } = useTitleBar();
+
+  const SIDEBAR_LEFT = isMacOS && !showTitleBar ? 10 : 15; // px
+  const SIDEBAR_COLLAPSED_WIDTH = Math.round(20 * 5 / 3 * 2); // ~66 px (double the previous collapsed width)
+  const appContainerRef = useRef<HTMLDivElement>(null);
   const {
     backgroundImage,
     overlayOpacity,
@@ -54,6 +60,15 @@ function App() {
   const { showAntivirusWarning, setShowAntivirusWarning } = useFrpcDownload();
   const [isDownloadingUpdate, setIsDownloadingUpdate] = useState(false);
   const [downloadProgress, setDownloadProgress] = useState(0);
+  const [sidebarMode, setSidebarMode] = useState<SidebarMode>(() => getInitialSidebarMode());
+
+  useEffect(() => {
+    const handleSidebarModeChange = () => {
+      setSidebarMode(getInitialSidebarMode());
+    };
+    window.addEventListener("sidebarModeChanged", handleSidebarModeChange);
+    return () => window.removeEventListener("sidebarModeChanged", handleSidebarModeChange);
+  }, []);
 
   const handleTabChange = (tab: string) => {
     if (tab === "tunnels" && !user) return;
@@ -129,7 +144,7 @@ function App() {
     <>
       <div
         ref={appContainerRef}
-        className={`flex flex-col h-screen w-screen overflow-hidden text-foreground rounded-[12px] ${
+        className={`flex flex-col h-screen w-screen overflow-hidden text-foreground ${
           backgroundImage && effectType === "frosted"
             ? "frosted-glass-enabled"
             : ""
@@ -140,7 +155,7 @@ function App() {
         }`}
         style={{
           ...backgroundStyle(),
-          borderRadius: "12px",
+          borderRadius: "0",
           overflow: "hidden",
           position: "relative",
         }}
@@ -164,31 +179,79 @@ function App() {
             <TitleBar />
           </div>
         )}
-        <div
-          className="relative flex w-full flex-1 overflow-hidden rounded-b-[12px]"
-          style={{ zIndex: 10 }}
-        >
-          <Sidebar
-            activeTab={activeTab}
-            onTabChange={handleTabChange}
-            user={user}
-            onUserChange={setUser}
-          />
-
-          <div className="flex-1 flex flex-col overflow-hidden relative">
-            {isMacOS && !showTitleBar ? (
-              <div
-                data-tauri-drag-region
-                className="absolute top-0 left-0 right-0 h-8 z-10"
+        {sidebarMode === "floating" ? (
+          <>
+            {/* 悬浮侧边栏 - 绝对定位，占满窗口高度 */}
+            <div
+              className="absolute z-50"
+              style={{
+                left: `${SIDEBAR_LEFT}px`,
+                top: isMacOS && !showTitleBar ? "10px" : (!isMacOS || showTitleBar) ? "48px" : "12px",
+                bottom: "12px",
+              }}
+            >
+              <Sidebar
+                activeTab={activeTab}
+                onTabChange={handleTabChange}
+                user={user}
+                onUserChange={setUser}
+                collapsed={sidebarCollapsed}
+                onCollapseChange={setSidebarCollapsed}
+                collapsedWidth={SIDEBAR_COLLAPSED_WIDTH}
+                mode="floating"
               />
-            ) : null}
-            <div className="flex-1 overflow-auto p-6 md:p-8">
-              <div className="max-w-6xl mx-auto w-full h-full">
-                <div className="h-full flex flex-col">{renderContent()}</div>
+            </div>
+
+            {/* 主内容区域 - 绝对定位，从顶部开始 */}
+            <div 
+              className="absolute z-40 overflow-hidden rounded-b-[12px]"
+              style={{
+                left: `${SIDEBAR_LEFT + SIDEBAR_COLLAPSED_WIDTH}px`,
+                right: "0",
+                top: (!isMacOS || showTitleBar) ? "36px" : "0",
+                bottom: "0",
+              }}
+            >
+              {isMacOS && !showTitleBar ? (
+                <div
+                  data-tauri-drag-region
+                  className="absolute top-0 left-0 right-0 h-8 z-10"
+                />
+              ) : null}
+              <div className="h-full overflow-auto px-6 pt-4 pb-6 md:px-8 md:pt-6 md:pb-8">
+                <div className="max-w-6xl mx-auto w-full h-full">
+                  <div className="h-full flex flex-col">
+                    {renderContent()}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </>
+        ) : (
+          /* 经典侧边栏布局 */
+          <div className="relative flex flex-1 overflow-hidden">
+            <Sidebar
+              activeTab={activeTab}
+              onTabChange={handleTabChange}
+              user={user}
+              onUserChange={setUser}
+              mode="classic"
+            />
+            <div className="flex-1 flex flex-col overflow-hidden relative">
+              {isMacOS && !showTitleBar ? (
+                <div
+                  data-tauri-drag-region
+                  className="h-8 flex-shrink-0 w-full"
+                />
+              ) : null}
+              <div className={`flex-1 overflow-auto px-6 pb-6 md:px-8 md:pb-8 ${(!isMacOS || showTitleBar) ? "pt-4 md:pt-6" : "pt-0"}`}>
+                <div className="max-w-6xl mx-auto w-full h-full">
+                  <div className="h-full flex flex-col">{renderContent()}</div>
+                </div>
               </div>
             </div>
           </div>
-        </div>
+        )}
       </div>
 
       <AntivirusWarningDialog
