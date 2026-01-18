@@ -38,7 +38,7 @@ function App() {
   const { showTitleBar } = useTitleBar();
 
   const SIDEBAR_LEFT = isMacOS && !showTitleBar ? 10 : 15; // px
-  const SIDEBAR_COLLAPSED_WIDTH = Math.round(20 * 5 / 3 * 2); // ~66 px (double the previous collapsed width)
+  const SIDEBAR_COLLAPSED_WIDTH = Math.round(((20 * 5) / 3) * 2); // ~66 px (double the previous collapsed width)
   const appContainerRef = useRef<HTMLDivElement>(null);
   const {
     backgroundImage,
@@ -60,14 +60,17 @@ function App() {
   const { showAntivirusWarning, setShowAntivirusWarning } = useFrpcDownload();
   const [isDownloadingUpdate, setIsDownloadingUpdate] = useState(false);
   const [downloadProgress, setDownloadProgress] = useState(0);
-  const [sidebarMode, setSidebarMode] = useState<SidebarMode>(() => getInitialSidebarMode());
+  const [sidebarMode, setSidebarMode] = useState<SidebarMode>(() =>
+    getInitialSidebarMode(),
+  );
 
   useEffect(() => {
     const handleSidebarModeChange = () => {
       setSidebarMode(getInitialSidebarMode());
     };
     window.addEventListener("sidebarModeChanged", handleSidebarModeChange);
-    return () => window.removeEventListener("sidebarModeChanged", handleSidebarModeChange);
+    return () =>
+      window.removeEventListener("sidebarModeChanged", handleSidebarModeChange);
   }, []);
 
   const handleTabChange = (tab: string) => {
@@ -186,7 +189,12 @@ function App() {
               className="absolute z-50"
               style={{
                 left: `${SIDEBAR_LEFT}px`,
-                top: isMacOS && !showTitleBar ? "10px" : (!isMacOS || showTitleBar) ? "48px" : "12px",
+                top:
+                  isMacOS && !showTitleBar
+                    ? "10px"
+                    : !isMacOS || showTitleBar
+                      ? "48px"
+                      : "12px",
                 bottom: "12px",
               }}
             >
@@ -203,12 +211,12 @@ function App() {
             </div>
 
             {/* 主内容区域 - 绝对定位，从顶部开始 */}
-            <div 
+            <div
               className="absolute z-40 overflow-hidden rounded-b-[12px]"
               style={{
                 left: `${SIDEBAR_LEFT + SIDEBAR_COLLAPSED_WIDTH}px`,
                 right: "0",
-                top: (!isMacOS || showTitleBar) ? "36px" : "0",
+                top: !isMacOS || showTitleBar ? "36px" : "0",
                 bottom: "0",
               }}
             >
@@ -220,9 +228,7 @@ function App() {
               ) : null}
               <div className="h-full overflow-auto px-6 pt-4 pb-6 md:px-8 md:pt-6 md:pb-8">
                 <div className="max-w-6xl mx-auto w-full h-full">
-                  <div className="h-full flex flex-col">
-                    {renderContent()}
-                  </div>
+                  <div className="h-full flex flex-col">{renderContent()}</div>
                 </div>
               </div>
             </div>
@@ -244,7 +250,9 @@ function App() {
                   className="h-8 flex-shrink-0 w-full"
                 />
               ) : null}
-              <div className={`flex-1 overflow-auto px-6 pb-6 md:px-8 md:pb-8 ${(!isMacOS || showTitleBar) ? "pt-4 md:pt-6" : "pt-0"}`}>
+              <div
+                className={`flex-1 overflow-auto px-6 pb-6 md:px-8 md:pb-8 ${!isMacOS || showTitleBar ? "pt-4 md:pt-6" : "pt-0"}`}
+              >
                 <div className="max-w-6xl mx-auto w-full h-full">
                   <div className="h-full flex flex-col">{renderContent()}</div>
                 </div>

@@ -34,7 +34,9 @@ export function TunnelList() {
     [tunnels],
   );
 
-  const clearStartingTunnelRef = useRef<((tunnelKey: string) => void) | null>(null);
+  const clearStartingTunnelRef = useRef<((tunnelKey: string) => void) | null>(
+    null,
+  );
 
   const handleTunnelStartSuccess = useCallback((tunnelKey: string) => {
     clearStartingTunnelRef.current?.(tunnelKey);
@@ -53,12 +55,13 @@ export function TunnelList() {
       handleTunnelStartError,
     );
 
-  const { togglingTunnels, handleToggle, clearStartingTunnel } = useTunnelToggle({
-    setTunnelProgress,
-    setRunningTunnels,
-    timeoutRefs,
-    successTimeoutRefs,
-  });
+  const { togglingTunnels, handleToggle, clearStartingTunnel } =
+    useTunnelToggle({
+      setTunnelProgress,
+      setRunningTunnels,
+      timeoutRefs,
+      successTimeoutRefs,
+    });
 
   useEffect(() => {
     clearStartingTunnelRef.current = clearStartingTunnel;

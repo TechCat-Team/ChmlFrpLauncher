@@ -922,7 +922,7 @@ export function CreateTunnelDialog({
                   <div
                     className={cn(
                       "overflow-hidden transition-all duration-300 ease-in-out",
-                      (portType === "HTTP" || portType === "HTTPS")
+                      portType === "HTTP" || portType === "HTTPS"
                         ? "max-h-[200px] opacity-100"
                         : "max-h-0 opacity-0",
                     )}
@@ -942,7 +942,11 @@ export function CreateTunnelDialog({
                         />
                       </svg>
                       <p className="text-xs text-blue-700 dark:text-blue-300 leading-relaxed">
-                        使用{portType === "HTTP" || portType === "HTTPS" ? portType : "HTTP"}隧道需要将您的{" "}
+                        使用
+                        {portType === "HTTP" || portType === "HTTPS"
+                          ? portType
+                          : "HTTP"}
+                        隧道需要将您的{" "}
                         <span className="font-mono font-semibold">
                           {domain || "您的域名"}
                         </span>{" "}

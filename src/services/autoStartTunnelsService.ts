@@ -55,7 +55,9 @@ export class AutoStartTunnelsService {
    */
   async getAutoStartTunnels(): Promise<Array<[string, string]>> {
     try {
-      const result = await invoke<Array<[string, string]>>("get_auto_start_tunnels");
+      const result = await invoke<Array<[string, string]>>(
+        "get_auto_start_tunnels",
+      );
       return result;
     } catch (error) {
       console.error("获取自动启动隧道列表失败:", error);

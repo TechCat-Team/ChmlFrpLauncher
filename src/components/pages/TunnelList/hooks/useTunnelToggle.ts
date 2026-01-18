@@ -49,7 +49,11 @@ export function useTunnelToggle({
       return;
     }
 
-    if (enabled && startingTunnelKeyRef.current !== null && startingTunnelKeyRef.current !== tunnelKey) {
+    if (
+      enabled &&
+      startingTunnelKeyRef.current !== null &&
+      startingTunnelKeyRef.current !== tunnelKey
+    ) {
       toast.info("请等待当前隧道启动完成后再启动其他隧道", {
         duration: 3000,
       });

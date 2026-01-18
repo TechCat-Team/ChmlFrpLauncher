@@ -40,18 +40,20 @@ const preventTextSelection = () => {
     const selection = window.getSelection();
     const activeElement = document.activeElement as HTMLElement;
     const target = e.target as HTMLElement;
-    
+
     if (
       isInputElement(activeElement) ||
       isAllowCopyElement(target) ||
-      (selection && selection.rangeCount > 0 && (
-        isInputElement(selection.anchorNode?.parentElement as HTMLElement) ||
-        isAllowCopyElement(selection.anchorNode?.parentElement as HTMLElement)
-      ))
+      (selection &&
+        selection.rangeCount > 0 &&
+        (isInputElement(selection.anchorNode?.parentElement as HTMLElement) ||
+          isAllowCopyElement(
+            selection.anchorNode?.parentElement as HTMLElement,
+          )))
     ) {
       return;
     }
-    
+
     e.preventDefault();
     e.clipboardData?.setData("text/plain", "");
   });
@@ -60,18 +62,20 @@ const preventTextSelection = () => {
     const selection = window.getSelection();
     const activeElement = document.activeElement as HTMLElement;
     const target = e.target as HTMLElement;
-    
+
     if (
       isInputElement(activeElement) ||
       isAllowCopyElement(target) ||
-      (selection && selection.rangeCount > 0 && (
-        isInputElement(selection.anchorNode?.parentElement as HTMLElement) ||
-        isAllowCopyElement(selection.anchorNode?.parentElement as HTMLElement)
-      ))
+      (selection &&
+        selection.rangeCount > 0 &&
+        (isInputElement(selection.anchorNode?.parentElement as HTMLElement) ||
+          isAllowCopyElement(
+            selection.anchorNode?.parentElement as HTMLElement,
+          )))
     ) {
       return;
     }
-    
+
     e.preventDefault();
     e.clipboardData?.setData("text/plain", "");
   });

@@ -25,9 +25,21 @@ interface CommunityGroupsProps {
 }
 
 const defaultQQGroups: QQGroup[] = [
-  { name: "QQ一群", url: "https://qm.qq.com/q/x2OFaogI2k", number: "992067118" },
-  { name: "QQ二群", url: "https://qm.qq.com/q/sEZl1fea40", number: "592908249" },
-  { name: "QQ三群", url: "https://qm.qq.com/q/RGALEU5cA0", number: "838521529" },
+  {
+    name: "QQ一群",
+    url: "https://qm.qq.com/q/x2OFaogI2k",
+    number: "992067118",
+  },
+  {
+    name: "QQ二群",
+    url: "https://qm.qq.com/q/sEZl1fea40",
+    number: "592908249",
+  },
+  {
+    name: "QQ三群",
+    url: "https://qm.qq.com/q/RGALEU5cA0",
+    number: "838521529",
+  },
 ];
 
 const defaultWeChatGroup: WeChatGroup = {
@@ -53,11 +65,7 @@ export function CommunityGroups({
             className="h-auto py-3 px-4 flex flex-col items-start gap-1 !bg-card dark:!bg-card hover:bg-accent/50 transition-all group"
             asChild
           >
-            <a
-              href={group.url}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
+            <a href={group.url} target="_blank" rel="noopener noreferrer">
               <div className="flex items-center justify-between w-full">
                 <span className="font-medium">{group.name}</span>
               </div>

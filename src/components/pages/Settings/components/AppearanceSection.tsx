@@ -113,7 +113,7 @@ export function AppearanceSection({
         pseudoElement: "::view-transition-new(root)",
       },
     );
-    
+
     animation.addEventListener("finish", () => {
       isViewTransitionRef.current = false;
     });

@@ -36,7 +36,7 @@ export function UserInfoCard({ userInfo }: UserInfoCardProps) {
 
       {userInfo ? (
         <div className="space-y-3 flex-1">
-                    <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-3 gap-3">
             <div className="flex flex-col items-center gap-1">
               <div className="flex items-center gap-1 text-muted-foreground">
                 <Network className="w-3 h-3" />
@@ -67,7 +67,7 @@ export function UserInfoCard({ userInfo }: UserInfoCardProps) {
               </span>
             </div>
           </div>
-          
+
           <div className="space-y-1.5 mt-4">
             <div className="flex items-center justify-between text-xs text-muted-foreground">
               <span className="flex items-center gap-1.5">

@@ -8,10 +8,7 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "format": "prettier --write .",
-    "tauri:dev": "tauri dev",
-    "tauri:build": "tauri build",
-    "tauri:dev:npm": "tauri dev --config '{\"build\":{\"beforeDevCommand\":\"npm run dev\",\"beforeBuildCommand\":\"npm run build\"}}'"
+    "format": "prettier --write ."
   },
   "dependencies": {
     "@radix-ui/react-accordion": "^1.2.12",
