@@ -15,8 +15,8 @@ jobs:
       matrix:
         include:
           - platform: macos-latest
-          - platform: windows-latest
           - platform: ubuntu-latest
+          - platform: windows-latest
 
     steps:
       - name: Checkout
@@ -35,12 +35,6 @@ jobs:
           node-version: 20
           cache: pnpm
 
-      - name: Install frontend dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Build frontend
-        run: pnpm build
-
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
 
@@ -51,7 +45,7 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             src-tauri/target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('src-tauri/Cargo.lock') }}
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
             ${{ runner.os }}-cargo-
 
@@ -59,17 +53,7 @@ jobs:
         uses: mozilla-actions/sccache-action@v0.0.6
 
       - name: Enable sccache
-        run: |
-          echo "RUSTC_WRAPPER=sccache" >> $GITHUB_ENV
-          echo "SCCACHE_DIR=$RUNNER_TEMP/sccache" >> $GITHUB_ENV
-
-      - name: Cache sccache
-        uses: actions/cache@v4
-        with:
-          path: ${{ runner.temp }}/sccache
-          key: ${{ runner.os }}-sccache-${{ hashFiles('src-tauri/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-sccache-
+        run: echo "RUSTC_WRAPPER=sccache" >> $GITHUB_ENV
 
       - name: Install Linux dependencies
         if: matrix.platform == 'ubuntu-latest'
@@ -86,32 +70,20 @@ jobs:
             libayatana-appindicator3-dev \
             librsvg2-dev
 
-      - name: Windows linker optimization
-        if: matrix.platform == 'windows-latest'
-        run: |
-          echo "RUSTFLAGS=-C linker=lld-link -C link-arg=/OPT:REF -C link-arg=/OPT:ICF" >> $GITHUB_ENV
-          echo "TAURI_BUNDLE_SKIP_WEBVIEW2_DOWNLOAD=true" >> $GITHUB_ENV
+      - name: Install frontend dependencies
+        run: pnpm install --frozen-lockfile
 
-      - name: Extract changelog
+      - name: Extract changelog for current version
         id: changelog
         shell: bash
         run: |
           VERSION="${GITHUB_REF_NAME}"
-
-          if [ ! -f CHANGELOG.md ]; then
-            echo "- 本版本未提供更新日志。" > RELEASE_NOTES.md
-          else
-            awk "
-              /^## ${VERSION}$/ {flag=1; next}
-              /^## v/ && flag {exit}
-              flag {print}
-            " CHANGELOG.md > RELEASE_NOTES.md
-          fi
-
-          if [ ! -s RELEASE_NOTES.md ]; then
-            echo "- 本版本未提供详细更新说明。" > RELEASE_NOTES.md
-          fi
-
+          echo "Extracting changelog for $VERSION"
+          awk "
+            /^## ${VERSION}$/ {flag=1; next}
+            /^## v/ && flag {exit}
+            flag {print}
+          " CHANGELOG.md > RELEASE_NOTES.md
           echo "changelog<<EOF" >> $GITHUB_OUTPUT
           cat RELEASE_NOTES.md >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
@@ -124,13 +96,13 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
           RUSTC_WRAPPER: sccache
         with:
+          includeRelease: true
           tagName: ${{ github.ref_name }}
-          releaseName: "ChmlFrpLauncher ${{ github.ref_name }}"
+          releaseName: 'ChmlFrpLauncher ${{ github.ref_name }}'
           releaseBody: |
             ## 🚀 更新内容
 
             ${{ steps.changelog.outputs.changelog }}
-          includeUpdaterJson: ${{ matrix.platform == 'macos-latest' }}
-          includeRelease: ${{ matrix.platform == 'macos-latest' }}
+
           releaseDraft: false
           prerelease: false
