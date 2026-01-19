@@ -29,13 +29,7 @@ export function Settings() {
     typeof navigator !== "undefined" &&
     navigator.platform.toUpperCase().indexOf("MAC") >= 0;
 
-  const {
-    followSystem,
-    setFollowSystem,
-    theme,
-    setTheme,
-    isViewTransitionRef,
-  } = useTheme();
+  const { followSystem, setFollowSystem, theme, setTheme, isViewTransitionRef } = useTheme();
 
   const {
     backgroundImage,
@@ -119,7 +113,7 @@ export function Settings() {
 
     // 如果切换到悬浮菜单模式，自动开启顶部栏
     if (sidebarMode === "floating" && !showTitleBar) {
-      setShowTitleBar(true);
+      setTimeout(() => setShowTitleBar(true), 0);
     }
   }, [sidebarMode]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -154,12 +148,12 @@ export function Settings() {
   }, [isDownloadingUpdate, setUpdateInfo]);
 
   return (
-    <div className="flex flex-col h-full gap-4">
-      <div className="flex items-center justify-between">
+    <div className="flex flex-col h-full overflow-hidden">
+      <div className="flex items-center justify-between px-1 py-4 shrink-0 transition-colors duration-200">
         <h1 className="text-xl font-medium text-foreground">设置</h1>
       </div>
 
-      <div className="flex-1 overflow-auto space-y-6">
+      <div className="flex-1 overflow-auto space-y-6 scrollbar-hide">
         <AppearanceSection
           isMacOS={isMacOS}
           followSystem={followSystem}

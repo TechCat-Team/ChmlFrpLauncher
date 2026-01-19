@@ -27,7 +27,7 @@ export function useDeepLink(
   setUser: (user: StoredUser | null) => void,
 ) {
   const pendingDeepLinkRef = useRef<DeepLinkData | null>(null);
-  const isAppReadyRef = useRef(false);
+  const isAppReady = true;
 
   const handleDeepLinkInternal = useCallback(
     async (data: DeepLinkData) => {
@@ -194,7 +194,7 @@ export function useDeepLink(
 
   useEffect(() => {
     const wrappedHandler = async (data: DeepLinkData) => {
-      if (!isAppReadyRef.current) {
+      if (!isAppReady) {
         pendingDeepLinkRef.current = data;
         return;
       }
@@ -211,7 +211,7 @@ export function useDeepLink(
 
   useEffect(() => {
     if (
-      isAppReadyRef.current &&
+      isAppReady &&
       pendingDeepLinkRef.current &&
       user?.usertoken
     ) {
@@ -223,10 +223,7 @@ export function useDeepLink(
     }
   }, [user?.usertoken, handleDeepLinkInternal]);
 
-  useEffect(() => {
-    // 标记应用已准备就绪
-    isAppReadyRef.current = true;
-  }, []);
 
-  return { isAppReady: isAppReadyRef.current };
+
+  return { isAppReady };
 }

@@ -10,6 +10,8 @@ import { FeedbackCard } from "./components/FeedbackCard";
 import { CommunityGroups } from "./components/CommunityGroups";
 import type { HomeProps } from "./types";
 
+import { ScrollArea } from "@/components/ui/scroll-area";
+
 export function Home({ user, onUserChange }: HomeProps) {
   const { userInfo } = useUserInfo(user, onUserChange);
   const { flowData, flowLoading, flowError } = useFlowData(userInfo);
@@ -42,34 +44,36 @@ export function Home({ user, onUserChange }: HomeProps) {
   );
 
   return (
-    <div className="flex flex-col gap-4 h-full">
-      <WelcomeHeader
-        userInfo={userInfo}
-        signInInfo={signInInfo}
-        signInInfoHover={signInInfoHover}
-        signInInfoLoading={signInInfoLoading}
-        signInInfoError={signInInfoError}
-        signInInfoVisible={signInInfoVisible}
-        signInInfoClosing={signInInfoClosing}
-        onMouseEnter={handleMouseEnter}
-        onMouseLeave={handleMouseLeave}
-        animatedTotalPoints={animatedTotalPoints}
-        animatedTotalSignIns={animatedTotalSignIns}
-        animatedCountOfRecords={animatedCountOfRecords}
-      />
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 flex-1">
-        <UserInfoCard userInfo={userInfo} />
-        <FAQSection />
-        <FlowDataCard
-          flowData={flowData}
-          flowLoading={flowLoading}
-          flowError={flowError}
+    <ScrollArea className="h-full">
+      <div className="flex flex-col gap-4 pb-4">
+        <WelcomeHeader
+          userInfo={userInfo}
+          signInInfo={signInInfo}
+          signInInfoHover={signInInfoHover}
+          signInInfoLoading={signInInfoLoading}
+          signInInfoError={signInInfoError}
+          signInInfoVisible={signInInfoVisible}
+          signInInfoClosing={signInInfoClosing}
+          onMouseEnter={handleMouseEnter}
+          onMouseLeave={handleMouseLeave}
+          animatedTotalPoints={animatedTotalPoints}
+          animatedTotalSignIns={animatedTotalSignIns}
+          animatedCountOfRecords={animatedCountOfRecords}
         />
-        <FeedbackCard />
-      </div>
 
-      <CommunityGroups />
-    </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <UserInfoCard userInfo={userInfo} />
+          <FAQSection />
+          <FlowDataCard
+            flowData={flowData}
+            flowLoading={flowLoading}
+            flowError={flowError}
+          />
+          <FeedbackCard />
+        </div>
+
+        <CommunityGroups />
+      </div>
+    </ScrollArea>
   );
 }

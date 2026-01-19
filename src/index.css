@@ -83,12 +83,12 @@
 .dark {
   --background: #0a0b0d;
   --foreground: #f3f4f6;
-  --card: #0f1014;
+  --card: #16181d;
   --card-foreground: #f3f4f6;
-  --popover: #0f1014;
+  --popover: #16181d;
   --popover-foreground: #f3f4f6;
-  --primary: #f3f4f6;
-  --primary-foreground: #0a0b0d;
+  --primary: #0b0d11;
+  --primary-foreground: #f9fafb;
   --secondary: #13151b;
   --secondary-foreground: #f3f4f6;
   --muted: #13151b;
@@ -104,12 +104,12 @@
   --chart-3: #9ca3af;
   --chart-4: #6b7280;
   --chart-5: #4b5563;
-  --sidebar: #0a0b0d;
-  --sidebar-rgb: 10 11 13;
+  --sidebar: #111318;
+  --sidebar-rgb: 17 19 24;
   --sidebar-foreground: #f3f4f6;
   --sidebar-primary: #f3f4f6;
   --sidebar-primary-foreground: #0a0b0d;
-  --sidebar-accent: #0f1014;
+  --sidebar-accent: #16181d;
   --sidebar-accent-foreground: #f3f4f6;
   --sidebar-border: #1b1d24;
   --sidebar-ring: #f3f4f6;
@@ -124,6 +124,7 @@
     -ms-user-select: none;
     user-select: none;
   }
+
   /* 允许输入元素选择文本 */
   input[type="text"],
   input[type="password"],
@@ -138,6 +139,7 @@
     -ms-user-select: text;
     user-select: text;
   }
+
   /* 允许带有 data-allow-copy 属性的元素选择文本 */
   [data-allow-copy="true"],
   [data-allow-copy="true"] * {
@@ -146,6 +148,7 @@
     -ms-user-select: text;
     user-select: text;
   }
+
   html,
   body {
     @apply bg-transparent text-foreground antialiased;
@@ -154,14 +157,17 @@
     overflow: hidden;
     background-color: var(--background);
   }
+
   /* 隐藏滚动条 */
   * {
     scrollbar-width: none;
     -ms-overflow-style: none;
   }
+
   *::-webkit-scrollbar {
     display: none;
   }
+
   #root {
     height: 100vh;
     width: 100vw;
@@ -170,6 +176,7 @@
     -webkit-app-region: no-drag;
     background-color: var(--background);
   }
+
   /* 隐藏 macOS 系统标题栏文本 */
   body[data-tauri-platform="macos"] .titlebar {
     display: none;
@@ -195,6 +202,7 @@
 }
 
 @layer utilities {
+
   /* 平滑滚动 */
   .smooth-scroll {
     scroll-behavior: smooth;
@@ -206,6 +214,7 @@
       transform: translateY(0.5rem);
       opacity: 0;
     }
+
     to {
       transform: translateY(0);
       opacity: 1;
@@ -244,6 +253,7 @@
     from {
       opacity: 0;
     }
+
     to {
       opacity: 1;
     }
@@ -254,6 +264,7 @@
       transform: scale(0.95);
       opacity: 0;
     }
+
     to {
       transform: scale(1);
       opacity: 1;
@@ -265,6 +276,7 @@
       transform: translateY(1rem);
       opacity: 0;
     }
+
     to {
       transform: translateY(0);
       opacity: 1;
@@ -276,6 +288,7 @@
       transform: translateY(-0.25rem);
       opacity: 0;
     }
+
     to {
       transform: translateY(0);
       opacity: 1;
@@ -288,6 +301,7 @@
       transform: translateY(-0.5rem);
       opacity: 0;
     }
+
     to {
       transform: translateY(0);
       opacity: 1;
@@ -299,6 +313,7 @@
       transform: scale(0.95);
       opacity: 0;
     }
+
     to {
       transform: scale(1);
       opacity: 1;
@@ -310,6 +325,7 @@
       transform: translateY(0.5rem);
       opacity: 0;
     }
+
     to {
       transform: translateY(0);
       opacity: 1;
@@ -321,6 +337,7 @@
       opacity: 0;
       transform: translateY(0.25rem);
     }
+
     to {
       opacity: 1;
       transform: translateY(0);
@@ -332,6 +349,7 @@
       opacity: 1;
       transform: translateY(0) scale(1);
     }
+
     to {
       opacity: 0;
       transform: translateY(-0.5rem) scale(0.95);
@@ -369,28 +387,30 @@
 
   /* 导航图标平滑过渡，避免收缩/展开时跳动 */
   .nav-icon {
-    transition:
-      transform 200ms cubic-bezier(0.4, 0, 0.2, 1),
-      margin 200ms cubic-bezier(0.4, 0, 0.2, 1);
+    transition: transform 200ms cubic-bezier(0.4, 0, 0.2, 1), margin 200ms cubic-bezier(0.4, 0, 0.2, 1);
     will-change: transform, margin;
     display: inline-block;
   }
 
   /* 彩虹曲线流动动画 */
   @keyframes rainbowCurveFlow1 {
+
     0%,
     100% {
       transform: translate(0, 0) rotate(0deg) scale(1);
       filter: hue-rotate(0deg) brightness(1.2);
     }
+
     25% {
       transform: translate(20px, -15px) rotate(45deg) scale(1.1);
       filter: hue-rotate(90deg) brightness(1.3);
     }
+
     50% {
       transform: translate(-10px, 25px) rotate(90deg) scale(0.9);
       filter: hue-rotate(180deg) brightness(1.1);
     }
+
     75% {
       transform: translate(15px, 10px) rotate(135deg) scale(1.05);
       filter: hue-rotate(270deg) brightness(1.25);
@@ -398,23 +418,28 @@
   }
 
   @keyframes rainbowCurveFlow2 {
+
     0%,
     100% {
       transform: translate(0, 0) rotate(0deg) scale(1);
       filter: hue-rotate(60deg) brightness(1.2);
     }
+
     20% {
       transform: translate(-25px, -10px) rotate(-45deg) scale(1.08);
       filter: hue-rotate(150deg) brightness(1.35);
     }
+
     40% {
       transform: translate(15px, 20px) rotate(-90deg) scale(0.92);
       filter: hue-rotate(240deg) brightness(1.15);
     }
+
     60% {
       transform: translate(-5px, -18px) rotate(-135deg) scale(1.03);
       filter: hue-rotate(330deg) brightness(1.28);
     }
+
     80% {
       transform: translate(22px, 8px) rotate(180deg) scale(1.12);
       filter: hue-rotate(60deg) brightness(1.4);
@@ -422,19 +447,23 @@
   }
 
   @keyframes rainbowCurveFlow3 {
+
     0%,
     100% {
       transform: translate(0, 0) rotate(0deg) scale(1);
       filter: hue-rotate(120deg) brightness(1.2);
     }
+
     30% {
       transform: translate(18px, 22px) rotate(60deg) scale(1.06);
       filter: hue-rotate(210deg) brightness(1.32);
     }
+
     60% {
       transform: translate(-22px, -8px) rotate(120deg) scale(0.94);
       filter: hue-rotate(300deg) brightness(1.18);
     }
+
     90% {
       transform: translate(8px, -20px) rotate(180deg) scale(1.04);
       filter: hue-rotate(30deg) brightness(1.26);
@@ -442,19 +471,23 @@
   }
 
   @keyframes rainbowCurveFlow4 {
+
     0%,
     100% {
       transform: translate(0, 0) rotate(0deg) scale(1);
       filter: hue-rotate(180deg) brightness(1.2);
     }
+
     15% {
       transform: translate(-20px, 15px) rotate(-30deg) scale(1.09);
       filter: hue-rotate(270deg) brightness(1.38);
     }
+
     45% {
       transform: translate(12px, -25px) rotate(-60deg) scale(0.91);
       filter: hue-rotate(0deg) brightness(1.12);
     }
+
     75% {
       transform: translate(-8px, 12px) rotate(-90deg) scale(1.02);
       filter: hue-rotate(90deg) brightness(1.24);
@@ -462,15 +495,18 @@
   }
 
   @keyframes rainbowCenterPulse {
+
     0%,
     100% {
       transform: scale(1) rotate(0deg);
       opacity: 0.3;
     }
+
     33% {
       transform: scale(1.2) rotate(120deg);
       opacity: 0.5;
     }
+
     66% {
       transform: scale(0.8) rotate(240deg);
       opacity: 0.2;
@@ -692,6 +728,26 @@
   .update-content p {
     @apply text-sm text-muted-foreground leading-relaxed;
   }
+}
+
+/* 滚动区域上下渐变遮罩 */
+.mask-scroller {
+  /* 使用 mask-image 实现上下边缘渐变消失 */
+  mask-image: linear-gradient(to bottom,
+      transparent 0px,
+      #000 40px,
+      #000 calc(100% - 40px),
+      transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom,
+      transparent 0px,
+      #000 40px,
+      #000 calc(100% - 40px),
+      transparent 100%);
+  /* 确保遮罩在滚动容器上生效 */
+  mask-size: 100% 100%;
+  -webkit-mask-size: 100% 100%;
+  mask-repeat: no-repeat;
+  -webkit-mask-repeat: no-repeat;
 }
 
 ::view-transition-old(root),

@@ -13,27 +13,24 @@ export function useUserInfo(
   user: StoredUser | null | undefined,
   onUserChange?: (user: StoredUser | null) => void,
 ) {
-  const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
-  const onUserChangeRef = useRef(onUserChange);
-  const isFirstLoadRef = useRef(true);
-
-  // 保持回调引用最新
-  useEffect(() => {
-    onUserChangeRef.current = onUserChange;
-  }, [onUserChange]);
-
-  // 初始化时如果有缓存数据，立即显示
-  useEffect(() => {
+  const [userInfo, setUserInfo] = useState<UserInfo | null>(() => {
     const storedUser = getStoredUser();
     if (
       storedUser?.usertoken &&
       homePageCache.userInfo &&
       homePageCache.userInfo.usertoken === storedUser.usertoken
     ) {
-      setUserInfo(homePageCache.userInfo);
-      isFirstLoadRef.current = false;
+      return homePageCache.userInfo;
     }
-  }, []);
+    return null;
+  });
+  const onUserChangeRef = useRef(onUserChange);
+  const isFirstLoadRef = useRef(!userInfo);
+
+  // 保持回调引用最新
+  useEffect(() => {
+    onUserChangeRef.current = onUserChange;
+  }, [onUserChange]);
 
   // 获取最新用户信息
   useEffect(() => {
