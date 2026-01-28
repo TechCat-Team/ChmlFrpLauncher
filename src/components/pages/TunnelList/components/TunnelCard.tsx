@@ -214,7 +214,7 @@ export function TunnelCard({
                   className="sr-only peer"
                 />
                 <div
-                  className={`w-9 h-5 bg-muted/50 rounded-full peer peer-checked:bg-foreground transition-all duration-300 ${isToggling ? "opacity-50 cursor-wait" : "cursor-pointer"}`}
+                  className={`w-9 h-5 bg-muted/50 dark:bg-foreground/12 rounded-full peer peer-checked:bg-foreground transition-all duration-300 ${isToggling ? "opacity-50 cursor-wait" : "cursor-pointer"}`}
                 ></div>
                 <div
                   className={`absolute left-[2px] top-[2px] w-4 h-4 bg-background rounded-full shadow-sm transition-all duration-300 peer-checked:translate-x-4 ${isToggling ? "scale-90" : ""}`}
