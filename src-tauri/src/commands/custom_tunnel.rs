@@ -19,6 +19,8 @@ pub struct CustomTunnel {
     pub server_port: Option<u16>,
     pub tunnels: Vec<String>,        // 配置文件中的隧道名列表
     pub tunnel_type: Option<String>, // 隧道类型（tcp/udp/http/https）
+    pub custom_domains: Option<String>, // HTTP/HTTPS: custom_domains
+    pub subdomain: Option<String>,      // HTTP/HTTPS: subdomain
     pub local_ip: Option<String>,
     pub local_port: Option<u16>,
     pub remote_port: Option<u16>,
@@ -75,6 +77,8 @@ pub async fn save_custom_tunnel(
         server_port: parsed_info.server_port,
         tunnels: parsed_info.tunnel_names,
         tunnel_type: parsed_info.tunnel_type,
+        custom_domains: parsed_info.custom_domains,
+        subdomain: parsed_info.subdomain,
         local_ip: parsed_info.local_ip,
         local_port: parsed_info.local_port,
         remote_port: parsed_info.remote_port,
@@ -107,7 +111,30 @@ pub async fn get_custom_tunnels(app_handle: tauri::AppHandle) -> Result<Vec<Cust
     let tunnels: Vec<CustomTunnel> =
         serde_json::from_str(&content).map_err(|e| format!("解析自定义隧道列表失败: {}", e))?;
 
-    Ok(tunnels)
+    let mut updated = Vec::with_capacity(tunnels.len());
+    for mut t in tunnels {
+        let config_path = app_dir.join(&t.config_file);
+        if let Ok(cfg) = fs::read_to_string(&config_path) {
+            if let Ok(parsed) = parse_ini_config(&cfg) {
+                t.server_addr = parsed.server_addr.or(t.server_addr);
+                t.server_port = parsed.server_port.or(t.server_port);
+                t.tunnels = if parsed.tunnel_names.is_empty() {
+                    t.tunnels
+                } else {
+                    parsed.tunnel_names
+                };
+                t.tunnel_type = parsed.tunnel_type.or(t.tunnel_type);
+                t.custom_domains = parsed.custom_domains.or(t.custom_domains);
+                t.subdomain = parsed.subdomain.or(t.subdomain);
+                t.local_ip = parsed.local_ip.or(t.local_ip);
+                t.local_port = parsed.local_port.or(t.local_port);
+                t.remote_port = parsed.remote_port.or(t.remote_port);
+            }
+        }
+        updated.push(t);
+    }
+
+    Ok(updated)
 }
 
 /// 删除自定义隧道
@@ -412,6 +439,8 @@ struct IniParsedInfo {
     server_port: Option<u16>,
     tunnel_names: Vec<String>,
     tunnel_type: Option<String>,
+    custom_domains: Option<String>,
+    subdomain: Option<String>,
     local_ip: Option<String>,
     local_port: Option<u16>,
     remote_port: Option<u16>,
@@ -423,6 +452,8 @@ fn parse_ini_config(content: &str) -> Result<IniParsedInfo, String> {
     let mut server_port = None;
     let mut tunnel_names = Vec::new();
     let mut tunnel_type = None;
+    let mut custom_domains = None;
+    let mut subdomain = None;
     let mut local_ip = None;
     let mut local_port = None;
     let mut remote_port = None;
@@ -470,6 +501,8 @@ fn parse_ini_config(content: &str) -> Result<IniParsedInfo, String> {
                 // 解析隧道段的配置
                 match key {
                     "type" => tunnel_type = Some(value.to_string()),
+                    "custom_domains" => custom_domains = Some(value.to_string()),
+                    "subdomain" => subdomain = Some(value.to_string()),
                     "local_ip" => local_ip = Some(value.to_string()),
                     "local_port" => local_port = value.parse::<u16>().ok(),
                     "remote_port" => remote_port = value.parse::<u16>().ok(),
@@ -488,6 +521,8 @@ fn parse_ini_config(content: &str) -> Result<IniParsedInfo, String> {
         server_port,
         tunnel_names,
         tunnel_type,
+        custom_domains,
+        subdomain,
         local_ip,
         local_port,
         remote_port,

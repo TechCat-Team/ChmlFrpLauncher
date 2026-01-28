@@ -18,7 +18,6 @@ import { customTunnelService } from "@/services/customTunnelService";
 import { autoStartTunnelsService } from "@/services/autoStartTunnelsService";
 import type { TunnelProgress, UnifiedTunnel } from "../types";
 import { toast } from "sonner";
-import { Monitor, Globe } from "lucide-react";
 
 interface TunnelCardProps {
   tunnel: UnifiedTunnel;
@@ -44,6 +43,57 @@ export function TunnelCard({
   const isCustom = tunnel.type === "custom";
   const isApi = tunnel.type === "api";
 
+  const extractFirstDomain = (raw?: string) => {
+    if (!raw) return "";
+    const candidates = raw
+      .split(/[,;\s]+/g)
+      .map((s) => s.trim())
+      .filter(Boolean);
+
+    for (const c of candidates) {
+      const m = c.match(/^[A-Za-z0-9.-]+/);
+      const domain = (m?.[0] || "").replace(/^\.+|\.+$/g, "");
+      if (domain) return domain;
+    }
+    return "";
+  };
+
+  const linkInfo = (() => {
+    if (isApi) {
+      const typeUpper = tunnel.data.type.toUpperCase();
+      const isHttp = typeUpper === "HTTP" || typeUpper === "HTTPS";
+
+      const display = isHttp
+        ? `${tunnel.data.dorp}`
+        : `${tunnel.data.ip}:${tunnel.data.dorp}`;
+
+      if (!isHttp) return { display, copy: display };
+
+      const protocol = typeUpper === "HTTPS" ? "https" : "http";
+      const copy = display.includes("://") ? display : `${protocol}://${display}`;
+      return { display, copy };
+    }
+
+    const customType = (tunnel.data.tunnel_type || "").toLowerCase();
+    const isHttpCustom = customType === "http" || customType === "https";
+
+    if (isHttpCustom) {
+      const firstDomain = extractFirstDomain(tunnel.data.custom_domains);
+      const host = firstDomain || tunnel.data.subdomain || "";
+      const display = host || tunnel.data.server_addr || "-";
+
+      const protocol = customType === "https" ? "https" : "http";
+      const copyHost = display !== "-" ? display : "";
+      const copy = copyHost ? `${protocol}://${copyHost}` : `${protocol}://`;
+      return { display, copy };
+    }
+
+    const port = tunnel.data.remote_port ?? tunnel.data.server_port;
+    const addr = tunnel.data.server_addr || "-";
+    const display = `${addr}:${port ?? "-"}`;
+    return { display, copy: display };
+  })();
+
   const [autoStartEnabled, setAutoStartEnabled] = useState(false);
 
   useEffect(() => {
@@ -66,20 +116,8 @@ export function TunnelCard({
   const handleCopyLink = async (e: React.MouseEvent) => {
     e.stopPropagation();
     try {
-      if (isApi) {
-        const isHttpType =
-          tunnel.data.type.toUpperCase() === "HTTP" ||
-          tunnel.data.type.toUpperCase() === "HTTPS";
-        const linkAddress = isHttpType
-          ? `${tunnel.data.dorp}`
-          : `${tunnel.data.ip}:${tunnel.data.dorp}`;
-        await navigator.clipboard.writeText(linkAddress);
-        toast.success("链接已复制");
-      } else {
-        const serverAddr = tunnel.data.server_addr || "未知";
-        await navigator.clipboard.writeText(serverAddr);
-        toast.success("服务器地址已复制");
-      }
+      await navigator.clipboard.writeText(linkInfo.copy || "未知");
+      toast.success("链接已复制");
     } catch (error) {
       console.error("Failed to copy:", error);
     }
@@ -184,7 +222,7 @@ export function TunnelCard({
               </label>
             </div>
 
-            <div className="space-y-2.5 pt-2 border-t border-border/30">
+            <div className="space-y-2.5 pt-2">
               {isApi ? (
                 <>
                   <div className="flex items-center justify-between text-xs group/item">
@@ -203,7 +241,7 @@ export function TunnelCard({
                       <span>链接</span>
                     </div>
                     <div className="flex items-center gap-1.5 min-w-0">
-                      <span className="font-mono text-foreground/80 truncate max-w-[120px]">
+                      <span className="font-mono text-foreground/80 truncate max-w-[160px]">
                         {tunnel.data.type.toUpperCase() === "HTTP" ||
                         tunnel.data.type.toUpperCase() === "HTTPS"
                           ? tunnel.data.dorp
@@ -216,7 +254,6 @@ export function TunnelCard({
                 <>
                   <div className="flex items-center justify-between text-xs">
                     <div className="flex items-center gap-2 text-muted-foreground">
-                      <Monitor className="w-3.5 h-3.5 opacity-70" />
                       <span>本地</span>
                     </div>
                     <span className="font-mono text-foreground/80">
@@ -224,16 +261,15 @@ export function TunnelCard({
                       {tunnel.data.local_port || "-"}
                     </span>
                   </div>
-                  <div className="flex items-center justify-between text-xs">
-                    <div className="flex items-center gap-2 text-muted-foreground">
-                      <Globe className="w-3.5 h-3.5 opacity-70" />
-                      <span>远程</span>
+                  <div
+                    className="flex items-center justify-between text-xs cursor-pointer group/link hover:bg-muted/30 -mx-2 px-2 py-1 rounded transition-colors"
+                    onClick={handleCopyLink}
+                  >
+                    <div className="flex items-center gap-2 text-muted-foreground group-hover/link:text-foreground transition-colors">
+                      <span>链接</span>
                     </div>
-                    <span className="font-mono text-foreground/80 truncate">
-                      {tunnel.data.server_addr || "-"}:
-                      {tunnel.data.remote_port ||
-                        tunnel.data.server_port ||
-                        "-"}
+                    <span className="font-mono text-foreground/80 truncate max-w-[160px]">
+                      {linkInfo.display}
                     </span>
                   </div>
                 </>

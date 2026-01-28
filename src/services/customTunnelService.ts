@@ -8,6 +8,8 @@ export interface CustomTunnel {
   server_port?: number;
   tunnels: string[];
   tunnel_type?: string;
+  custom_domains?: string;
+  subdomain?: string;
   local_ip?: string;
   local_port?: number;
   remote_port?: number;
