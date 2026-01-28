@@ -9,36 +9,34 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import {
   fetchNodes,
   fetchNodeInfo,
-  createTunnel,
+  updateTunnel,
   getStoredUser,
+  type Tunnel,
   type Node,
   type NodeInfo,
 } from "@/services/api";
-import { CustomTunnelDialog } from "./CustomTunnelDialog";
 import { NodeSelector } from "./shared/NodeSelector";
 import { NodeDetails } from "./shared/NodeDetails";
 import { TunnelForm, type TunnelFormData } from "./shared/TunnelForm";
 
-interface CreateTunnelDialogProps {
+interface EditTunnelDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess: () => void;
+  tunnel: Tunnel | null;
 }
 
-export function CreateTunnelDialog({
+export function EditTunnelDialog({
   open,
   onOpenChange,
   onSuccess,
-}: CreateTunnelDialogProps) {
-  const [tunnelType, setTunnelType] = useState<"standard" | "custom">(
-    "standard",
-  );
-  const [step, setStep] = useState<1 | 2 | 3>(1);
+  tunnel,
+}: EditTunnelDialogProps) {
+  const [step, setStep] = useState<1 | 2 | 3>(3); // 编辑隧道默认从步骤3开始
   const [loading, setLoading] = useState(false);
   const [nodes, setNodes] = useState<Node[]>([]);
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
@@ -68,6 +66,30 @@ export function CreateTunnelDialog({
     }
   }, [open, step]);
 
+  // 当隧道数据变化时，初始化表单
+  useEffect(() => {
+    if (open && tunnel) {
+      const isHttpProtocol =
+        tunnel.type.toUpperCase() === "HTTP" ||
+        tunnel.type.toUpperCase() === "HTTPS";
+
+      setFormData({
+        tunnelName: tunnel.name,
+        localIp: tunnel.localip,
+        portType: tunnel.type.toUpperCase(),
+        localPort: tunnel.nport.toString(),
+        remotePort: isHttpProtocol ? "" : tunnel.dorp,
+        domain: isHttpProtocol ? tunnel.dorp : "",
+        encryption: false,
+        compression: false,
+        extraParams: "",
+      });
+
+      // 加载当前节点信息用于显示 CNAME 提示
+      loadNodeInfoForStep3(tunnel.node);
+    }
+  }, [open, tunnel]);
+
   const loadNodes = async () => {
     try {
       const data = await fetchNodes();
@@ -77,29 +99,6 @@ export function CreateTunnelDialog({
         error instanceof Error ? error.message : "获取节点列表失败";
       toast.error(message);
     }
-  };
-
-  // 生成随机隧道名称
-  const generateRandomTunnelName = () => {
-    const chars =
-      "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-    let result = "";
-    for (let i = 0; i < 8; i++) {
-      result += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    return result;
-  };
-
-  // 在端口范围内生成随机端口
-  const generateRandomPort = (portRange: string) => {
-    const match = portRange.match(/(\d+)-(\d+)/);
-    if (match) {
-      const min = parseInt(match[1], 10);
-      const max = parseInt(match[2], 10);
-      return Math.floor(Math.random() * (max - min + 1)) + min;
-    }
-    const singlePort = parseInt(portRange, 10);
-    return isNaN(singlePort) ? 10000 : singlePort;
   };
 
   const loadNodeInfo = async (nodeName: string) => {
@@ -115,6 +114,16 @@ export function CreateTunnelDialog({
       toast.error(message);
     } finally {
       setLoadingNodeInfo(false);
+    }
+  };
+
+  // 为步骤3加载节点信息（不执行ping，不改变step）
+  const loadNodeInfoForStep3 = async (nodeName: string) => {
+    try {
+      const data = await fetchNodeInfo(nodeName);
+      setNodeInfo(data);
+    } catch (error) {
+      console.error("Failed to load node info for step 3:", error);
     }
   };
 
@@ -150,14 +159,6 @@ export function CreateTunnelDialog({
 
   // 进入第三步（填写隧道信息）
   const goToStep3 = () => {
-    if (nodeInfo) {
-      // 生成随机隧道名称和远程端口
-      setFormData({
-        ...formData,
-        tunnelName: generateRandomTunnelName(),
-        remotePort: generateRandomPort(nodeInfo.rport).toString(),
-      });
-    }
     setStep(3);
   };
 
@@ -177,10 +178,13 @@ export function CreateTunnelDialog({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!selectedNode) {
-      toast.error("请选择节点");
+    if (!tunnel) {
+      toast.error("隧道信息不存在");
       return;
     }
+
+    // 如果没有选择新节点，使用原节点
+    const targetNode = selectedNode?.name || tunnel.node;
 
     if (!formData.tunnelName.trim()) {
       toast.error("请输入隧道名称");
@@ -211,8 +215,9 @@ export function CreateTunnelDialog({
       setLoading(true);
 
       const baseTunnelParams = {
+        tunnelid: tunnel.id,
         tunnelname: formData.tunnelName,
-        node: selectedNode.name,
+        node: targetNode,
         localip: formData.localIp,
         porttype: formData.portType,
         localport: parseInt(formData.localPort, 10),
@@ -228,13 +233,13 @@ export function CreateTunnelDialog({
             remoteport: parseInt(formData.remotePort, 10),
           };
 
-      await createTunnel(tunnelParams);
+      await updateTunnel(tunnelParams);
 
-      toast.success("隧道创建成功");
+      toast.success("隧道更新成功");
       onSuccess();
       handleClose();
     } catch (error) {
-      const message = error instanceof Error ? error.message : "创建隧道失败";
+      const message = error instanceof Error ? error.message : "更新隧道失败";
       toast.error(message);
     } finally {
       setLoading(false);
@@ -242,8 +247,7 @@ export function CreateTunnelDialog({
   };
 
   const handleClose = () => {
-    setTunnelType("standard");
-    setStep(1);
+    setStep(3); // 重置为步骤3
     setSelectedNode(null);
     setNodeInfo(null);
     setPingLatency(null);
@@ -265,7 +269,12 @@ export function CreateTunnelDialog({
 
   const handleBack = () => {
     if (step === 3) {
-      setStep(2);
+      // 如果有选择的新节点，返回到步骤2；否则关闭对话框
+      if (selectedNode) {
+        setStep(2);
+      } else {
+        handleClose();
+      }
     } else if (step === 2) {
       setStep(1);
       setNodeInfo(null);
@@ -275,20 +284,14 @@ export function CreateTunnelDialog({
     }
   };
 
+  // 切换到选择节点模式
+  const switchToNodeSelection = () => {
+    setStep(1);
+  };
+
   const handleFormChange = useCallback((updates: Partial<TunnelFormData>) => {
     setFormData((prev) => ({ ...prev, ...updates }));
   }, []);
-
-  // 如果是自定义隧道模式，显示自定义隧道对话框
-  if (tunnelType === "custom") {
-    return (
-      <CustomTunnelDialog
-        open={open}
-        onOpenChange={handleClose}
-        onSuccess={onSuccess}
-      />
-    );
-  }
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
@@ -306,10 +309,18 @@ export function CreateTunnelDialog({
             className="text-xl animate-in fade-in duration-300"
             key={`title-${step}`}
           >
-            {step === 1 && "新建隧道"}
+            {step === 1 && "编辑隧道"}
             {step === 2 && "节点详情"}
-            {step === 3 && "配置隧道"}
+            {step === 3 && "修改配置"}
           </DialogTitle>
+          {step === 1 && (
+            <DialogDescription
+              className="text-sm animate-in fade-in duration-300"
+              key="desc-step1"
+            >
+              选择新的节点或直接编辑隧道配置
+            </DialogDescription>
+          )}
           {step === 2 && selectedNode && (
             <DialogDescription
               className="text-sm animate-in fade-in duration-300"
@@ -318,39 +329,22 @@ export function CreateTunnelDialog({
               {selectedNode.name} - 查看节点详细信息
             </DialogDescription>
           )}
-          {step === 3 && selectedNode && (
+          {step === 3 && tunnel && (
             <DialogDescription
               className="text-sm animate-in fade-in duration-300"
               key="desc-step3"
             >
-              节点：{selectedNode.name} - 填写隧道配置信息
+              节点：{selectedNode?.name || tunnel.node} - 修改隧道配置信息
             </DialogDescription>
           )}
         </DialogHeader>
 
         {step === 1 ? (
-          // 第一步：选择隧道类型和节点
+          // 第一步：选择节点或跳过
           <div
             key="step1"
             className="flex-1 flex flex-col min-h-0 py-4 animate-in fade-in slide-in-from-bottom-2 duration-300"
           >
-            <Tabs
-              value={tunnelType}
-              onValueChange={(value) =>
-                setTunnelType(value as "standard" | "custom")
-              }
-              className="mb-4"
-            >
-              <TabsList className="w-full">
-                <TabsTrigger value="standard" className="flex-1">
-                  标准隧道
-                </TabsTrigger>
-                <TabsTrigger value="custom" className="flex-1">
-                  自定义隧道
-                </TabsTrigger>
-              </TabsList>
-            </Tabs>
-
             <NodeSelector
               nodes={nodes}
               loading={loadingNodeInfo}
@@ -394,15 +388,26 @@ export function CreateTunnelDialog({
             />
 
             <DialogFooter className="shrink-0 pt-3 border-t gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handleBack}
-                disabled={loading}
-                className="min-w-[100px]"
-              >
-                返回
-              </Button>
+              {!selectedNode && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={switchToNodeSelection}
+                  disabled={loading}
+                >
+                  切换节点
+                </Button>
+              )}
+              {selectedNode && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleBack}
+                  disabled={loading}
+                >
+                  返回
+                </Button>
+              )}
               <Button
                 type="submit"
                 disabled={loading}
@@ -426,10 +431,10 @@ export function CreateTunnelDialog({
                         d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                       />
                     </svg>
-                    创建中
+                    更新中
                   </span>
                 ) : (
-                  "创建隧道"
+                  "保存修改"
                 )}
               </Button>
             </DialogFooter>

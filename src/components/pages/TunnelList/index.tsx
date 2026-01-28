@@ -16,9 +16,18 @@ import { useTunnelToggle } from "./hooks/useTunnelToggle";
 import { useAutoStartTunnels } from "./hooks/useAutoStartTunnels";
 import { TunnelCard } from "./components/TunnelCard";
 import { CreateTunnelDialog } from "./components/CreateTunnelDialog";
+import { EditTunnelDialog } from "./components/EditTunnelDialog";
+import { EditCustomTunnelDialog } from "./components/EditCustomTunnelDialog";
+import type { Tunnel } from "@/services/api";
+import type { CustomTunnel } from "@/services/customTunnelService";
+import type { UnifiedTunnel } from "./types";
 
 export function TunnelList() {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editingTunnel, setEditingTunnel] = useState<Tunnel | null>(null);
+  const [editCustomDialogOpen, setEditCustomDialogOpen] = useState(false);
+  const [editingCustomTunnel, setEditingCustomTunnel] = useState<CustomTunnel | null>(null);
 
   const {
     tunnels,
@@ -74,6 +83,16 @@ export function TunnelList() {
     runningTunnels,
     onToggle: handleToggle,
   });
+
+  const handleEdit = useCallback((tunnel: UnifiedTunnel) => {
+    if (tunnel.type === "api") {
+      setEditingTunnel(tunnel.data);
+      setEditDialogOpen(true);
+    } else if (tunnel.type === "custom") {
+      setEditingCustomTunnel(tunnel.data);
+      setEditCustomDialogOpen(true);
+    }
+  }, []);
 
   return (
     <div className="flex flex-col h-full gap-4">
@@ -147,6 +166,7 @@ export function TunnelList() {
                   progress={progress}
                   onToggle={handleToggle}
                   onRefresh={refreshTunnels}
+                  onEdit={handleEdit}
                 />
               );
             })}
@@ -158,6 +178,20 @@ export function TunnelList() {
         open={createDialogOpen}
         onOpenChange={setCreateDialogOpen}
         onSuccess={refreshTunnels}
+      />
+
+      <EditTunnelDialog
+        open={editDialogOpen}
+        onOpenChange={setEditDialogOpen}
+        onSuccess={refreshTunnels}
+        tunnel={editingTunnel}
+      />
+
+      <EditCustomTunnelDialog
+        open={editCustomDialogOpen}
+        onOpenChange={setEditCustomDialogOpen}
+        onSuccess={refreshTunnels}
+        tunnel={editingCustomTunnel}
       />
     </div>
   );

@@ -190,6 +190,91 @@ fn split_ini_config(content: &str) -> Result<IniSplitResult, String> {
     Ok(IniSplitResult { common, tunnels })
 }
 
+/// 获取自定义隧道配置文件内容
+#[tauri::command]
+pub async fn get_custom_tunnel_config(
+    app_handle: tauri::AppHandle,
+    tunnel_id: String,
+) -> Result<String, String> {
+    let app_dir = app_handle
+        .path()
+        .app_data_dir()
+        .map_err(|e| format!("获取应用目录失败: {}", e))?;
+
+    let config_file_path = app_dir.join(format!("{}.ini", tunnel_id));
+
+    if !config_file_path.exists() {
+        return Err("配置文件不存在".to_string());
+    }
+
+    fs::read_to_string(&config_file_path)
+        .map_err(|e| format!("读取配置文件失败: {}", e))
+}
+
+/// 更新自定义隧道配置
+#[tauri::command]
+pub async fn update_custom_tunnel(
+    app_handle: tauri::AppHandle,
+    tunnel_id: String,
+    config_content: String,
+) -> Result<CustomTunnel, String> {
+    let app_dir = app_handle
+        .path()
+        .app_data_dir()
+        .map_err(|e| format!("获取应用目录失败: {}", e))?;
+
+    // 解析新的配置
+    let parsed_info = parse_ini_config(&config_content)?;
+
+    // 配置文件路径
+    let config_file_name = format!("{}.ini", tunnel_id);
+    let config_file_path = app_dir.join(&config_file_name);
+
+    // 写入新的配置内容
+    fs::write(&config_file_path, &config_content)
+        .map_err(|e| format!("写入配置文件失败: {}", e))?;
+
+    // 获取现有的隧道信息以保留创建时间
+    let list_file = app_dir.join("custom_tunnels.json");
+    let existing_tunnels: Vec<CustomTunnel> = if list_file.exists() {
+        let content = fs::read_to_string(&list_file)
+            .map_err(|e| format!("读取自定义隧道列表失败: {}", e))?;
+        serde_json::from_str(&content)
+            .map_err(|e| format!("解析自定义隧道列表失败: {}", e))?
+    } else {
+        Vec::new()
+    };
+
+    let created_at = existing_tunnels
+        .iter()
+        .find(|t| t.id == tunnel_id)
+        .map(|t| t.created_at.clone())
+        .unwrap_or_else(|| chrono::Local::now().to_rfc3339());
+
+    // 创建更新后的隧道对象
+    let updated_tunnel = CustomTunnel {
+        id: tunnel_id.clone(),
+        name: tunnel_id.clone(),
+        config_file: config_file_name,
+        server_addr: parsed_info.server_addr,
+        server_port: parsed_info.server_port,
+        tunnels: parsed_info.tunnel_names,
+        tunnel_type: parsed_info.tunnel_type,
+        custom_domains: parsed_info.custom_domains,
+        subdomain: parsed_info.subdomain,
+        local_ip: parsed_info.local_ip,
+        local_port: parsed_info.local_port,
+        remote_port: parsed_info.remote_port,
+        created_at,
+    };
+
+    // 保存到列表
+    save_custom_tunnel_list(&app_handle, &updated_tunnel)?;
+
+    eprintln!("[自定义隧道] 更新成功: {}", tunnel_id);
+    Ok(updated_tunnel)
+}
+
 /// 删除自定义隧道
 #[tauri::command]
 pub async fn delete_custom_tunnel(

@@ -26,6 +26,7 @@ interface TunnelCardProps {
   progress: TunnelProgress | undefined;
   onToggle: (tunnel: UnifiedTunnel, enabled: boolean) => void;
   onRefresh: () => void;
+  onEdit?: (tunnel: UnifiedTunnel) => void;
 }
 
 export function TunnelCard({
@@ -35,6 +36,7 @@ export function TunnelCard({
   progress,
   onToggle,
   onRefresh,
+  onEdit,
 }: TunnelCardProps) {
   const progressValue = progress?.progress ?? 0;
   const isError = progress?.isError ?? false;
@@ -297,6 +299,11 @@ export function TunnelCard({
               </p>
             </TooltipContent>
           </Tooltip>
+          {onEdit && (
+            <ContextMenuItem onClick={() => onEdit(tunnel)} className="text-xs">
+              编辑隧道
+            </ContextMenuItem>
+          )}
           <ContextMenuSeparator />
           <ContextMenuItem
             variant="destructive"

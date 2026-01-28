@@ -431,6 +431,20 @@ export interface CreateTunnelParams {
   banddomain?: string;
 }
 
+export interface UpdateTunnelParams {
+  tunnelid: number;
+  tunnelname: string;
+  node: string;
+  localip: string;
+  porttype: string;
+  localport: number;
+  encryption: boolean;
+  compression: boolean;
+  extraparams: string;
+  remoteport?: number;
+  banddomain?: string;
+}
+
 export async function fetchNodes(token?: string): Promise<Node[]> {
   const storedUser = getStoredUser();
   const bearer = token ?? storedUser?.usertoken;
@@ -481,6 +495,27 @@ export async function createTunnel(
   }
 
   await request<unknown>("/create_tunnel", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      authorization: bearer,
+    },
+    body: JSON.stringify(params),
+  });
+}
+
+export async function updateTunnel(
+  params: UpdateTunnelParams,
+  token?: string,
+): Promise<void> {
+  const storedUser = getStoredUser();
+  const bearer = token ?? storedUser?.usertoken;
+
+  if (!bearer) {
+    throw new Error("登录信息已过期，请重新登录");
+  }
+
+  await request<unknown>("/update_tunnel", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

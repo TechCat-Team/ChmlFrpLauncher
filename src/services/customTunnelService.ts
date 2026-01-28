@@ -31,8 +31,22 @@ export class CustomTunnelService {
     return await invoke<CustomTunnel[]>("get_custom_tunnels");
   }
 
+  async getCustomTunnelConfig(tunnelId: string): Promise<string> {
+    return await invoke<string>("get_custom_tunnel_config", { tunnelId });
+  }
+
   async deleteCustomTunnel(tunnelId: string): Promise<void> {
     await invoke<void>("delete_custom_tunnel", { tunnelId });
+  }
+
+  async updateCustomTunnel(
+    tunnelId: string,
+    configContent: string,
+  ): Promise<CustomTunnel> {
+    return await invoke<CustomTunnel>("update_custom_tunnel", {
+      tunnelId,
+      configContent,
+    });
   }
 
   async startCustomTunnel(tunnelId: string): Promise<string> {
