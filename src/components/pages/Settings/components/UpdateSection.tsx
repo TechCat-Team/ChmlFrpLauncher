@@ -28,7 +28,7 @@ export function UpdateSection({
         <Sparkles className="w-4 h-4" />
         <span>更新与下载</span>
       </div>
-      <div className="border border-border/60 rounded-lg bg-card overflow-hidden">
+      <div className="rounded-lg bg-card overflow-hidden">
         <Item
           variant="outline"
           className="border-0 border-b border-border/60 last:border-0"

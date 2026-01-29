@@ -21,7 +21,7 @@ export function UserInfoCard({ userInfo }: UserInfoCardProps) {
     : 0;
 
   return (
-    <div className="border border-border/60 rounded-lg p-5 bg-card flex flex-col h-[160px]">
+    <div className="rounded-lg p-5 bg-card flex flex-col h-[160px]">
       <div className="flex items-center justify-between mb-4 flex-shrink-0">
         <h2 className="text-sm font-semibold text-foreground">用户信息</h2>
         {userInfo && (

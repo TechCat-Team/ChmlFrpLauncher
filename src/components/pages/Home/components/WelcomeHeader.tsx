@@ -33,7 +33,7 @@ export function WelcomeHeader({
   animatedCountOfRecords,
 }: WelcomeHeaderProps) {
   return (
-    <div className="border border-border/60 rounded-lg p-6 bg-card relative z-10">
+    <div className="rounded-lg p-6 bg-card relative z-10">
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
         <div>
           <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1.5">

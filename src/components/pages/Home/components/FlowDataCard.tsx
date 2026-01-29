@@ -86,7 +86,7 @@ export function FlowDataCard({
   } satisfies ChartConfig;
 
   return (
-    <div className="border border-border/60 rounded-lg p-5 bg-card md:col-span-3">
+    <div className="rounded-lg p-5 bg-card md:col-span-3">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <h2 className="text-sm font-semibold text-foreground">近7日流量</h2>
         <div className="flex items-center gap-4 text-xs">

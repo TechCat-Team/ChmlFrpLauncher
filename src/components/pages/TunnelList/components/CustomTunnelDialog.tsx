@@ -37,10 +37,16 @@ export function CustomTunnelDialog({
     try {
       setLoading(true);
 
-      // 使用空字符串作为隧道名，后端会从配置文件中提取
-      await customTunnelService.saveCustomTunnel("", configContent);
+      const created = await customTunnelService.saveCustomTunnel(
+        "",
+        configContent,
+      );
 
-      toast.success("自定义隧道创建成功");
+      toast.success(
+        created.length > 1
+          ? `已创建 ${created.length} 个自定义隧道`
+          : "自定义隧道创建成功",
+      );
       onSuccess();
       handleClose();
     } catch (error) {

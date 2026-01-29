@@ -18,7 +18,6 @@ import { customTunnelService } from "@/services/customTunnelService";
 import { autoStartTunnelsService } from "@/services/autoStartTunnelsService";
 import type { TunnelProgress, UnifiedTunnel } from "../types";
 import { toast } from "sonner";
-import { Monitor, Globe } from "lucide-react";
 
 interface TunnelCardProps {
   tunnel: UnifiedTunnel;
@@ -27,6 +26,7 @@ interface TunnelCardProps {
   progress: TunnelProgress | undefined;
   onToggle: (tunnel: UnifiedTunnel, enabled: boolean) => void;
   onRefresh: () => void;
+  onEdit?: (tunnel: UnifiedTunnel) => void;
 }
 
 export function TunnelCard({
@@ -36,6 +36,7 @@ export function TunnelCard({
   progress,
   onToggle,
   onRefresh,
+  onEdit,
 }: TunnelCardProps) {
   const progressValue = progress?.progress ?? 0;
   const isError = progress?.isError ?? false;
@@ -43,6 +44,59 @@ export function TunnelCard({
 
   const isCustom = tunnel.type === "custom";
   const isApi = tunnel.type === "api";
+
+  const extractFirstDomain = (raw?: string) => {
+    if (!raw) return "";
+    const candidates = raw
+      .split(/[,;\s]+/g)
+      .map((s) => s.trim())
+      .filter(Boolean);
+
+    for (const c of candidates) {
+      const m = c.match(/^[A-Za-z0-9.-]+/);
+      const domain = (m?.[0] || "").replace(/^\.+|\.+$/g, "");
+      if (domain) return domain;
+    }
+    return "";
+  };
+
+  const linkInfo = (() => {
+    if (isApi) {
+      const typeUpper = tunnel.data.type.toUpperCase();
+      const isHttp = typeUpper === "HTTP" || typeUpper === "HTTPS";
+
+      const display = isHttp
+        ? `${tunnel.data.dorp}`
+        : `${tunnel.data.ip}:${tunnel.data.dorp}`;
+
+      if (!isHttp) return { display, copy: display };
+
+      const protocol = typeUpper === "HTTPS" ? "https" : "http";
+      const copy = display.includes("://")
+        ? display
+        : `${protocol}://${display}`;
+      return { display, copy };
+    }
+
+    const customType = (tunnel.data.tunnel_type || "").toLowerCase();
+    const isHttpCustom = customType === "http" || customType === "https";
+
+    if (isHttpCustom) {
+      const firstDomain = extractFirstDomain(tunnel.data.custom_domains);
+      const host = firstDomain || tunnel.data.subdomain || "";
+      const display = host || tunnel.data.server_addr || "-";
+
+      const protocol = customType === "https" ? "https" : "http";
+      const copyHost = display !== "-" ? display : "";
+      const copy = copyHost ? `${protocol}://${copyHost}` : `${protocol}://`;
+      return { display, copy };
+    }
+
+    const port = tunnel.data.remote_port ?? tunnel.data.server_port;
+    const addr = tunnel.data.server_addr || "-";
+    const display = `${addr}:${port ?? "-"}`;
+    return { display, copy: display };
+  })();
 
   const [autoStartEnabled, setAutoStartEnabled] = useState(false);
 
@@ -66,20 +120,8 @@ export function TunnelCard({
   const handleCopyLink = async (e: React.MouseEvent) => {
     e.stopPropagation();
     try {
-      if (isApi) {
-        const isHttpType =
-          tunnel.data.type.toUpperCase() === "HTTP" ||
-          tunnel.data.type.toUpperCase() === "HTTPS";
-        const linkAddress = isHttpType
-          ? `${tunnel.data.dorp}`
-          : `${tunnel.data.ip}:${tunnel.data.dorp}`;
-        await navigator.clipboard.writeText(linkAddress);
-        toast.success("链接已复制");
-      } else {
-        const serverAddr = tunnel.data.server_addr || "未知";
-        await navigator.clipboard.writeText(serverAddr);
-        toast.success("服务器地址已复制");
-      }
+      await navigator.clipboard.writeText(linkInfo.copy || "未知");
+      toast.success("链接已复制");
     } catch (error) {
       console.error("Failed to copy:", error);
     }
@@ -126,7 +168,7 @@ export function TunnelCard({
   return (
     <ContextMenu>
       <ContextMenuTrigger asChild>
-        <div className="group border border-border/60 rounded-xl overflow-hidden transition-all bg-card">
+        <div className="group rounded-xl overflow-hidden transition-all bg-card">
           <div className="w-full bg-muted/20">
             <Progress
               value={progressValue}
@@ -157,7 +199,7 @@ export function TunnelCard({
                   />
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-medium px-1.5 py-0.5 rounded border border-border/50 text-muted-foreground bg-muted/10 uppercase tracking-wider">
+                  <span className="text-[10px] font-medium px-1.5 py-0.5 rounded text-muted-foreground bg-muted/10 uppercase tracking-wider">
                     {isCustom
                       ? tunnel.data.tunnel_type || "自定义"
                       : tunnel.data.type}
@@ -176,7 +218,7 @@ export function TunnelCard({
                   className="sr-only peer"
                 />
                 <div
-                  className={`w-9 h-5 bg-muted/50 rounded-full peer peer-checked:bg-foreground transition-all duration-300 ${isToggling ? "opacity-50 cursor-wait" : "cursor-pointer"}`}
+                  className={`w-9 h-5 bg-muted/50 dark:bg-foreground/12 rounded-full peer peer-checked:bg-foreground transition-all duration-300 ${isToggling ? "opacity-50 cursor-wait" : "cursor-pointer"}`}
                 ></div>
                 <div
                   className={`absolute left-[2px] top-[2px] w-4 h-4 bg-background rounded-full shadow-sm transition-all duration-300 peer-checked:translate-x-4 ${isToggling ? "scale-90" : ""}`}
@@ -184,7 +226,7 @@ export function TunnelCard({
               </label>
             </div>
 
-            <div className="space-y-2.5 pt-2 border-t border-border/30">
+            <div className="space-y-2.5 pt-2">
               {isApi ? (
                 <>
                   <div className="flex items-center justify-between text-xs group/item">
@@ -203,7 +245,7 @@ export function TunnelCard({
                       <span>链接</span>
                     </div>
                     <div className="flex items-center gap-1.5 min-w-0">
-                      <span className="font-mono text-foreground/80 truncate max-w-[120px]">
+                      <span className="font-mono text-foreground/80 truncate max-w-[160px]">
                         {tunnel.data.type.toUpperCase() === "HTTP" ||
                         tunnel.data.type.toUpperCase() === "HTTPS"
                           ? tunnel.data.dorp
@@ -216,7 +258,6 @@ export function TunnelCard({
                 <>
                   <div className="flex items-center justify-between text-xs">
                     <div className="flex items-center gap-2 text-muted-foreground">
-                      <Monitor className="w-3.5 h-3.5 opacity-70" />
                       <span>本地</span>
                     </div>
                     <span className="font-mono text-foreground/80">
@@ -224,16 +265,15 @@ export function TunnelCard({
                       {tunnel.data.local_port || "-"}
                     </span>
                   </div>
-                  <div className="flex items-center justify-between text-xs">
-                    <div className="flex items-center gap-2 text-muted-foreground">
-                      <Globe className="w-3.5 h-3.5 opacity-70" />
-                      <span>远程</span>
+                  <div
+                    className="flex items-center justify-between text-xs cursor-pointer group/link hover:bg-muted/30 -mx-2 px-2 py-1 rounded transition-colors"
+                    onClick={handleCopyLink}
+                  >
+                    <div className="flex items-center gap-2 text-muted-foreground group-hover/link:text-foreground transition-colors">
+                      <span>链接</span>
                     </div>
-                    <span className="font-mono text-foreground/80 truncate">
-                      {tunnel.data.server_addr || "-"}:
-                      {tunnel.data.remote_port ||
-                        tunnel.data.server_port ||
-                        "-"}
+                    <span className="font-mono text-foreground/80 truncate max-w-[160px]">
+                      {linkInfo.display}
                     </span>
                   </div>
                 </>
@@ -261,6 +301,11 @@ export function TunnelCard({
               </p>
             </TooltipContent>
           </Tooltip>
+          {onEdit && (
+            <ContextMenuItem onClick={() => onEdit(tunnel)} className="text-xs">
+              编辑隧道
+            </ContextMenuItem>
+          )}
           <ContextMenuSeparator />
           <ContextMenuItem
             variant="destructive"

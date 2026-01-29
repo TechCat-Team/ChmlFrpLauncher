@@ -242,7 +242,7 @@ export function Logs() {
 
           <button
             onClick={handleClearLogs}
-            className="px-3 py-1.5 text-sm bg-card border border-border/60 rounded-lg hover:border-foreground/20 transition-colors"
+            className="px-3 py-1.5 text-sm bg-card rounded-lg hover:bg-accent/50 transition-colors"
           >
             清空
           </button>
@@ -256,7 +256,7 @@ export function Logs() {
         </div>
       </div>
 
-      <div className="flex-1 border border-border/60 rounded-lg overflow-hidden bg-card">
+      <div className="flex-1 rounded-lg overflow-hidden bg-card">
         <ScrollArea className="h-full" ref={scrollRef}>
           <div
             className="p-4 font-mono text-[13px] space-y-1"

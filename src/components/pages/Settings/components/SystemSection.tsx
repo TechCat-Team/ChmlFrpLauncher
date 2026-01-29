@@ -38,7 +38,7 @@ export function SystemSection({
         <Settings2 className="w-4 h-4" />
         <span>系统</span>
       </div>
-      <div className="border border-border/60 rounded-lg bg-card overflow-hidden">
+      <div className="rounded-lg bg-card overflow-hidden">
         <Item
           variant="outline"
           className="border-0 border-b border-border/60 last:border-0"
@@ -54,13 +54,15 @@ export function SystemSection({
               onClick={() => onToggleAutostart(!autostartEnabled)}
               disabled={autostartLoading}
               className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors outline-none outline-0 ${
-                autostartEnabled ? "bg-foreground" : "bg-muted"
+                autostartEnabled
+                  ? "bg-foreground"
+                  : "bg-muted dark:bg-foreground/12"
               } ${autostartLoading ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
               role="switch"
               aria-checked={autostartEnabled}
             >
               <span
-                className={`inline-block h-4 w-4 transform rounded-full bg-background transition-transform ${
+                className={`inline-block h-4 w-4 transform rounded-full bg-background shadow-sm transition-transform ${
                   autostartEnabled ? "translate-x-6" : "translate-x-1"
                 }`}
               />
@@ -82,13 +84,15 @@ export function SystemSection({
             <button
               onClick={() => onToggleAutoCheckUpdate(!autoCheckUpdate)}
               className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors outline-none outline-0 ${
-                autoCheckUpdate ? "bg-foreground" : "bg-muted"
+                autoCheckUpdate
+                  ? "bg-foreground"
+                  : "bg-muted dark:bg-foreground/12"
               } cursor-pointer`}
               role="switch"
               aria-checked={autoCheckUpdate}
             >
               <span
-                className={`inline-block h-4 w-4 transform rounded-full bg-background transition-transform ${
+                className={`inline-block h-4 w-4 transform rounded-full bg-background shadow-sm transition-transform ${
                   autoCheckUpdate ? "translate-x-6" : "translate-x-1"
                 }`}
               />
@@ -110,13 +114,15 @@ export function SystemSection({
             <button
               onClick={() => onToggleCloseToTray(!closeToTrayEnabled)}
               className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors outline-none outline-0 ${
-                closeToTrayEnabled ? "bg-foreground" : "bg-muted"
+                closeToTrayEnabled
+                  ? "bg-foreground"
+                  : "bg-muted dark:bg-foreground/12"
               } cursor-pointer`}
               role="switch"
               aria-checked={closeToTrayEnabled}
             >
               <span
-                className={`inline-block h-4 w-4 transform rounded-full bg-background transition-transform ${
+                className={`inline-block h-4 w-4 transform rounded-full bg-background shadow-sm transition-transform ${
                   closeToTrayEnabled ? "translate-x-6" : "translate-x-1"
                 }`}
               />
@@ -136,13 +142,15 @@ export function SystemSection({
               onClick={() => onToggleGuard(!guardEnabled)}
               disabled={guardLoading}
               className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors outline-none outline-0 ${
-                guardEnabled ? "bg-foreground" : "bg-muted"
+                guardEnabled
+                  ? "bg-foreground"
+                  : "bg-muted dark:bg-foreground/12"
               } ${guardLoading ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
               role="switch"
               aria-checked={guardEnabled}
             >
               <span
-                className={`inline-block h-4 w-4 transform rounded-full bg-background transition-transform ${
+                className={`inline-block h-4 w-4 transform rounded-full bg-background shadow-sm transition-transform ${
                   guardEnabled ? "translate-x-6" : "translate-x-1"
                 }`}
               />

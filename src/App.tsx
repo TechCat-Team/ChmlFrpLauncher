@@ -74,7 +74,6 @@ function App() {
   }, []);
 
   const handleTabChange = (tab: string) => {
-    if (tab === "tunnels" && !user) return;
     setActiveTab(tab);
   };
 
@@ -83,7 +82,7 @@ function App() {
       case "home":
         return <Home user={user} onUserChange={setUser} />;
       case "tunnels":
-        return <TunnelList />;
+        return <TunnelList user={user} />;
       case "logs":
         return <Logs />;
       case "settings":

@@ -1,6 +1,6 @@
 [package]
 name = "ChmlFrpLauncher"
-version = "0.3.12"
+version = "0.4.1"
 description = "ChmlFrp的官方启动器"
 authors = ["南充市轻爪网络科技有限公司 <chaoji@chcat.cn>"]
 license = "Apache-2.0"

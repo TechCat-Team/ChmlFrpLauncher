@@ -2,9 +2,16 @@ import { useState, useEffect } from "react";
 import { Minus, Square, X } from "lucide-react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { cn } from "@/lib/utils";
+import {
+  getInitialEffectType,
+  type EffectType,
+} from "@/components/pages/Settings/utils";
 
 export function TitleBar() {
   const [isMaximized, setIsMaximized] = useState(false);
+  const [effectType, setEffectType] = useState<EffectType>(() =>
+    getInitialEffectType(),
+  );
   const isMacOS =
     typeof navigator !== "undefined" &&
     navigator.platform.toUpperCase().indexOf("MAC") >= 0;
@@ -56,13 +63,25 @@ export function TitleBar() {
     };
   }, [isMacOS]);
 
+  useEffect(() => {
+    const handleEffectTypeChange = () => {
+      setEffectType(getInitialEffectType());
+    };
+
+    window.addEventListener("effectTypeChanged", handleEffectTypeChange);
+    return () => {
+      window.removeEventListener("effectTypeChanged", handleEffectTypeChange);
+    };
+  }, []);
+
+  const isFrosted = effectType === "frosted";
+
   return (
     <div
       data-tauri-drag-region
       className={cn(
-        "h-9 flex items-center select-none border-b",
-        "bg-sidebar/30 dark:bg-sidebar/40 backdrop-blur-md",
-        "border-sidebar-border/20 dark:border-sidebar-border/25",
+        "h-9 flex items-center select-none bg-card",
+        isFrosted && "backdrop-blur-md",
         "transition-colors duration-200",
         isMacOS && "pl-20",
       )}

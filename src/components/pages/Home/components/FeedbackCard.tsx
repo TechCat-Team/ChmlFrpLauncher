@@ -12,7 +12,7 @@ export function FeedbackCard() {
     <Item
       variant="outline"
       asChild
-      className="border border-border/60 rounded-lg p-5 bg-card md:col-span-3"
+      className="rounded-lg p-5 bg-card md:col-span-3"
     >
       <a
         href="https://wj.qq.com/s2/25483094/5318/"

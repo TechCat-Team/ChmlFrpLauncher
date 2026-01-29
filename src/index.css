@@ -515,10 +515,10 @@
   body:has(.frosted-glass-enabled) [data-slot="context-menu-content"],
   body:has(.frosted-glass-enabled) [data-slot="context-menu-sub-content"],
   body:has(.frosted-glass-enabled) [data-slot="dialog-content"] {
-    background-color: rgba(255, 255, 255, 0.6) !important;
-    backdrop-filter: blur(12px) saturate(180%) !important;
-    -webkit-backdrop-filter: blur(12px) saturate(180%) !important;
-    border-color: rgba(255, 255, 255, 0.4) !important;
+    background-color: rgba(255, 255, 255, 0.45) !important;
+    backdrop-filter: blur(24px) saturate(200%) !important;
+    -webkit-backdrop-filter: blur(24px) saturate(200%) !important;
+    border-color: rgba(255, 255, 255, 0.5) !important;
   }
 
   /* 毛玻璃效果 - 暗色模式 */
@@ -535,13 +535,13 @@
   .dark .frosted-glass-enabled input,
   .dark .frosted-glass-enabled textarea,
   .dark .frosted-glass-enabled select,
-  body.dark:has(.frosted-glass-enabled) [data-slot="context-menu-content"],
-  body.dark:has(.frosted-glass-enabled) [data-slot="context-menu-sub-content"],
-  body.dark:has(.frosted-glass-enabled) [data-slot="dialog-content"] {
-    background-color: rgba(15, 16, 20, 0.6) !important;
-    backdrop-filter: blur(12px) saturate(180%) !important;
-    -webkit-backdrop-filter: blur(12px) saturate(180%) !important;
-    border-color: rgba(255, 255, 255, 0.15) !important;
+  .dark body:has(.frosted-glass-enabled) [data-slot="context-menu-content"],
+  .dark body:has(.frosted-glass-enabled) [data-slot="context-menu-sub-content"],
+  .dark body:has(.frosted-glass-enabled) [data-slot="dialog-content"] {
+    background-color: rgba(15, 16, 20, 0.45) !important;
+    backdrop-filter: blur(24px) saturate(200%) !important;
+    -webkit-backdrop-filter: blur(24px) saturate(200%) !important;
+    border-color: rgba(255, 255, 255, 0.2) !important;
   }
 
   .frosted-glass-enabled [data-slot="item"] {
@@ -560,16 +560,16 @@
 
   /* 毛玻璃效果 - CSS 变量（亮色模式）*/
   .frosted-glass-enabled {
-    --card: rgba(255, 255, 255, 0.6);
-    --sidebar: rgba(255, 255, 255, 0.6);
-    --popover: rgba(255, 255, 255, 0.6);
+    --card: rgba(255, 255, 255, 0.45);
+    --sidebar: rgba(255, 255, 255, 0.45);
+    --popover: rgba(255, 255, 255, 0.45);
   }
 
   /* 毛玻璃效果 - CSS 变量（暗色模式）*/
   .dark .frosted-glass-enabled {
-    --card: rgba(15, 16, 20, 0.6);
-    --sidebar: rgba(15, 16, 20, 0.6);
-    --popover: rgba(15, 16, 20, 0.6);
+    --card: rgba(15, 16, 20, 0.45);
+    --sidebar: rgba(15, 16, 20, 0.45);
+    --popover: rgba(15, 16, 20, 0.45);
   }
 
   /* 签到信息弹窗在毛玻璃模式下的 z-index 提升 */
@@ -615,9 +615,9 @@
   .dark .translucent-enabled input,
   .dark .translucent-enabled textarea,
   .dark .translucent-enabled select,
-  body.dark:has(.translucent-enabled) [data-slot="context-menu-content"],
-  body.dark:has(.translucent-enabled) [data-slot="context-menu-sub-content"],
-  body.dark:has(.translucent-enabled) [data-slot="dialog-content"] {
+  .dark body:has(.translucent-enabled) [data-slot="context-menu-content"],
+  .dark body:has(.translucent-enabled) [data-slot="context-menu-sub-content"],
+  .dark body:has(.translucent-enabled) [data-slot="dialog-content"] {
     background-color: rgba(15, 16, 20, 0.5) !important;
     border-color: rgba(255, 255, 255, 0.2) !important;
   }

@@ -125,7 +125,7 @@ export function AppearanceSection({
         <Palette className="w-4 h-4" />
         <span>外观</span>
       </div>
-      <div className="border border-border/60 rounded-lg bg-card overflow-hidden">
+      <div className="rounded-lg bg-card overflow-hidden">
         <Item
           variant="outline"
           className="border-0 border-b border-border/60 last:border-0"
@@ -140,13 +140,15 @@ export function AppearanceSection({
             <button
               onClick={() => setFollowSystem(!followSystem)}
               className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors outline-none outline-0 ${
-                followSystem ? "bg-foreground" : "bg-muted"
+                followSystem
+                  ? "bg-foreground"
+                  : "bg-muted dark:bg-foreground/12"
               } cursor-pointer`}
               role="switch"
               aria-checked={followSystem}
             >
               <span
-                className={`inline-block h-4 w-4 transform rounded-full bg-background transition-transform ${
+                className={`inline-block h-4 w-4 transform rounded-full bg-background shadow-sm transition-transform ${
                   followSystem ? "translate-x-6" : "translate-x-1"
                 }`}
               />
@@ -171,13 +173,15 @@ export function AppearanceSection({
                   toggleTheme(theme === "dark" ? "light" : "dark", e)
                 }
                 className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors outline-none outline-0 ${
-                  theme === "dark" ? "bg-foreground" : "bg-muted"
+                  theme === "dark"
+                    ? "bg-foreground"
+                    : "bg-muted dark:bg-foreground/12"
                 } cursor-pointer`}
                 role="switch"
                 aria-checked={theme === "dark"}
               >
                 <span
-                  className={`inline-block h-4 w-4 transform rounded-full bg-background transition-transform ${
+                  className={`inline-block h-4 w-4 transform rounded-full bg-background shadow-sm transition-transform ${
                     theme === "dark" ? "translate-x-6" : "translate-x-1"
                   }`}
                 />
@@ -226,13 +230,15 @@ export function AppearanceSection({
               <button
                 onClick={() => setShowTitleBar(!showTitleBar)}
                 className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors outline-none outline-0 ${
-                  showTitleBar ? "bg-foreground" : "bg-muted"
+                  showTitleBar
+                    ? "bg-foreground"
+                    : "bg-muted dark:bg-foreground/12"
                 } cursor-pointer`}
                 role="switch"
                 aria-checked={showTitleBar}
               >
                 <span
-                  className={`inline-block h-4 w-4 transform rounded-full bg-background transition-transform ${
+                  className={`inline-block h-4 w-4 transform rounded-full bg-background shadow-sm transition-transform ${
                     showTitleBar ? "translate-x-6" : "translate-x-1"
                   }`}
                 />
@@ -398,13 +404,15 @@ export function AppearanceSection({
                     window.dispatchEvent(new Event("videoStartSoundChanged"));
                   }}
                   className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors outline-none outline-0 ${
-                    videoStartSound ? "bg-foreground" : "bg-muted"
+                    videoStartSound
+                      ? "bg-foreground"
+                      : "bg-muted dark:bg-foreground/12"
                   } cursor-pointer`}
                   role="switch"
                   aria-checked={videoStartSound}
                 >
                   <span
-                    className={`inline-block h-4 w-4 transform rounded-full bg-background transition-transform ${
+                    className={`inline-block h-4 w-4 transform rounded-full bg-background shadow-sm transition-transform ${
                       videoStartSound ? "translate-x-6" : "translate-x-1"
                     }`}
                   />

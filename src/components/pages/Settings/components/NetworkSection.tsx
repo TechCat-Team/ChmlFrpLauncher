@@ -22,7 +22,7 @@ export function NetworkSection({
         <Network className="w-4 h-4" />
         <span>网络</span>
       </div>
-      <div className="border border-border/60 rounded-lg bg-card overflow-hidden">
+      <div className="rounded-lg bg-card overflow-hidden">
         <Item variant="outline" className="border-0">
           <ItemContent>
             <ItemTitle>绕过代理</ItemTitle>
@@ -34,13 +34,13 @@ export function NetworkSection({
             <button
               onClick={() => setBypassProxy(!bypassProxy)}
               className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors outline-none outline-0 ${
-                bypassProxy ? "bg-foreground" : "bg-muted"
+                bypassProxy ? "bg-foreground" : "bg-muted dark:bg-foreground/12"
               } cursor-pointer`}
               role="switch"
               aria-checked={bypassProxy}
             >
               <span
-                className={`inline-block h-4 w-4 transform rounded-full bg-background transition-transform ${
+                className={`inline-block h-4 w-4 transform rounded-full bg-background shadow-sm transition-transform ${
                   bypassProxy ? "translate-x-6" : "translate-x-1"
                 }`}
               />

@@ -8,7 +8,7 @@ import { CircleHelp } from "lucide-react";
 
 export function FAQSection() {
   return (
-    <div className="border border-border/60 rounded-lg p-5 bg-card md:col-span-2 flex flex-col h-[160px]">
+    <div className="rounded-lg p-5 bg-card md:col-span-2 flex flex-col h-[160px]">
       <h2 className="text-sm font-semibold text-foreground mb-3 flex-shrink-0 flex items-center gap-2">
         <CircleHelp className="w-4 h-4 text-muted-foreground" />
         常见问题
