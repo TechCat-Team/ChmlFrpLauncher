@@ -141,6 +141,25 @@ function App() {
     }
   }, [isDownloadingUpdate, setUpdateInfo]);
 
+  const [sidebarWidth, setSidebarWidth] = useState(SIDEBAR_COLLAPSED_WIDTH);
+  const sidebarRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    // 仅在悬浮模式下需要监听宽度
+    if (sidebarMode !== 'floating') return;
+    if (!sidebarRef.current) return;
+
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        setSidebarWidth(entry.contentRect.width);
+      }
+    });
+
+    observer.observe(sidebarRef.current);
+
+    return () => observer.disconnect();
+  }, [sidebarMode]); // 依赖 sidebarMode，切换时重新绑定
+
   return (
     <>
       <div
@@ -184,7 +203,7 @@ function App() {
         {sidebarMode === "floating" ? (
           <>
             {/* 悬浮侧边栏 - 绝对定位，占满窗口高度 */}
-            <div
+            <div ref={sidebarRef}  // 添加 ref
               className="absolute z-50"
               style={{
                 left: `${SIDEBAR_LEFT}px`,
@@ -211,9 +230,9 @@ function App() {
 
             {/* 主内容区域 - 绝对定位，从顶部开始 */}
             <div
-              className="absolute z-40 overflow-hidden rounded-b-[12px]"
-              style={{
-                left: `${SIDEBAR_LEFT + SIDEBAR_COLLAPSED_WIDTH}px`,
+                className="absolute z-40 overflow-hidden rounded-b-[12px]"
+                style={{
+                  left: `${SIDEBAR_LEFT + sidebarWidth}px`,  // 动态计算
                 right: "0",
                 top: !isMacOS || showTitleBar ? "36px" : "0",
                 bottom: "0",
