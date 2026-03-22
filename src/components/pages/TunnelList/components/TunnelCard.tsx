@@ -184,6 +184,12 @@ export function TunnelCard({
     }
   };
 
+  const handleEdit = () => {
+    if (onEdit) {
+      onEdit(tunnel);
+    }
+  };
+
   const handleToggleAutoStart = async () => {
     try {
       const newValue = !autoStartEnabled;
@@ -346,6 +352,10 @@ export function TunnelCard({
                 <button className="text-xs text-red-500"
                   onClick={handleDelete}
                 >删除隧道</button>
+                <br />
+                <button className="text-xs text-green-500"
+                  onClick={handleEdit}
+                >编辑隧道</button>
               </div>
             </div>
           </div>
