@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, Fragment } from "react";
+import { createPortal } from "react-dom";
 import { Progress } from "@/components/ui/progress";
 import {
   ContextMenu,
@@ -13,7 +14,18 @@ import {
   TooltipTrigger,
   TooltipProvider,
 } from "@/components/ui/tooltip";
-import { deleteTunnel } from "@/services/api";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { 
+  deleteTunnel
+ } from "@/services/api";
 import { customTunnelService } from "@/services/customTunnelService";
 import { autoStartTunnelsService } from "@/services/autoStartTunnelsService";
 import type { TunnelProgress, UnifiedTunnel } from "../types";
@@ -44,6 +56,8 @@ export function TunnelCard({
 
   const isCustom = tunnel.type === "custom";
   const isApi = tunnel.type === "api";
+  
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [ipv6OnlyNetwork, setIpv6OnlyNetwork] = useState<boolean>(() => {
     if (typeof window === "undefined") return false;
     return localStorage.getItem("ipv6OnlyNetwork") === "true";
@@ -148,7 +162,11 @@ export function TunnelCard({
     }
   };
 
-  const handleDelete = async () => {
+  const handleDelete = () => {
+    setShowDeleteConfirm(true);
+  };
+
+  const confirmDelete = async () => {
     try {
       if (isApi) {
         await deleteTunnel(tunnel.data.id);
@@ -157,10 +175,12 @@ export function TunnelCard({
       }
       toast.success("删除成功");
       onRefresh();
+      setShowDeleteConfirm(false);
     } catch (error) {
       const message = error instanceof Error ? error.message : "删除隧道失败";
       toast.error(message);
       console.error("删除隧道失败:", error);
+      setShowDeleteConfirm(false);
     }
   };
 
@@ -187,179 +207,207 @@ export function TunnelCard({
   };
 
   return (
-    <ContextMenu>
-      <ContextMenuTrigger asChild>
-        <div className="group rounded-lg overflow-hidden transition-all bg-card">
-          <div className="w-full bg-muted/20">
-            <Progress
-              value={progressValue}
-              className={`h-0.5 transition-colors ${
-                isError
-                  ? "bg-destructive/20 [&>div]:bg-destructive"
-                  : isSuccess
-                    ? "bg-green-500/20 [&>div]:bg-green-500"
-                    : "opacity-0"
-              } ${progressValue > 0 && progressValue < 100 ? "opacity-100" : ""}`}
-            />
-          </div>
-          <div className="p-4">
-            <div className="flex items-start justify-between mb-4">
-              <div className="flex-1 min-w-0 pr-3">
-                <div className="flex items-center gap-2 mb-1.5">
-                  <h3 className="font-semibold text-foreground truncate text-sm">
-                    {tunnel.data.name}
-                  </h3>
-                  <div
-                    className={`w-1.5 h-1.5 rounded-full ${
-                      isApi && tunnel.data.nodestate !== "online"
-                        ? "bg-red-500"
-                        : isRunning
-                          ? "bg-foreground"
-                          : "bg-muted-foreground/30"
-                    }`}
-                  />
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-medium px-1.5 py-0.5 rounded text-muted-foreground bg-muted/10 uppercase tracking-wider">
-                    {isCustom
-                      ? tunnel.data.tunnel_type || "自定义"
-                      : tunnel.data.type}
-                  </span>
-                  <span className="text-xs text-muted-foreground truncate flex items-center gap-1 opacity-80">
-                    {isApi ? tunnel.data.node : tunnel.data.server_addr || "-"}
-                  </span>
-                </div>
-              </div>
-              <TooltipProvider delayDuration={300}>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <label className="relative inline-flex items-center cursor-pointer flex-shrink-0">
-                      <input
-                        type="checkbox"
-                        checked={isRunning}
-                        disabled={isToggling || isIpv6Blocked || isNodeOffline}
-                        onChange={(e) => onToggle(tunnel, e.target.checked)}
-                        className="sr-only peer"
-                      />
-                      <div
-                        className={`w-9 h-5 rounded-full peer transition-colors duration-300 ${
-                          isRunning
-                            ? "bg-foreground"
-                            : "bg-muted dark:bg-foreground/12"
-                        } ${isToggling || isIpv6Blocked || isNodeOffline ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
-                      ></div>
-                      <div
-                        className={`absolute left-[2px] top-[3px] w-3.5 h-3.5 bg-background rounded-full shadow-sm transition-transform duration-300 ${
-                          isRunning ? "translate-x-[18px]" : ""
-                        } ${isToggling || isIpv6Blocked || isNodeOffline ? "scale-90" : ""}`}
-                      ></div>
-                    </label>
-                  </TooltipTrigger>
-                  {isNodeOffline ? (
-                    <TooltipContent side="top" className="text-xs">
-                      此节点已离线
-                    </TooltipContent>
-                  ) : (
-                    isIpv6Blocked && (
-                    <TooltipContent side="top" className="text-xs">
-                      此节点无IPV6，您的网络仅支持IPV6
-                    </TooltipContent>
-                    )
-                  )}
-                </Tooltip>
-              </TooltipProvider>
+    <Fragment>
+      <ContextMenu>
+        <ContextMenuTrigger asChild>
+          <div className="group rounded-lg overflow-hidden transition-all bg-card">
+            <div className="w-full bg-muted/20">
+              <Progress
+                value={progressValue}
+                className={`h-0.5 transition-colors ${
+                  isError
+                    ? "bg-destructive/20 [&>div]:bg-destructive"
+                    : isSuccess
+                      ? "bg-green-500/20 [&>div]:bg-green-500"
+                      : "opacity-0"
+                } ${progressValue > 0 && progressValue < 100 ? "opacity-100" : ""}`}
+              />
             </div>
-
-            <div className="space-y-2.5 pt-2">
-              {isApi ? (
-                <>
-                  <div className="flex items-center justify-between text-xs group/item">
-                    <div className="flex items-center gap-2 text-muted-foreground">
-                      <span>本地</span>
-                    </div>
-                    <span className="font-mono text-foreground/80 selection:bg-foreground/10">
-                      {tunnel.data.localip}:{tunnel.data.nport}
+            <div className="p-4">
+              <div className="flex items-start justify-between mb-4">
+                <div className="flex-1 min-w-0 pr-3">
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <h3 className="font-semibold text-foreground truncate text-sm">
+                      {tunnel.data.name}
+                    </h3>
+                    <div
+                      className={`w-1.5 h-1.5 rounded-full ${
+                        isApi && tunnel.data.nodestate !== "online"
+                          ? "bg-red-500"
+                          : isRunning
+                            ? "bg-foreground"
+                            : "bg-muted-foreground/30"
+                      }`}
+                    />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-medium px-1.5 py-0.5 rounded text-muted-foreground bg-muted/10 uppercase tracking-wider">
+                      {isCustom
+                        ? tunnel.data.tunnel_type || "自定义"
+                        : tunnel.data.type}
+                    </span>
+                    <span className="text-xs text-muted-foreground truncate flex items-center gap-1 opacity-80">
+                      {isApi ? tunnel.data.node : tunnel.data.server_addr || "-"}
                     </span>
                   </div>
-                  <div
-                    className="flex items-center justify-between text-xs cursor-pointer group/link hover:bg-muted/30 -mx-2 px-2 py-1 rounded transition-colors"
-                    onClick={handleCopyLink}
-                  >
-                    <div className="flex items-center gap-2 text-muted-foreground group-hover/link:text-foreground transition-colors">
-                      <span>链接</span>
-                    </div>
-                    <div className="flex items-center gap-1.5 min-w-0">
-                      <span className="font-mono text-foreground/80 truncate max-w-[160px]">
-                        {tunnel.data.type.toUpperCase() === "HTTP" ||
-                        tunnel.data.type.toUpperCase() === "HTTPS"
-                          ? tunnel.data.dorp
-                          : `${tunnel.data.ip}:${tunnel.data.dorp}`}
+                </div>
+                <TooltipProvider delayDuration={300}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <label className="relative inline-flex items-center cursor-pointer flex-shrink-0">
+                        <input
+                          type="checkbox"
+                          checked={isRunning}
+                          disabled={isToggling || isIpv6Blocked || isNodeOffline}
+                          onChange={(e) => onToggle(tunnel, e.target.checked)}
+                          className="sr-only peer"
+                        />
+                        <div
+                          className={`w-9 h-5 rounded-full peer transition-colors duration-300 ${
+                            isRunning
+                              ? "bg-foreground"
+                              : "bg-muted dark:bg-foreground/12"
+                          } ${isToggling || isIpv6Blocked || isNodeOffline ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
+                        ></div>
+                        <div
+                          className={`absolute left-[2px] top-[3px] w-3.5 h-3.5 bg-background rounded-full shadow-sm transition-transform duration-300 ${
+                            isRunning ? "translate-x-[18px]" : ""
+                          } ${isToggling || isIpv6Blocked || isNodeOffline ? "scale-90" : ""}`}
+                        ></div>
+                      </label>
+                    </TooltipTrigger>
+                    {isNodeOffline ? (
+                      <TooltipContent side="top" className="text-xs">
+                        此节点已离线
+                      </TooltipContent>
+                    ) : (
+                      isIpv6Blocked && (
+                      <TooltipContent side="top" className="text-xs">
+                        此节点无IPV6，您的网络仅支持IPV6
+                      </TooltipContent>
+                      )
+                    )}
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
+
+              <div className="space-y-2.5 pt-2">
+                {isApi ? (
+                  <>
+                    <div className="flex items-center justify-between text-xs group/item">
+                      <div className="flex items-center gap-2 text-muted-foreground">
+                        <span>本地</span>
+                      </div>
+                      <span className="font-mono text-foreground/80 selection:bg-foreground/10">
+                        {tunnel.data.localip}:{tunnel.data.nport}
                       </span>
                     </div>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div className="flex items-center justify-between text-xs">
-                    <div className="flex items-center gap-2 text-muted-foreground">
-                      <span>本地</span>
+                    <div
+                      className="flex items-center justify-between text-xs cursor-pointer group/link hover:bg-muted/30 -mx-2 px-2 py-1 rounded transition-colors"
+                      onClick={handleCopyLink}
+                    >
+                      <div className="flex items-center gap-2 text-muted-foreground group-hover/link:text-foreground transition-colors">
+                        <span>链接</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <span className="font-mono text-foreground/80 truncate max-w-[160px]">
+                          {tunnel.data.type.toUpperCase() === "HTTP" ||
+                          tunnel.data.type.toUpperCase() === "HTTPS"
+                            ? tunnel.data.dorp
+                            : `${tunnel.data.ip}:${tunnel.data.dorp}`}
+                        </span>
+                      </div>
                     </div>
-                    <span className="font-mono text-foreground/80">
-                      {tunnel.data.local_ip || "127.0.0.1"}:
-                      {tunnel.data.local_port || "-"}
-                    </span>
-                  </div>
-                  <div
-                    className="flex items-center justify-between text-xs cursor-pointer group/link hover:bg-muted/30 -mx-2 px-2 py-1 rounded transition-colors"
-                    onClick={handleCopyLink}
-                  >
-                    <div className="flex items-center gap-2 text-muted-foreground group-hover/link:text-foreground transition-colors">
-                      <span>链接</span>
+                  </>
+                ) : (
+                  <>
+                    <div className="flex items-center justify-between text-xs">
+                      <div className="flex items-center gap-2 text-muted-foreground">
+                        <span>本地</span>
+                      </div>
+                      <span className="font-mono text-foreground/80">
+                        {tunnel.data.local_ip || "127.0.0.1"}:
+                        {tunnel.data.local_port || "-"}
+                      </span>
                     </div>
-                    <span className="font-mono text-foreground/80 truncate max-w-[160px]">
-                      {linkInfo.display}
-                    </span>
-                  </div>
-                </>
-              )}
+                    <div
+                      className="flex items-center justify-between text-xs cursor-pointer group/link hover:bg-muted/30 -mx-2 px-2 py-1 rounded transition-colors"
+                      onClick={handleCopyLink}
+                    >
+                      <div className="flex items-center gap-2 text-muted-foreground group-hover/link:text-foreground transition-colors">
+                        <span>链接</span>
+                      </div>
+                      <span className="font-mono text-foreground/80 truncate max-w-[160px]">
+                        {linkInfo.display}
+                      </span>
+                    </div>
+                  </>
+                )}
+                <button className="text-xs text-red-500"
+                  onClick={handleDelete}
+                >删除隧道</button>
+              </div>
             </div>
           </div>
-        </div>
-      </ContextMenuTrigger>
-      <TooltipProvider delayDuration={300}>
-        <ContextMenuContent className="w-32">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <ContextMenuItem
-                onClick={handleToggleAutoStart}
-                className="text-xs"
-              >
-                {autoStartEnabled ? "✓ " : ""}自动启动
+        </ContextMenuTrigger>
+        <TooltipProvider delayDuration={300}>
+          <ContextMenuContent className="w-32">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <ContextMenuItem
+                  onClick={handleToggleAutoStart}
+                  className="text-xs"
+                >
+                  {autoStartEnabled ? "✓ " : ""}自动启动
+                </ContextMenuItem>
+              </TooltipTrigger>
+              <TooltipContent side="right" className="max-w-xs">
+                <p className="text-xs">
+                  {autoStartEnabled
+                    ? "已启用：启动软件时自动启动此隧道"
+                    : "未启用：点击可开启启动软件时自动启动此隧道"}
+                </p>
+              </TooltipContent>
+            </Tooltip>
+            {onEdit && (
+              <ContextMenuItem onClick={() => onEdit(tunnel)} className="text-xs">
+                编辑隧道
               </ContextMenuItem>
-            </TooltipTrigger>
-            <TooltipContent side="right" className="max-w-xs">
-              <p className="text-xs">
-                {autoStartEnabled
-                  ? "已启用：启动软件时自动启动此隧道"
-                  : "未启用：点击可开启启动软件时自动启动此隧道"}
-              </p>
-            </TooltipContent>
-          </Tooltip>
-          {onEdit && (
-            <ContextMenuItem onClick={() => onEdit(tunnel)} className="text-xs">
-              编辑隧道
+            )}
+            <ContextMenuSeparator />
+            <ContextMenuItem
+              variant="destructive"
+              onClick={handleDelete}
+              className="text-xs"
+            >
+              删除隧道
             </ContextMenuItem>
-          )}
-          <ContextMenuSeparator />
-          <ContextMenuItem
-            variant="destructive"
-            onClick={handleDelete}
-            className="text-xs"
-          >
-            删除隧道
-          </ContextMenuItem>
-        </ContextMenuContent>
-      </TooltipProvider>
-    </ContextMenu>
+          </ContextMenuContent>
+        </TooltipProvider>
+      </ContextMenu>
+      {showDeleteConfirm && typeof document !== 'undefined' && 
+        createPortal(
+          <Dialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>确认删除隧道</DialogTitle>
+                <DialogDescription>
+                  您确定要删除隧道 "{tunnel.data.name}" 吗？此操作无法撤销。
+                </DialogDescription>
+              </DialogHeader>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setShowDeleteConfirm(false)}>
+                  取消
+                </Button>
+                <Button variant="destructive" onClick={confirmDelete}>
+                  确认删除
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>,
+          document.body
+        )
+      }
+    </Fragment>
   );
 }
