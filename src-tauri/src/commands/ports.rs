@@ -1,6 +1,11 @@
 use serde::Serialize;
 use std::collections::HashSet;
 use std::process::Command;
+#[cfg(target_os = "windows")]
+use std::os::windows::process::CommandExt;
+
+#[cfg(target_os = "windows")]
+const CREATE_NO_WINDOW: u32 = 0x0800_0000;
 
 #[derive(Serialize)]
 pub struct PortInfo {
@@ -48,14 +53,16 @@ fn deduplicate_ports(items: Vec<PortInfo>) -> Vec<PortInfo> {
 fn collect_ports() -> Vec<PortInfo> {
     #[cfg(target_os = "windows")]
     {
-        let netstat = Command::new("cmd")
-            .args(["/C", "netstat -ano | findstr LISTENING"])
+        let netstat = Command::new("netstat")
+            .args(["-ano"])
+            .creation_flags(CREATE_NO_WINDOW)
             .output()
             .expect("failed to execute netstat");
         let netstat_text = String::from_utf8_lossy(&netstat.stdout);
 
-        let tasklist = Command::new("cmd")
-            .args(["/C", "tasklist /FO CSV /NH"])
+        let tasklist = Command::new("tasklist")
+            .args(["/FO", "CSV", "/NH"])
+            .creation_flags(CREATE_NO_WINDOW)
             .output()
             .expect("failed to execute tasklist");
         let tasklist_text = String::from_utf8_lossy(&tasklist.stdout);
@@ -63,6 +70,10 @@ fn collect_ports() -> Vec<PortInfo> {
         let mut result = Vec::new();
 
         for line in netstat_text.lines() {
+            if !line.contains("LISTENING") {
+                continue;
+            }
+
             let parts: Vec<&str> = line.split_whitespace().collect();
             if parts.len() >= 5 {
                 let address = parts[1];
