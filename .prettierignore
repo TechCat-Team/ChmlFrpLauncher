@@ -1,0 +1,8 @@
+src-tauri/target/
+dist/
+node_modules/
+.pnpm-store/
+.github/
+.vscode/
+CHANGELOG.md
+pnpm-lock.yaml

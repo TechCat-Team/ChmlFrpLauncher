@@ -1,0 +1,67 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "ChmlFrpLauncher",
+  "version": "0.7.1",
+  "identifier": "net.chmlfrp.launcher",
+  "build": {
+    "frontendDist": "../dist",
+    "devUrl": "http://localhost:5173",
+    "beforeDevCommand": "pnpm dev",
+    "beforeBuildCommand": "pnpm build"
+  },
+  "app": {
+    "macOSPrivateApi": true,
+    "windows": [
+      {
+        "title": "ChmlFrp Launcher",
+        "width": 1030,
+        "height": 660,
+        "resizable": true,
+        "fullscreen": false,
+        "transparent": true,
+        "decorations": true,
+        "titleBarStyle": "Overlay",
+        "trafficLightPosition": {
+          "x": 12,
+          "y": 20
+        }
+      }
+    ],
+    "security": {
+      "csp": null
+    },
+    "withGlobalTauri": true
+  },
+  "bundle": {
+    "createUpdaterArtifacts": true,
+    "active": true,
+    "targets": "all",
+    "resources": ["resources/*"],
+    "windows": {
+      "wix": {
+        "language": "zh-CN"
+      }
+    },
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ]
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDUyRERERkFFQjA5QjY1MDAKUldRQVpadXdydC9kVWtNdEpGaHVmK3puWUJpZUpvNnJ5ejdVTk1PdWZwSDArWVJsWEsydEJObTgK",
+      "endpoints": [
+        "https://cf-v2.uapis.cn/launcher/update",
+        "https://github.com/TechCat-Team/ChmlFrpLauncher/releases/latest/download/latest.json"
+      ]
+    },
+    "deep-link": {
+      "desktop": {
+        "schemes": ["chmlfrp"]
+      }
+    }
+  }
+}
