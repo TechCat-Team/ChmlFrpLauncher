@@ -5,7 +5,7 @@ import { Home } from "@/components/pages/Home";
 import { TunnelList } from "@/components/pages/TunnelList";
 import { Logs } from "@/components/pages/Logs";
 import { Settings } from "@/components/pages/Settings";
-import { getStoredUser, type StoredUser } from "@/services/api";
+import {getStoredUser, fetchUserInfo, type StoredUser, type UserInfo} from "@/services/api";
 import { AntivirusWarningDialog } from "@/components/dialogs/AntivirusWarningDialog";
 import { CloseConfirmDialog } from "@/components/dialogs/CloseConfirmDialog";
 import { UpdateDialog } from "@/components/dialogs/UpdateDialog";
@@ -28,6 +28,7 @@ import type { SidebarMode } from "@/components/pages/Settings/types";
 function App() {
   const [activeTab, setActiveTab] = useState("home");
   const [user, setUser] = useState<StoredUser | null>(() => getStoredUser());
+  const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
   const initialSidebarMode = getInitialSidebarMode();
   const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() =>
     initialSidebarMode !== "classic",
@@ -92,6 +93,30 @@ function App() {
     return () =>
       window.removeEventListener("sidebarModeChanged", handleSidebarModeChange);
   }, []);
+
+  useEffect(() => {
+    const loadUserInfo = async () => {
+      const storedUser = getStoredUser();
+      if (!storedUser?.usertoken) {
+        setUserInfo(null);
+        return;
+      }
+
+      try {
+        const data = await fetchUserInfo();
+        setUserInfo(data);
+      } catch {
+        setUserInfo(null);
+      }
+    };
+    void loadUserInfo();
+  }, [user?.usertoken]);
+
+  useEffect(() => {
+    if (user === null) {
+      setUserInfo(null);
+    }
+  }, [user]);
 
   const handleTabChange = (tab: string) => {
     setActiveTab(tab);
@@ -230,6 +255,7 @@ function App() {
                 onCollapseChange={setSidebarCollapsed}
                 collapsedWidth={SIDEBAR_COLLAPSED_WIDTH}
                 mode={sidebarMode}
+                userInfo={userInfo}
               />
             </div>
 
@@ -265,6 +291,7 @@ function App() {
               user={user}
               onUserChange={setUser}
               mode="classic"
+              userInfo={userInfo}
             />
             <div className="flex-1 flex flex-col overflow-hidden relative">
               {isMacOS && !showTitleBar ? (
