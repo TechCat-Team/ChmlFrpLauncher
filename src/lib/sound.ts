@@ -1,5 +1,5 @@
 export const playTunnelSound = (
-  type: "success" | "error",
+  type: "success" | "error" | "stop",
   enabled: boolean,
 ): void => {
   if (!enabled) return;

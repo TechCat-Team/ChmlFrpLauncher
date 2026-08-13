@@ -5,6 +5,7 @@ import { getStoredUser } from "@/services/api";
 import { frpcManager } from "@/services/frpcManager";
 import { customTunnelService } from "@/services/customTunnelService";
 import { logStore } from "@/services/logStore";
+import { playTunnelSound } from "@/lib/sound";
 import type { TunnelProgress, UnifiedTunnel } from "../types";
 
 // 判断是否为文件缺失错误
@@ -122,6 +123,9 @@ export function useTunnelToggle({
         }
 
         toast.success(message || `隧道 ${tunnelName} 已停止`);
+        const soundEnabled =
+          localStorage.getItem("tunnelSoundEnabled") !== "false";
+        playTunnelSound("stop", soundEnabled);
         setRunningTunnels((prev) => {
           const next = new Set(prev);
           next.delete(tunnelKey);
