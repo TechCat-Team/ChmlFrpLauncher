@@ -57,7 +57,9 @@ export function TunnelList({ user }: TunnelListProps) {
   } = useTunnelList();
 
   const apiTunnels = useMemo(
-    () => tunnels.filter((t) => t.type === "api").map((t) => t.data),
+    () => tunnels
+      .filter((t): t is { type: 'api'; data: Tunnel } => t.type === "api")
+      .map((t) => t.data),
     [tunnels],
   );
 
