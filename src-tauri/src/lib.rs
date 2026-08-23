@@ -152,7 +152,7 @@ pub fn run() {
                     }
                 }
 
-                #[cfg(target_os = "windows")]
+                #[cfg(any(target_os = "windows", target_os = "linux"))]
                 {
                     if let Err(e) = window.set_decorations(false) {
                         eprintln!("Failed to set decorations: {:?}", e);
