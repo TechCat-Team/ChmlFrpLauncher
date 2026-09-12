@@ -59,6 +59,23 @@ export interface Tunnel {
   node_ipv6: string | null;
   server_port: number;
   node_token: string;
+  encryption?: boolean | string | number | null;
+  compression?: boolean | string | number | null;
+}
+
+export function toBoolean(value: unknown): boolean {
+  if (typeof value === "boolean") return value;
+  if (typeof value === "number") return value !== 0;
+  if (typeof value === "string") {
+    const normalized = value.trim().toLowerCase();
+    return (
+      normalized === "true" ||
+      normalized === "1" ||
+      normalized === "yes" ||
+      normalized === "on"
+    );
+  }
+  return false;
 }
 
 export interface FlowPoint {

@@ -455,5 +455,24 @@ fn generate_frpc_config(config: &TunnelConfig) -> Result<String, String> {
         }
     }
 
+    if config.encryption {
+        writeln!(content, "use_encryption = true").unwrap();
+    }
+
+    if config.compression {
+        writeln!(content, "use_compression = true").unwrap();
+    }
+
+    if let Some(ref extra_params) = config.extra_params {
+        let normalized = extra_params.replace("\\r\\n", "\n").replace("\\n", "\n");
+        for line in normalized.lines() {
+            let trimmed = line.trim();
+            if trimmed.is_empty() || trimmed.starts_with('[') {
+                continue;
+            }
+            writeln!(content, "{}", trimmed).unwrap();
+        }
+    }
+
     Ok(content)
 }
