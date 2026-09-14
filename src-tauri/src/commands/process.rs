@@ -455,5 +455,34 @@ fn generate_frpc_config(config: &TunnelConfig) -> Result<String, String> {
         }
     }
 
+    if config.encryption {
+        writeln!(content, "use_encryption = true").unwrap();
+    }
+
+    if config.compression {
+        writeln!(content, "use_compression = true").unwrap();
+    }
+
+    if let Some(ref extra_params) = config.extra_params {
+        let normalized = extra_params.replace("\\r\\n", "\n").replace("\\n", "\n");
+        // 额外参数只能写进当前隧道（proxy）段；遇到其它 section 头时，
+        // 连同该 section 下的键值一起丢弃，避免参数被并入错误的 section
+        let mut skipping_section = false;
+        for line in normalized.lines() {
+            let trimmed = line.trim();
+            if trimmed.is_empty() {
+                continue;
+            }
+            if trimmed.starts_with('[') {
+                skipping_section = true;
+                continue;
+            }
+            if skipping_section {
+                continue;
+            }
+            writeln!(content, "{}", trimmed).unwrap();
+        }
+    }
+
     Ok(content)
 }

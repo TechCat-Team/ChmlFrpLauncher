@@ -1,6 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn, type Event } from "@tauri-apps/api/event";
-import { getNodeUdpSupport, type Tunnel } from "./api";
+import { getNodeUdpSupport, toBoolean, type Tunnel } from "./api";
 import { logStore} from "@/services/logStore";
 
 export interface LogMessage {
@@ -25,6 +25,10 @@ export interface TunnelConfig {
   log_level: string;
   force_tls: boolean;
   kcp_optimization: boolean;
+  /** frp 额外参数（对应 API 的 ap 字段） */
+  extra_params?: string;
+  encryption: boolean;
+  compression: boolean;
 }
 
 export interface PersistedTunnelInfo {
@@ -104,6 +108,9 @@ export class FrpcManager {
       log_level: localStorage.getItem("frpcLogLevel") || "info",
       force_tls: forceTls,
       kcp_optimization: kcpOptimization,
+      extra_params: tunnel.ap ?? undefined,
+      encryption: toBoolean(tunnel.encryption),
+      compression: toBoolean(tunnel.compression),
     };
 
     try {

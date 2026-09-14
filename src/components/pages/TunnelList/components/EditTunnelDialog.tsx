@@ -14,6 +14,7 @@ import {
   fetchNodeInfo,
   updateTunnel,
   getStoredUser,
+  toBoolean,
   type Tunnel,
   type Node,
   type NodeInfo,
@@ -47,7 +48,7 @@ export function EditTunnelDialog({
   preloadedNodes,
   user,
 }: EditTunnelDialogProps) {
-  const [step, setStep] = useState<1 | 2 | 3>(3); // 编辑隧道默认从步骤3开始
+  const [step, setStep] = useState<1 | 2 | 3>(3);
   const [loading, setLoading] = useState(false);
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
   const [nodeInfo, setNodeInfo] = useState<NodeInfo | null>(null);
@@ -87,9 +88,9 @@ export function EditTunnelDialog({
         localPort: tunnel.nport.toString(),
         remotePort: isHttpProtocol ? "" : tunnel.dorp,
         domain: isHttpProtocol ? tunnel.dorp : "",
-        encryption: false,
-        compression: false,
-        extraParams: "",
+        encryption: toBoolean(tunnel.encryption),
+        compression: toBoolean(tunnel.compression),
+        extraParams: tunnel.ap ?? "",
       });
 
       // 加载当前节点信息用于显示 CNAME 提示
@@ -301,7 +302,14 @@ export function EditTunnelDialog({
             await new Promise((resolve) => setTimeout(resolve, 500));
             const user = getStoredUser();
             if (user?.usertoken) {
-              await frpcManager.startTunnel(tunnel, user.usertoken);
+              // tunnel 是打开弹窗时的快照，重启时要把刚保存的配置覆盖上去
+              const latestTunnel: Tunnel = {
+                ...tunnel,
+                encryption: formData.encryption,
+                compression: formData.compression,
+                ap: formData.extraParams,
+              };
+              await frpcManager.startTunnel(latestTunnel, user.usertoken);
               toast.success("隧道已自动重启");
             }
           } catch (error) {

@@ -129,4 +129,11 @@ pub struct TunnelConfig {
     pub log_level: String,
     pub force_tls: bool,
     pub kcp_optimization: bool,
+
+    #[serde(default)]
+    pub extra_params: Option<String>,
+    #[serde(default)]
+    pub encryption: bool,
+    #[serde(default)]
+    pub compression: bool,
 }
