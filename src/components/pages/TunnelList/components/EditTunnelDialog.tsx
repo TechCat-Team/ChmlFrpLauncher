@@ -302,7 +302,14 @@ export function EditTunnelDialog({
             await new Promise((resolve) => setTimeout(resolve, 500));
             const user = getStoredUser();
             if (user?.usertoken) {
-              await frpcManager.startTunnel(tunnel, user.usertoken);
+              // tunnel 是打开弹窗时的快照，重启时要把刚保存的配置覆盖上去
+              const latestTunnel: Tunnel = {
+                ...tunnel,
+                encryption: formData.encryption,
+                compression: formData.compression,
+                ap: formData.extraParams,
+              };
+              await frpcManager.startTunnel(latestTunnel, user.usertoken);
               toast.success("隧道已自动重启");
             }
           } catch (error) {
