@@ -51,7 +51,7 @@ export function NetworkSection({
             <button
               onClick={() => setBypassProxy(!bypassProxy)}
               className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors outline-none outline-0 ${
-                bypassProxy ? "bg-foreground" : "bg-muted dark:bg-foreground/12"
+                bypassProxy ? "bg-primary" : "bg-muted dark:bg-foreground/12"
               } cursor-pointer`}
               role="switch"
               aria-checked={bypassProxy}
@@ -81,7 +81,7 @@ export function NetworkSection({
               }
               className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors outline-none outline-0 ${
                 proxyConfig.enabled
-                  ? "bg-foreground"
+                  ? "bg-primary"
                   : "bg-muted dark:bg-foreground/12"
               } cursor-pointer`}
               role="switch"
@@ -212,7 +212,7 @@ export function NetworkSection({
               }
               className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors outline-none outline-0 ${
                 proxyConfig.forceTls
-                  ? "bg-foreground"
+                  ? "bg-primary"
                   : "bg-muted dark:bg-foreground/12"
               } cursor-pointer`}
               role="switch"
@@ -255,7 +255,7 @@ export function NetworkSection({
               }
               className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors outline-none outline-0 ${
                 proxyConfig.kcpOptimization
-                  ? "bg-foreground"
+                  ? "bg-primary"
                   : "bg-muted dark:bg-foreground/12"
               } cursor-pointer`}
               role="switch"

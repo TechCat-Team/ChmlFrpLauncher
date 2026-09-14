@@ -534,7 +534,7 @@ export function Sidebar({
           {/* 头部 logo或者用户信息区域 */}
           {user ? (
             <div className="flex items-center gap-3">
-              <Avatar className="h-10 w-10 rounded-xl shadow-md">
+              <Avatar className="h-10 w-10 rounded-xl">
                 <AvatarImage src={userInfo?.userimg || user?.userimg || undefined} alt={user.username} />
                 <AvatarFallback>
                   <User className="h-5 w-5" />
@@ -544,14 +544,14 @@ export function Sidebar({
                 <h1 className="text-base font-bold text-foreground tracking-tight truncate max-w-[140px]">
                   {userInfo?.username || user.username}
                 </h1>
-                <p className="text-[10px] text-primary tracking-wide font-medium truncate max-w-[140px]">
+                <p className="text-[10px] text-foreground tracking-wide font-medium truncate max-w-[140px]">
                   {userInfo?.usergroup || user.usergroup}
                 </p>
               </div>
             </div>
           ) : (
             <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center shadow-md">
+              <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center">
                 <span className="text-primary-foreground font-bold text-base">
                   CF
                 </span>
@@ -580,7 +580,7 @@ export function Sidebar({
                     className={cn(
                       "w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-all duration-200 text-sm font-medium group relative overflow-hidden",
                       isActive
-                        ? "bg-primary/10 text-primary shadow-sm"
+                        ? "bg-primary/10 text-primary"
                         : "text-muted-foreground hover:text-foreground hover:bg-muted/50",
                     )}
                   >
@@ -615,7 +615,7 @@ export function Sidebar({
                 onTabChange("home");
               }}
             >
-              <div className="h-10 w-10 rounded-xl bg-destructive/10 flex items-center justify-center shadow-sm group-hover:bg-destructive/20 transition-all">
+              <div className="h-10 w-10 rounded-xl bg-destructive/10 flex items-center justify-center group-hover:bg-destructive/20 transition-all">
                 <LogOut className="w-5 h-5 text-destructive" />
               </div>
               <div className="flex-1 min-w-0">
@@ -635,7 +635,7 @@ export function Sidebar({
                 setLoginOpen(true);
               }}
             >
-              <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-muted to-muted/80 flex items-center justify-center shadow-sm group-hover:shadow transition-shadow">
+              <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-muted to-muted/80 flex items-center justify-center">
                 <LogIn className="w-5 h-5 text-muted-foreground" />
               </div>
               <div className="flex-1 min-w-0">
@@ -704,7 +704,7 @@ export function Sidebar({
             {user ? (
               <>
                 <div className="flex-shrink-0 flex items-center justify-center">
-                  <Avatar className="h-9 w-9 rounded-xl shadow-md">
+                  <Avatar className="h-9 w-9 rounded-xl">
                     <AvatarImage src={userInfo?.userimg || user?.userimg || undefined} alt={user.username} />
                     <AvatarFallback>
                       <User className="h-5 w-5" />
@@ -722,7 +722,7 @@ export function Sidebar({
                   <h1 className="text-base font-bold text-foreground tracking-tight truncate max-w-[120px]">
                     {userInfo?.username || user.username}
                   </h1>
-                  <p className="text-[10px] text-primary tracking-wide font-medium truncate max-w-[120px]">
+                  <p className="text-[10px] text-foreground tracking-wide font-medium truncate max-w-[120px]">
                     {userInfo?.usergroup || user.usergroup}
                   </p>
                 </div>
@@ -730,7 +730,7 @@ export function Sidebar({
             ) : (
               <>
                 <div className="flex-shrink-0 flex items-center justify-center">
-                  <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center shadow-md">
+                  <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center">
                     <span className="text-primary-foreground font-bold text-sm">
                       CF
                     </span>
@@ -767,7 +767,7 @@ export function Sidebar({
                       className={cn(
                         "w-full flex items-center rounded-xl transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] group relative overflow-hidden text-sm font-medium",
                         isActive
-                          ? "bg-primary/10 text-primary shadow-sm"
+                          ? "bg-primary/10 text-primary"
                           : "text-muted-foreground hover:text-foreground hover:bg-muted/50",
                       )}
                       style={{
@@ -843,7 +843,7 @@ export function Sidebar({
                 }}
               >
                 <div className="flex-shrink-0 flex items-center justify-center">
-                  <div className="h-10 w-10 rounded-xl bg-destructive/10 flex items-center justify-center shadow-sm group-hover:bg-destructive/20 transition-all">
+                  <div className="h-10 w-10 rounded-xl bg-destructive/10 flex items-center justify-center group-hover:bg-destructive/20 transition-all">
                     <LogOut className="w-5 h-5 text-destructive" />
                   </div>
                 </div>
@@ -880,7 +880,7 @@ export function Sidebar({
                 }}
               >
                 <div className="flex-shrink-0 flex items-center justify-center">
-                  <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-muted to-muted/80 flex items-center justify-center shadow-sm group-hover:shadow transition-shadow">
+                  <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-muted to-muted/80 flex items-center justify-center">
                     <LogIn className="w-5 h-5 text-muted-foreground" />
                   </div>
                 </div>

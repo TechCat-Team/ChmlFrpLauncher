@@ -10,9 +10,9 @@ import {
 } from "@/components/ui/item";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
-import type { ThemeMode, SidebarMode } from "../types";
+import type { ThemeMode, SidebarMode, ThemeColor } from "../types";
 import type { EffectType } from "../utils";
-import { getBackgroundType } from "../utils";
+import { DEFAULT_THEME_COLOR, getBackgroundType } from "../utils";
 import React, { type RefObject } from "react";
 
 interface AppearanceSectionProps {
@@ -22,6 +22,9 @@ interface AppearanceSectionProps {
   setFollowSystem: (value: boolean) => void;
   theme: ThemeMode;
   setTheme: (theme: ThemeMode) => void;
+  themeColor: ThemeColor;
+  setThemeColor: (color: string) => void;
+  resetThemeColor: () => void;
   isViewTransitionRef: RefObject<boolean>;
   showTitleBar: boolean;
   setShowTitleBar: (value: boolean) => void;
@@ -54,6 +57,9 @@ export function AppearanceSection({isMacOS,
                                     setFollowSystem,
                                     theme,
                                     setTheme,
+                                    themeColor,
+                                    setThemeColor,
+                                    resetThemeColor,
                                     isViewTransitionRef,
                                     showTitleBar,
                                     setShowTitleBar,
@@ -150,7 +156,7 @@ export function AppearanceSection({isMacOS,
                   onClick={() => setFollowSystem(!followSystem)}
                   className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors outline-none outline-0 ${
                       followSystem
-                          ? "bg-foreground"
+                          ? "bg-primary"
                           : "bg-muted dark:bg-foreground/12"
                   } cursor-pointer`}
                   role="switch"
@@ -182,7 +188,7 @@ export function AppearanceSection({isMacOS,
                         }
                         className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors outline-none outline-0 ${
                             theme === "dark"
-                                ? "bg-foreground"
+                                ? "bg-primary"
                                 : "bg-muted dark:bg-foreground/12"
                         } cursor-pointer`}
                         role="switch"
@@ -198,6 +204,54 @@ export function AppearanceSection({isMacOS,
                 </Item>
               </>
           ) : null}
+
+          <ItemSeparator />
+
+          <Item variant="outline" className="border-0">
+            <ItemContent>
+              <ItemTitle>主题色</ItemTitle>
+              <ItemDescription className="text-xs">
+                {themeColor
+                    ? `自定义主题色 ${themeColor}`
+                    : "使用默认黑白主题色"}
+              </ItemDescription>
+            </ItemContent>
+            <ItemActions>
+              <div className="flex items-center gap-2">
+                <label
+                    className="relative h-7 w-7 cursor-pointer overflow-hidden rounded-full border border-border"
+                    title="选择主题色"
+                >
+                  <span
+                      className={
+                        themeColor
+                            ? "absolute inset-0"
+                            : "absolute inset-0 bg-gradient-to-br from-foreground to-muted-foreground"
+                      }
+                      style={
+                        themeColor ? { backgroundColor: themeColor } : undefined
+                      }
+                  />
+                  <input
+                      type="color"
+                      value={themeColor ?? DEFAULT_THEME_COLOR}
+                      onChange={(event) => setThemeColor(event.target.value)}
+                      className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+                      aria-label="选择主题色"
+                  />
+                </label>
+                <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={resetThemeColor}
+                    disabled={!themeColor}
+                    className="h-auto px-3 py-1.5 text-xs"
+                >
+                  恢复默认
+                </Button>
+              </div>
+            </ItemActions>
+          </Item>
 
           <ItemSeparator className="opacity-50" />
 
@@ -240,7 +294,7 @@ export function AppearanceSection({isMacOS,
                         onClick={() => setShowTitleBar(!showTitleBar)}
                         className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors outline-none outline-0 ${
                             showTitleBar
-                                ? "bg-foreground"
+                                ? "bg-primary"
                                 : "bg-muted dark:bg-foreground/12"
                         } cursor-pointer`}
                         role="switch"
@@ -473,7 +527,7 @@ export function AppearanceSection({isMacOS,
                           window.dispatchEvent(new Event("videoStartSoundChanged"));
                         }}
                         className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors outline-none outline-0 ${
-                            videoStartSound ? "bg-foreground" : "bg-muted dark:bg-foreground/12"
+                            videoStartSound ? "bg-primary" : "bg-muted dark:bg-foreground/12"
                         } cursor-pointer`}
                         role="switch"
                         aria-checked={videoStartSound}
@@ -560,7 +614,7 @@ export function AppearanceSection({isMacOS,
                     localStorage.setItem("tunnelSoundEnabled", newValue.toString());
                   }}
                   className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors outline-none outline-0 ${
-                      tunnelSoundEnabled ? "bg-foreground" : "bg-muted dark:bg-foreground/12"
+                      tunnelSoundEnabled ? "bg-primary" : "bg-muted dark:bg-foreground/12"
                   } cursor-pointer`}
                   role="switch"
                   aria-checked={tunnelSoundEnabled}

@@ -63,7 +63,7 @@ export function SystemSection({
               disabled={autostartLoading}
               className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors outline-none outline-0 ${
                 autostartEnabled
-                  ? "bg-foreground"
+                  ? "bg-primary"
                   : "bg-muted dark:bg-foreground/12"
               } ${autostartLoading ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
               role="switch"
@@ -92,7 +92,7 @@ export function SystemSection({
               onClick={() => onToggleAutoCheckUpdate(!autoCheckUpdate)}
               className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors outline-none outline-0 ${
                 autoCheckUpdate
-                  ? "bg-foreground"
+                  ? "bg-primary"
                   : "bg-muted dark:bg-foreground/12"
               } cursor-pointer`}
               role="switch"
@@ -121,7 +121,7 @@ export function SystemSection({
               onClick={() => onToggleCloseToTray(!closeToTrayEnabled)}
               className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors outline-none outline-0 ${
                 closeToTrayEnabled
-                  ? "bg-foreground"
+                  ? "bg-primary"
                   : "bg-muted dark:bg-foreground/12"
               } cursor-pointer`}
               role="switch"
@@ -151,7 +151,7 @@ export function SystemSection({
               disabled={guardLoading}
               className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors outline-none outline-0 ${
                 guardEnabled
-                  ? "bg-foreground"
+                  ? "bg-primary"
                   : "bg-muted dark:bg-foreground/12"
               } ${guardLoading ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
               role="switch"
@@ -205,7 +205,7 @@ export function SystemSection({
               onClick={() => onToggleRestartOnEdit(!restartOnEdit)}
               className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors outline-none outline-0 ${
                 restartOnEdit
-                  ? "bg-foreground"
+                  ? "bg-primary"
                   : "bg-muted dark:bg-foreground/12"
               } cursor-pointer`}
               role="switch"

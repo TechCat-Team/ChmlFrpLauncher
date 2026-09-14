@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useTheme } from "./hooks/useTheme";
+import { useThemeColor } from "./hooks/useThemeColor";
 import { useBackgroundImage } from "./hooks/useBackgroundImage";
 import { useAutostart } from "./hooks/useAutostart";
 import { useUpdate } from "./hooks/useUpdate";
@@ -44,6 +45,8 @@ export function Settings() {
     setTheme,
     isViewTransitionRef,
   } = useTheme();
+
+  const { themeColor, setThemeColor, resetThemeColor } = useThemeColor();
 
   const {
     backgroundImage,
@@ -214,6 +217,9 @@ export function Settings() {
           setFollowSystem={setFollowSystem}
           theme={theme}
           setTheme={setTheme}
+          themeColor={themeColor}
+          setThemeColor={setThemeColor}
+          resetThemeColor={resetThemeColor}
           isViewTransitionRef={isViewTransitionRef}
           showTitleBar={showTitleBar}
           setShowTitleBar={setShowTitleBar}

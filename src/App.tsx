@@ -10,6 +10,7 @@ import { AntivirusWarningDialog } from "@/components/dialogs/AntivirusWarningDia
 import { CloseConfirmDialog } from "@/components/dialogs/CloseConfirmDialog";
 import { UpdateDialog } from "@/components/dialogs/UpdateDialog";
 import { useAppTheme } from "@/components/App/hooks/useAppTheme";
+import { useAppThemeColor } from "@/components/App/hooks/useAppThemeColor";
 import { useWindowEvents } from "@/components/App/hooks/useWindowEvents";
 import { useAppInitialization } from "@/components/App/hooks/useAppInitialization";
 import { useTunnelNotifications } from "@/components/App/hooks/useTunnelNotifications";
@@ -45,6 +46,7 @@ function App() {
 
   // 其他功能 Hooks
   useAppTheme();
+  useAppThemeColor();
   useAppInitialization();
   useAutoStartTunnels(user);
   useDeepLink(user);
