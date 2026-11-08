@@ -109,6 +109,8 @@ fn build_frpc() {
     if os == "darwin" {
         link_framework("CoreFoundation");
         link_framework("Security");
+        // Go's cgo DNS resolver references res_9_* symbols from libresolv.
+        println!("cargo:rustc-link-arg-bin=ChmlFrpLauncher=-lresolv");
     }
 }
 

@@ -79,14 +79,14 @@ export function FlowDataCard({
       label: "上传",
       theme: {
         light: "hsl(var(--chart-1))",
-        dark: "#585E6F",
+        dark: "#8b93a7",
       }
     },
     下载: {
       label: "下载",
       theme: {
         light: "hsl(var(--chart-1))",
-        dark: "#585E6F",
+        dark: "#8b93a7",
       }
     },
   } satisfies ChartConfig;
