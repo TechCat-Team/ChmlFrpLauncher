@@ -26,13 +26,10 @@ tauri-plugin-log = "2"
 tauri-plugin-dialog = "2"
 tauri-plugin-fs = "2"
 tauri-plugin-autostart = "2"
-reqwest = { version = "0.12", features = ["stream", "json"] }
-futures-util = "0.3"
+reqwest = { version = "0.12", features = ["json"] }
 chrono = "0.4"
-libc = "0.2"
 strip-ansi-escapes = "0.2"
-sha2 = "0.10"
-hex = "0.4"
+sysinfo = { version = "0.36", default-features = false, features = ["system"] }
 tauri-plugin-opener = "2"
 tauri-plugin-deep-link = "2"
 

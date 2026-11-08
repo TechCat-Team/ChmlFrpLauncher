@@ -8,19 +8,6 @@ import { logStore } from "@/services/logStore";
 import { playTunnelSound } from "@/lib/sound";
 import type { TunnelProgress, UnifiedTunnel } from "../types";
 
-// 判断是否为文件缺失错误
-function isFileMissingError(error: unknown): boolean {
-  const errorMsg = error instanceof Error ? error.message : String(error);
-  return (
-      errorMsg.includes("ENOENT") ||
-      errorMsg.includes("找不到") ||
-      errorMsg.includes("No such file") ||
-      errorMsg.includes("frpc") ||
-      errorMsg.includes("无法启动") ||
-      errorMsg.includes("未找到") ||
-      errorMsg.includes("系统找不到指定的文件")
-  );
-}
 interface UseTunnelToggleProps {
   setTunnelProgress: Dispatch<SetStateAction<Map<string, TunnelProgress>>>;
   setRunningTunnels: Dispatch<SetStateAction<Set<string>>>;
@@ -41,8 +28,6 @@ export function useTunnelToggle({
   const [togglingTunnels, setTogglingTunnels] = useState<Set<string>>(
     new Set(),
   );
-  // 控制弹窗显示状态
-  const [showWarningDialog, setShowWarningDialog] = useState(false);
 
   const handleToggle = async (tunnel: UnifiedTunnel, enabled: boolean) => {
     const tunnelKey =
@@ -150,38 +135,15 @@ export function useTunnelToggle({
         }
       }
     } catch (err) {
-      // 判断错误类型
-      if (enabled && isFileMissingError(err)) {
-        // 文件缺失：弹出提示窗，不 toast 错误
-        setShowWarningDialog(true);
-        // 仍然设置进度为错误
+      const message = err instanceof Error ? err.message : String(err);
+      toast.error(message);
+
+      if (enabled) {
         setTunnelProgress((prev) => {
           const next = new Map(prev);
-          next.set(tunnelKey, {
-            progress: 100,
-            isError: true,
-            isSuccess: false,
-          });
+          next.set(tunnelKey, { progress: 100, isError: true, isSuccess: false });
           return next;
         });
-      } else {
-        // 其他错误：普通 toast
-        const message =
-            err instanceof Error ? err.message : `${enabled ? "启动" : "停止"}失败`;
-        toast.error(message);
-
-        if (enabled) {
-          const errorProgress = {
-            progress: 100,
-            isError: true,
-            isSuccess: false,
-          };
-          setTunnelProgress((prev) => {
-            const next = new Map(prev);
-            next.set(tunnelKey, errorProgress);
-            return next;
-          });
-        }
       }
     } finally {
       setTogglingTunnels((prev) => {
@@ -192,14 +154,5 @@ export function useTunnelToggle({
     }
   };
 
-    const closeWarningDialog = () => {
-      setShowWarningDialog(false);
-    };
-
-    return {
-      togglingTunnels,
-      handleToggle,
-      showWarningDialog,
-      closeWarningDialog,
-    };
-  }
+  return { togglingTunnels, handleToggle };
+}

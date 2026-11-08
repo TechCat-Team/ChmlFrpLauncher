@@ -204,7 +204,7 @@ export function UpdateDialog({
                     <span>发现新版本</span>
                   </DialogTitle>
                   <div className="space-y-2">
-                    <DialogDescription>新版本已准备好安装。</DialogDescription>
+                    <DialogDescription>新版本已准备好安装。Windows 安装更新时会停止正在运行的隧道。</DialogDescription>
                     <div className="flex items-center gap-2 flex-wrap">
                       <Badge
                         variant="secondary"

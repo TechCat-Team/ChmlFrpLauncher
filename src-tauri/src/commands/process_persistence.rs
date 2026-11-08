@@ -1,7 +1,14 @@
-use crate::models::FrpcProcesses;
+use super::custom_tunnel::get_config_file_name;
+use crate::{models::FrpcProcesses, FRPC_WORKER_ARG};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::path::PathBuf;
+use std::ffi::OsStr;
+use std::path::{Path, PathBuf};
+use std::process::Child;
+use std::sync::{atomic::Ordering, MutexGuard};
+use sysinfo::{
+    Pid, Process, ProcessRefreshKind, ProcessStatus, ProcessesToUpdate, System, UpdateKind,
+};
 use tauri::{Manager, State};
 
 const RUNNING_TUNNELS_FILE: &str = "running_tunnels.json";
@@ -50,10 +57,7 @@ pub fn save_running_tunnel(
 }
 
 /// 移除隧道信息
-pub fn remove_running_tunnel(
-    app_handle: &tauri::AppHandle,
-    tunnel_id: i32,
-) -> Result<(), String> {
+pub fn remove_running_tunnel(app_handle: &tauri::AppHandle, tunnel_id: i32) -> Result<(), String> {
     let path = get_persistence_path(app_handle)?;
     let mut tunnels = load_persisted_tunnels_from_file(&path);
 
@@ -63,9 +67,7 @@ pub fn remove_running_tunnel(
 }
 
 /// 从磁盘读取隧道信息
-fn load_persisted_tunnels_from_file(
-    path: &PathBuf,
-) -> HashMap<i32, PersistedTunnelInfo> {
+fn load_persisted_tunnels_from_file(path: &Path) -> HashMap<i32, PersistedTunnelInfo> {
     if !path.exists() {
         return HashMap::new();
     }
@@ -77,234 +79,284 @@ fn load_persisted_tunnels_from_file(
 }
 
 fn write_persisted_tunnels(
-    path: &PathBuf,
+    path: &Path,
     tunnels: &HashMap<i32, PersistedTunnelInfo>,
 ) -> Result<(), String> {
     if let Some(parent) = path.parent() {
-        std::fs::create_dir_all(parent)
-            .map_err(|e| format!("创建目录失败: {}", e))?;
+        std::fs::create_dir_all(parent).map_err(|e| format!("创建目录失败: {}", e))?;
     }
 
-    let content = serde_json::to_string_pretty(tunnels)
-        .map_err(|e| format!("序列化失败: {}", e))?;
+    let content =
+        serde_json::to_string_pretty(tunnels).map_err(|e| format!("序列化失败: {}", e))?;
 
-    std::fs::write(path, content)
-        .map_err(|e| format!("写入文件失败: {}", e))
+    let temporary = path.with_extension("json.tmp");
+    std::fs::write(&temporary, content).map_err(|e| format!("写入隧道记录失败: {e}"))?;
+    std::fs::rename(&temporary, path).map_err(|e| format!("保存隧道记录失败: {e}"))
 }
 
-/// 检查进程是否在运行
-fn is_process_alive(pid: u32) -> bool {
-    #[cfg(target_os = "windows")]
-    {
-        unsafe {
-            let handle = windows_open_process(pid);
-            if handle.is_null() {
-                return false;
-            }
-            let mut exit_code: u32 = 0;
-            let result = windows_get_exit_code(handle, &mut exit_code);
-            windows_close_handle(handle);
-            result != 0 && exit_code == 259
-        }
+fn refresh_processes<'a>(tunnels: impl Iterator<Item = &'a PersistedTunnelInfo>) -> System {
+    let pids: Vec<_> = tunnels.map(|info| Pid::from_u32(info.pid)).collect();
+    let mut system = System::new();
+    if !pids.is_empty() {
+        system.refresh_processes_specifics(
+            ProcessesToUpdate::Some(&pids),
+            true,
+            ProcessRefreshKind::nothing()
+                .with_cmd(UpdateKind::OnlyIfNotSet)
+                .with_exe(UpdateKind::OnlyIfNotSet),
+        );
     }
-
-    #[cfg(unix)]
-    {
-        unsafe { libc::kill(pid as i32, 0) == 0 }
-    }
+    system
 }
 
-#[cfg(target_os = "windows")]
-unsafe fn windows_open_process(pid: u32) -> *mut std::ffi::c_void {
-    #[link(name = "kernel32")]
-    extern "system" {
-        fn OpenProcess(
-            dwDesiredAccess: u32,
-            bInheritHandle: i32,
-            dwProcessId: u32,
-        ) -> *mut std::ffi::c_void;
+fn find_tunnel_process<'a>(
+    system: &'a System,
+    app_dir: &Path,
+    info: &PersistedTunnelInfo,
+) -> Option<&'a Process> {
+    if info.pid == std::process::id() {
+        return None;
     }
-    OpenProcess(0x1000, 0, pid)
-}
-
-#[cfg(target_os = "windows")]
-unsafe fn windows_get_exit_code(
-    handle: *mut std::ffi::c_void,
-    exit_code: &mut u32,
-) -> i32 {
-    #[link(name = "kernel32")]
-    extern "system" {
-        fn GetExitCodeProcess(
-            hProcess: *mut std::ffi::c_void,
-            lpExitCode: *mut u32,
-        ) -> i32;
+    let process = system.process(Pid::from_u32(info.pid))?;
+    if matches!(
+        process.status(),
+        ProcessStatus::Zombie | ProcessStatus::Dead
+    ) {
+        return None;
     }
-    GetExitCodeProcess(handle, exit_code)
-}
 
-#[cfg(target_os = "windows")]
-unsafe fn windows_close_handle(handle: *mut std::ffi::c_void) {
-    #[link(name = "kernel32")]
-    extern "system" {
-        fn CloseHandle(hObject: *mut std::ffi::c_void) -> i32;
-    }
-    CloseHandle(handle);
-}
-
-/// 恢复进程状态
-pub fn recover_running_tunnels(app_handle: &tauri::AppHandle) -> Vec<PersistedTunnelInfo> {
-    let path = match get_persistence_path(app_handle) {
-        Ok(p) => p,
-        Err(_) => return Vec::new(),
+    let file_name = match info.tunnel_type.as_str() {
+        "api" => format!("g_{}.ini", info.tunnel_id),
+        "custom" => get_config_file_name(info.original_id.as_deref()?),
+        _ => return None,
     };
-
-    let tunnels = load_persisted_tunnels_from_file(&path);
-    let mut still_running = Vec::new();
-    let mut updated = HashMap::new();
-
-    for (tunnel_id, info) in tunnels {
-        if is_process_alive(info.pid) {
-            //eprintln!(
-            //    "[进程恢复] 隧道 {} (PID: {}) 仍在运行",
-            //    tunnel_id, info.pid
-            //);
-            still_running.push(info.clone());
-            updated.insert(tunnel_id, info);
-        } else {
-            //eprintln!(
-            //    "[进程恢复] 隧道 {} (PID: {}) 已停止，清理记录",
-            //    tunnel_id, info.pid
-            //);
-        }
+    let config = app_dir.join(&file_name);
+    let [_, mode, path] = process.cmd() else {
+        return None;
+    };
+    if mode == FRPC_WORKER_ARG && Path::new(path) == config {
+        return Some(process);
     }
 
-    // 移除已停止的进程
-    let _ = write_persisted_tunnels(&path, &updated);
-
-    still_running
+    // Recover a legacy child that was still running when the launcher was upgraded.
+    let legacy_name = if cfg!(windows) { "frpc.exe" } else { "frpc" };
+    let legacy_exe = process.exe().and_then(Path::file_name) == Some(OsStr::new(legacy_name));
+    (legacy_exe && mode == "-c" && (path == OsStr::new(&file_name) || Path::new(path) == config))
+        .then_some(process)
 }
 
-/// 获取仍在运行的隧道列表
+fn running_tunnels(
+    path: &Path,
+    tunnels: HashMap<i32, PersistedTunnelInfo>,
+) -> HashMap<i32, PersistedTunnelInfo> {
+    let system = refresh_processes(tunnels.values());
+    let app_dir = path.parent().expect("隧道记录应位于应用数据目录");
+    tunnels
+        .into_iter()
+        .filter(|(_, info)| find_tunnel_process(&system, app_dir, info).is_some())
+        .collect()
+}
+
+pub(super) fn lock_for_start<'a>(
+    app_handle: &tauri::AppHandle,
+    processes: &'a FrpcProcesses,
+    tunnel_id: i32,
+) -> Result<MutexGuard<'a, HashMap<i32, Child>>, String> {
+    let mut children = processes
+        .processes
+        .lock()
+        .map_err(|e| format!("获取进程锁失败: {e}"))?;
+    if processes.update_installing.load(Ordering::SeqCst) {
+        return Err("正在安装更新，暂时无法启动隧道".to_string());
+    }
+    if let Some(child) = children.get_mut(&tunnel_id) {
+        if child
+            .try_wait()
+            .map_err(|e| format!("查询进程状态失败: {e}"))?
+            .is_none()
+        {
+            return Err("该隧道已在运行中".to_string());
+        }
+        children.remove(&tunnel_id);
+    }
+    if persisted_tunnel_running(app_handle, tunnel_id)? {
+        return Err("该隧道已在运行中".to_string());
+    }
+    Ok(children)
+}
+
+fn persisted_tunnel_running(app_handle: &tauri::AppHandle, tunnel_id: i32) -> Result<bool, String> {
+    let path = get_persistence_path(app_handle)?;
+    let tunnels = load_persisted_tunnels_from_file(&path);
+    let Some(info) = tunnels.get(&tunnel_id) else {
+        return Ok(false);
+    };
+    let system = refresh_processes(std::iter::once(info));
+    let app_dir = path.parent().expect("隧道记录应位于应用数据目录");
+    Ok(find_tunnel_process(&system, app_dir, info).is_some())
+}
+
+pub fn recover_running_tunnels(app_handle: &tauri::AppHandle) {
+    if let Ok(path) = get_persistence_path(app_handle) {
+        let tunnels = running_tunnels(&path, load_persisted_tunnels_from_file(&path));
+        let _ = write_persisted_tunnels(&path, &tunnels);
+    }
+}
+
+pub(super) fn read_running_tunnels(
+    app_handle: &tauri::AppHandle,
+) -> Result<Vec<PersistedTunnelInfo>, String> {
+    let path = get_persistence_path(app_handle)?;
+    Ok(
+        running_tunnels(&path, load_persisted_tunnels_from_file(&path))
+            .into_values()
+            .collect(),
+    )
+}
+
 #[tauri::command]
 pub async fn get_persisted_running_tunnels(
     app_handle: tauri::AppHandle,
 ) -> Result<Vec<PersistedTunnelInfo>, String> {
-    let path = get_persistence_path(&app_handle)?;
-    let tunnels = load_persisted_tunnels_from_file(&path);
-    let mut result = Vec::new();
-
-    for (_tunnel_id, info) in &tunnels {
-        if is_process_alive(info.pid) {
-            result.push(info.clone());
-        }
-    }
-
-    Ok(result)
+    read_running_tunnels(&app_handle)
 }
 
-/// 停止一个进程
 #[tauri::command]
 pub async fn stop_orphan_process(
     app_handle: tauri::AppHandle,
     tunnel_id: i32,
     processes: State<'_, FrpcProcesses>,
 ) -> Result<String, String> {
-    // 检查是否在进程管理器中
-    {
-        let mut procs = processes
-            .processes
-            .lock()
-            .map_err(|e| format!("获取进程锁失败: {}", e))?;
-
-        if let Some(mut child) = procs.remove(&tunnel_id) {
-            let _ = child.kill();
-            let _ = child.wait();
-            let _ = remove_running_tunnel(&app_handle, tunnel_id);
-            return Ok("隧道已停止".to_string());
-        }
+    if !stop_tunnel_process(&app_handle, tunnel_id, &processes, false)? {
+        return Err("未找到该隧道的运行记录".to_string());
     }
+    Ok("隧道已停止".to_string())
+}
 
-    // 不在进程管理器 尝试通过pid终止
-    let path = get_persistence_path(&app_handle)?;
-    let tunnels = load_persisted_tunnels_from_file(&path);
+pub(super) fn stop_tunnel_process(
+    app_handle: &tauri::AppHandle,
+    tunnel_id: i32,
+    processes: &FrpcProcesses,
+    remove_generated_config: bool,
+) -> Result<bool, String> {
+    let mut children = processes
+        .processes
+        .lock()
+        .map_err(|e| format!("获取进程锁失败: {e}"))?;
+    let path = get_persistence_path(app_handle)?;
+    let mut tunnels = load_persisted_tunnels_from_file(&path);
+    let info = tunnels.remove(&tunnel_id);
 
-    if let Some(info) = tunnels.get(&tunnel_id) {
-        let pid = info.pid;
-        if is_process_alive(pid) {
-            kill_process_by_pid(pid)?;
-        }
-        let _ = remove_running_tunnel(&app_handle, tunnel_id);
-        Ok(format!("已终止进程 (PID: {})", pid))
+    let found = if let Some(child) = children.get_mut(&tunnel_id) {
+        stop_child(child)?;
+        children.remove(&tunnel_id);
+        true
+    } else if let Some(ref info) = info {
+        stop_recovered_tunnel(&path, &refresh_processes(std::iter::once(info)), info)?;
+        true
     } else {
-        Err("未找到该隧道的运行记录".to_string())
+        false
+    };
+
+    if remove_generated_config {
+        let _ = std::fs::remove_file(path.with_file_name(format!("g_{tunnel_id}.ini")));
     }
+    if info.is_some() {
+        write_persisted_tunnels(&path, &tunnels)?;
+    }
+    Ok(found)
 }
 
-fn kill_process_by_pid(pid: u32) -> Result<(), String> {
-    #[cfg(target_os = "windows")]
+fn stop_child(child: &mut Child) -> Result<(), String> {
+    if child
+        .try_wait()
+        .map_err(|e| format!("查询进程状态失败: {e}"))?
+        .is_none()
     {
-        use std::os::windows::process::CommandExt;
-        use std::process::Command;
-        Command::new("taskkill")
-            .args(["/F", "/PID", &pid.to_string()])
-            .creation_flags(0x08000000)
-            .output()
-            .map_err(|e| format!("终止进程失败: {}", e))?;
-        Ok(())
+        child.kill().map_err(|e| format!("终止进程失败: {e}"))?;
+        child.wait().map_err(|e| format!("等待进程退出失败: {e}"))?;
+    }
+    Ok(())
+}
+
+fn stop_recovered_tunnel(
+    path: &Path,
+    system: &System,
+    info: &PersistedTunnelInfo,
+) -> Result<(), String> {
+    let app_dir = path.parent().expect("隧道记录应位于应用数据目录");
+    if let Some(process) = find_tunnel_process(system, app_dir, info) {
+        process
+            .kill_and_wait()
+            .map_err(|e| format!("终止隧道进程 {} 失败: {e:?}", info.pid))?;
+    }
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn set_update_installing(
+    installing: bool,
+    app_handle: tauri::AppHandle,
+    processes: State<'_, FrpcProcesses>,
+) -> Result<(), String> {
+    // Windows requires all worker processes to release the launcher executable.
+    if !cfg!(windows) {
+        return Ok(());
     }
 
-    #[cfg(unix)]
-    {
-        unsafe {
-            if libc::kill(pid as i32, libc::SIGTERM) != 0 {
-                libc::kill(pid as i32, libc::SIGKILL);
-            }
+    let mut children = processes
+        .processes
+        .lock()
+        .map_err(|e| format!("获取进程锁失败: {e}"))?;
+    if !installing {
+        processes.update_installing.store(false, Ordering::SeqCst);
+        return Ok(());
+    }
+    if processes.update_installing.swap(true, Ordering::SeqCst) {
+        return Err("正在安装更新".to_string());
+    }
+
+    let result = (|| {
+        for child in children.values_mut() {
+            stop_child(child)?;
         }
-        Ok(())
+        children.clear();
+
+        let path = get_persistence_path(&app_handle)?;
+        let tunnels = load_persisted_tunnels_from_file(&path);
+        let system = refresh_processes(tunnels.values());
+        for info in tunnels.values() {
+            stop_recovered_tunnel(&path, &system, info)?;
+        }
+        write_persisted_tunnels(&path, &HashMap::new())
+    })();
+    if result.is_err() {
+        processes.update_installing.store(false, Ordering::SeqCst);
     }
+    result
 }
 
-/// 检查进程是否在运行
 #[tauri::command]
 pub async fn is_tunnel_process_alive(
     app_handle: tauri::AppHandle,
     tunnel_id: i32,
     processes: State<'_, FrpcProcesses>,
 ) -> Result<bool, String> {
-    {
-        let mut procs = processes
-            .processes
-            .lock()
-            .map_err(|e| format!("获取进程锁失败: {}", e))?;
-
-        if let Some(child) = procs.get_mut(&tunnel_id) {
-            return match child.try_wait() {
-                Ok(None) => Ok(true),
-                Ok(Some(_)) => {
-                    procs.remove(&tunnel_id);
-                    let _ = remove_running_tunnel(&app_handle, tunnel_id);
-                    Ok(false)
-                }
-                Err(_) => {
-                    procs.remove(&tunnel_id);
-                    let _ = remove_running_tunnel(&app_handle, tunnel_id);
-                    Ok(false)
-                }
-            };
+    let mut children = processes
+        .processes
+        .lock()
+        .map_err(|e| format!("获取进程锁失败: {e}"))?;
+    if let Some(child) = children.get_mut(&tunnel_id) {
+        if child
+            .try_wait()
+            .map_err(|e| format!("查询进程状态失败: {e}"))?
+            .is_none()
+        {
+            return Ok(true);
         }
+        children.remove(&tunnel_id);
+    } else if persisted_tunnel_running(&app_handle, tunnel_id)? {
+        return Ok(true);
     }
-
-    // 检查pid
-    let path = get_persistence_path(&app_handle)?;
-    let tunnels = load_persisted_tunnels_from_file(&path);
-
-    if let Some(info) = tunnels.get(&tunnel_id) {
-        let alive = is_process_alive(info.pid);
-        if !alive {
-            let _ = remove_running_tunnel(&app_handle, tunnel_id);
-        }
-        Ok(alive)
-    } else {
-        Ok(false)
-    }
+    Ok(false)
 }

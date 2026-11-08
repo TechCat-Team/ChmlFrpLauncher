@@ -3,6 +3,7 @@ mod models;
 mod utils;
 
 pub use models::{FrpcProcesses, ProcessGuardState};
+pub use utils::FRPC_WORKER_ARG;
 
 use tauri::{
     menu::{MenuBuilder, MenuItemBuilder},
@@ -179,17 +180,7 @@ pub fn run() {
             let app_handle = app.handle().clone();
             commands::process_guard::start_guard_monitor(app_handle.clone());
 
-            // 恢复还在运行的节点进程
-            let recovered = commands::process_persistence::recover_running_tunnels(&app_handle);
-            if !recovered.is_empty() {
-                // eprintln!("[启动] 发现 {} 个仍在运行的隧道进程", recovered.len());
-                for _info in &recovered {
-                    // eprintln!(
-                    //     "[启动] 隧道 {} (PID: {}, 类型: {}) 仍在运行",
-                    //     info.tunnel_id, info.pid, info.tunnel_type
-                    // );
-                }
-            }
+            commands::process_persistence::recover_running_tunnels(&app_handle);
 
             cleanup_official_tunnel_configs(&app_handle);
 
@@ -198,10 +189,6 @@ pub fn run() {
         .manage(FrpcProcesses::new())
         .manage(ProcessGuardState::new())
         .invoke_handler(tauri::generate_handler![
-            commands::check_frpc_exists,
-            commands::get_frpc_directory,
-            commands::get_download_url,
-            commands::download_frpc,
             commands::start_frpc,
             commands::stop_frpc,
             commands::is_frpc_running,
@@ -237,10 +224,10 @@ pub fn run() {
             commands::process_guard::add_guarded_custom_tunnel,
             commands::process_guard::remove_guarded_process,
             commands::process_guard::check_log_and_stop_guard,
-            commands::fix_frpc_ini_tls,
             commands::resolve_domain_to_ip,
             commands::process_persistence::get_persisted_running_tunnels,
             commands::process_persistence::stop_orphan_process,
+            commands::process_persistence::set_update_installing,
             commands::process_persistence::is_tunnel_process_alive,
         ])
         .build(tauri::generate_context!())

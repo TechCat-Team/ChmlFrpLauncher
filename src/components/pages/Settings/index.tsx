@@ -4,7 +4,6 @@ import { useThemeColor } from "./hooks/useThemeColor";
 import { useBackgroundImage } from "./hooks/useBackgroundImage";
 import { useAutostart } from "./hooks/useAutostart";
 import { useUpdate } from "./hooks/useUpdate";
-import { useFrpcDownload } from "./hooks/useFrpcDownload";
 import { useCloseBehavior } from "./hooks/useCloseBehavior";
 import { useProcessGuard } from "./hooks/useProcessGuard";
 import { useProxy } from "./hooks/useProxy";
@@ -78,7 +77,6 @@ export function Settings() {
   const [isDownloadingUpdate, setIsDownloadingUpdate] = useState(false);
   const [downloadProgress, setDownloadProgress] = useState(0);
 
-  const { isDownloading, handleRedownloadFrpc } = useFrpcDownload();
 
   const { closeToTrayEnabled, handleToggleCloseToTray } = useCloseBehavior();
 
@@ -274,8 +272,6 @@ export function Settings() {
           checkingUpdate={checkingUpdate}
           currentVersion={currentVersion}
           onCheckUpdate={handleCheckUpdate}
-          isDownloading={isDownloading}
-          onRedownloadFrpc={handleRedownloadFrpc}
         />
       </div>
 

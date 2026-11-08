@@ -1,3 +1,4 @@
+import { isFrpProxyReady, isFrpLoggedIn } from "@/services/frpLog";
 import type { LogMessage } from "@/services/frpcManager";
 import type { TunnelProgress } from "./types";
 import { tunnelProgressCache } from "./cache";
@@ -22,14 +23,14 @@ export function restoreProgressFromLogs(
     for (let i = tunnelLogs.length - 1; i >= 0; i--) {
       const message = tunnelLogs[i].message;
 
-      if (message.includes("映射启动成功")) {
+      if (isFrpProxyReady(message)) {
         progress = 100;
         isError = false;
         isSuccess = false;
         break;
       } else if (message.includes("已启动隧道")) {
         progress = 80;
-      } else if (message.includes("成功登录至服务器")) {
+      } else if (isFrpLoggedIn(message)) {
         progress = 60;
       } else if (message.includes("已写入配置文件")) {
         progress = 40;

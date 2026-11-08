@@ -1,3 +1,4 @@
+import { isFrpProxyReady, isFrpLoggedIn, isFrpStartError } from "@/services/frpLog";
 import { useState, useEffect, useRef, useCallback } from "react";
 import type { Dispatch, SetStateAction } from "react";
 import { toast } from "sonner";
@@ -145,7 +146,7 @@ export function useTunnelProgress(
             const successLogs = logs.filter(
               (log) =>
                 log.tunnel_id === tunnelId &&
-                log.message.includes("映射启动成功"),
+                isFrpProxyReady(log.message),
             );
 
             if (successLogs.length > 0) {
@@ -161,7 +162,7 @@ export function useTunnelProgress(
             const recentErrorLogs = logs.filter(
               (log) =>
                 log.tunnel_id === tunnelId &&
-                log.message.includes("启动失败") &&
+                isFrpStartError(log.message) &&
                 log.message.includes("already exists"),
             );
 
@@ -301,7 +302,7 @@ export function useTunnelProgress(
           const successLogs = logs.filter(
             (log) =>
               log.tunnel_id === tunnelId &&
-              log.message.includes("映射启动成功"),
+              isFrpProxyReady(log.message),
           );
 
           if (successLogs.length > 0) {
@@ -317,7 +318,7 @@ export function useTunnelProgress(
           const recentErrorLogs = logs.filter(
             (log) =>
               log.tunnel_id === tunnelId &&
-              (log.message.includes("启动失败") ||
+              (isFrpStartError(log.message) ||
                 log.message.includes("请尝试将配置文件中tls_enable")),
           );
 
@@ -509,11 +510,11 @@ export function useTunnelProgress(
             newProgress.progress = 20;
           } else if (message.includes("已写入配置文件")) {
             newProgress.progress = 40;
-          } else if (message.includes("成功登录至服务器")) {
+          } else if (isFrpLoggedIn(message)) {
             newProgress.progress = 60;
           } else if (message.includes("已启动隧道")) {
             newProgress.progress = 80;
-          } else if (message.includes("映射启动成功")) {
+          } else if (isFrpProxyReady(message)) {
             newProgress.progress = 100;
             newProgress.isError = false;
             newProgress.isSuccess = true;
@@ -640,7 +641,7 @@ export function useTunnelProgress(
             }, 2000);
             successTimeoutRefs.current.set(tunnelKey, successTimeout);
           } else if (
-            message.includes("启动失败") &&
+            isFrpStartError(message) &&
             message.includes("already exists")
           ) {
             const errorKey = `${tunnelId}-${message}`;

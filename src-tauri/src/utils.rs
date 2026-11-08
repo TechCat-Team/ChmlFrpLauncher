@@ -1,5 +1,5 @@
-use std::path::PathBuf;
-use tauri::Manager;
+use std::path::Path;
+use std::process::{Child, Command, Stdio};
 
 // 隐藏用户日志里面的token
 pub fn sanitize_log(message: &str, secrets: &[&str]) -> String {
@@ -13,71 +13,26 @@ pub fn sanitize_log(message: &str, secrets: &[&str]) -> String {
     result
 }
 
-pub fn frpc_file_name() -> &'static str {
-    if cfg!(target_os = "windows") {
-        "frpc.exe"
-    } else {
-        "frpc"
-    }
-}
+pub const FRPC_WORKER_ARG: &str = "--frpc-worker";
 
-pub fn app_data_frpc_path(app_handle: &tauri::AppHandle) -> Result<PathBuf, String> {
-    let app_data_dir = app_handle.path().app_data_dir().map_err(|e| e.to_string())?;
-    Ok(app_data_dir.join(frpc_file_name()))
-}
+pub fn spawn_frpc_worker(app_dir: &Path, config_path: &Path) -> Result<Child, String> {
+    let executable = std::env::current_exe().map_err(|e| format!("获取启动器路径失败: {e}"))?;
+    let mut command = Command::new(executable);
+    command
+        .current_dir(app_dir)
+        .arg(FRPC_WORKER_ARG)
+        .arg(config_path)
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped());
 
-pub fn resolve_frpc_path(app_handle: &tauri::AppHandle) -> Result<PathBuf, String> {
-    let app_path = app_data_frpc_path(app_handle)?;
-    if app_path.exists() {
-        return Ok(app_path);
-    }
-
-    let bundled_path = bundled_frpc_candidates(app_handle)
-        .into_iter()
-        .find(|path| path.exists());
-    let Some(bundled_path) = bundled_path else {
-        return Ok(app_path);
-    };
-
-    if let Some(parent) = app_path.parent() {
-        let _ = std::fs::create_dir_all(parent);
+    #[cfg(target_os = "windows")]
+    {
+        use std::os::windows::process::CommandExt;
+        command.creation_flags(0x08000000);
     }
 
-    if std::fs::copy(&bundled_path, &app_path).is_ok() {
-        #[cfg(unix)]
-        {
-            use std::os::unix::fs::PermissionsExt;
-            if let Ok(metadata) = std::fs::metadata(&app_path) {
-                let mut perms = metadata.permissions();
-                if perms.mode() & 0o111 == 0 {
-                    perms.set_mode(0o755);
-                    let _ = std::fs::set_permissions(&app_path, perms);
-                }
-            }
-        }
-        return Ok(app_path);
-    }
-
-    Ok(bundled_path)
-}
-
-fn bundled_frpc_candidates(app_handle: &tauri::AppHandle) -> Vec<PathBuf> {
-    let file_name = frpc_file_name();
-    let mut candidates = Vec::new();
-
-    if let Ok(resource_dir) = app_handle.path().resource_dir() {
-        candidates.push(resource_dir.join(file_name));
-    }
-
-    if let Ok(exe_path) = std::env::current_exe() {
-        if let Some(exe_dir) = exe_path.parent() {
-            candidates.push(exe_dir.join("resources").join(file_name));
-            candidates.push(exe_dir.join(file_name));
-            candidates.push(exe_dir.join("..").join("Resources").join(file_name));
-        }
-    }
-
-    candidates
+    command.spawn().map_err(|e| format!("启动 FRP worker 失败: {e}"))
 }
 
 fn sanitize_token(message: &str, token: &str) -> String {

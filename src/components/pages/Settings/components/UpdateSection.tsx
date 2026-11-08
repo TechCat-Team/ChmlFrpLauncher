@@ -11,22 +11,18 @@ interface UpdateSectionProps {
   checkingUpdate: boolean;
   currentVersion: string;
   onCheckUpdate: () => void;
-  isDownloading: boolean;
-  onRedownloadFrpc: () => void;
 }
 
 export function UpdateSection({
   checkingUpdate,
   currentVersion,
   onCheckUpdate,
-  isDownloading,
-  onRedownloadFrpc,
 }: UpdateSectionProps) {
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-2 text-sm font-medium text-foreground">
         <Sparkles className="w-4 h-4" />
-        <span>更新与下载</span>
+        <span>应用更新</span>
       </div>
       <div className="rounded-lg bg-card overflow-hidden">
         <Item
@@ -53,28 +49,6 @@ export function UpdateSection({
               }`}
             >
               {checkingUpdate ? "检查中..." : "检测更新"}
-            </button>
-          </ItemActions>
-        </Item>
-
-        <Item variant="outline" className="border-0">
-          <ItemContent>
-            <ItemTitle>frpc 客户端</ItemTitle>
-            <ItemDescription className="text-xs">
-              重新下载 frpc 客户端程序
-            </ItemDescription>
-          </ItemContent>
-          <ItemActions>
-            <button
-              onClick={onRedownloadFrpc}
-              disabled={isDownloading}
-              className={`px-3 py-1.5 text-xs rounded transition-colors ${
-                isDownloading
-                  ? "bg-muted text-muted-foreground cursor-not-allowed"
-                  : "bg-foreground text-background hover:opacity-90"
-              }`}
-            >
-              {isDownloading ? "下载中..." : "重新下载"}
             </button>
           </ItemActions>
         </Item>

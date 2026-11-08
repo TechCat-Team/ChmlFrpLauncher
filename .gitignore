@@ -24,3 +24,4 @@ src-tauri/frpc.ini
 *.sln
 *.sw?
 package-lock.json
+/frp-source/
