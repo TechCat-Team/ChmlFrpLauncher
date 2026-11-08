@@ -97,7 +97,7 @@ fn write_persisted_tunnels(
 
 fn refresh_processes<'a>(tunnels: impl Iterator<Item = &'a PersistedTunnelInfo>) -> System {
     let pids: Vec<_> = tunnels.map(|info| Pid::from_u32(info.pid)).collect();
-    let mut system = System::new();
+    let mut system = System::new().expect("无法初始化系统信息");
     if !pids.is_empty() {
         system.refresh_processes_specifics(
             ProcessesToUpdate::Some(&pids),

@@ -60,6 +60,8 @@ export function useDeepLink(user: StoredUser | null) {
 
         let hasHandledSuccess = false;
         let unsubscribe: (() => void) | undefined;
+        // subscribe 会同步调用监听器，监听器内要访问 unsubscribe，所以必须用 let 先声明
+        // eslint-disable-next-line prefer-const
         unsubscribe = logStore.subscribe((logs) => {
           if (hasHandledSuccess) {
             return;
