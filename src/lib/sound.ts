@@ -8,7 +8,7 @@ export const playTunnelSound = (
     const audio = new Audio(
       type === "success" ? "/run_tunnel.mp3" : "/stop_tunnel.mp3",
     );
-    audio.volume = 0.3;
+    audio.volume = type === "stop" ? 0.9 : 0.3;
     audio.play().catch((err) => {
       console.error("播放音效失败:", err);
     });

@@ -1,0 +1,6 @@
+{
+  "identifier": "android-capability",
+  "platforms": ["android"],
+  "windows": ["main"],
+  "permissions": ["opener:allow-open-url", "opener:allow-default-urls"]
+}

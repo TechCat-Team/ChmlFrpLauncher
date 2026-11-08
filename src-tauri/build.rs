@@ -1,7 +1,9 @@
 use std::{env, fs, path::PathBuf, process::Command};
 
 fn main() {
-    build_frpc();
+    if env::var("CARGO_CFG_TARGET_OS").as_deref() != Ok("android") {
+        build_frpc();
+    }
     tauri_build::build();
 }
 
