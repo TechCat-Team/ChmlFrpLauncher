@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import {
   fetchNodeInfo,
+  fetchTunnels,
   updateTunnel,
   getStoredUser,
   toBoolean,
@@ -143,7 +144,8 @@ export function EditTunnelDialog({
         }
       } catch (error) {
         if (!cancelled) {
-          const message = error instanceof Error ? error.message : "端口检查失败";
+          const message =
+            error instanceof Error ? error.message : "端口检查失败";
           setPortStatus(null);
           setPortStatusError(message);
         }
@@ -302,18 +304,30 @@ export function EditTunnelDialog({
             await new Promise((resolve) => setTimeout(resolve, 500));
             const user = getStoredUser();
             if (user?.usertoken) {
-              // tunnel 是打开弹窗时的快照，重启时要把刚保存的配置覆盖上去
-              const latestTunnel: Tunnel = {
+              // tunnel 是打开弹窗时的快照：优先重新获取保存后的隧道（本地端口、节点等都可能已变化），
+              // 获取失败时退回到在快照上覆盖本次修改的字段
+              let latestTunnel: Tunnel = {
                 ...tunnel,
                 encryption: formData.encryption,
                 compression: formData.compression,
                 ap: formData.extraParams,
               };
+              try {
+                const fresh = (await fetchTunnels()).find(
+                  (t) => t.id === tunnel.id,
+                );
+                if (fresh) latestTunnel = fresh;
+              } catch (error) {
+                console.error("获取最新隧道信息失败:", error);
+              }
               await frpcManager.startTunnel(latestTunnel, user.usertoken);
               toast.success("隧道已自动重启");
             }
           } catch (error) {
             console.error("自动重启隧道失败:", error);
+            toast.error(
+              `自动重启隧道失败：${error instanceof Error ? error.message : String(error)}`,
+            );
           }
         }
       }

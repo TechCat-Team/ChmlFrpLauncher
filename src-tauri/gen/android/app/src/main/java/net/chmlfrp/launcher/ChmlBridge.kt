@@ -6,6 +6,7 @@ import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.ConnectivityManager
 import android.net.Uri
 import android.os.Build
 import android.os.PowerManager
@@ -61,6 +62,31 @@ object ChmlBridge {
             }
         }
         return true
+    }
+
+    /**
+     * 当前网络的 HTTP 代理（Wi-Fi 或全局代理），格式为 `http://host:port`，没有时返回空字符串。
+     * Rust 侧的 reqwest 无法读取 Android 系统代理，关闭“绕过代理”时通过这里获取。
+     * 仅支持手动代理，PAC 自动配置不受支持。
+     */
+    @JvmStatic
+    fun getSystemProxy(): String {
+        if (!::appContext.isInitialized) return ""
+        var host: String? = null
+        var port = -1
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            val connectivity = appContext.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+            connectivity.defaultProxy?.let {
+                host = it.host
+                port = it.port
+            }
+        }
+        if (host.isNullOrEmpty() || port <= 0) {
+            host = System.getProperty("http.proxyHost")
+            port = System.getProperty("http.proxyPort")?.toIntOrNull() ?: -1
+        }
+        val proxyHost = host
+        return if (proxyHost.isNullOrEmpty() || port <= 0) "" else "http://$proxyHost:$port"
     }
 
     /** 打开应用详情页，方便用户在厂商系统中设置自启动、后台运行等权限 */

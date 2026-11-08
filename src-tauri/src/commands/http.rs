@@ -48,6 +48,17 @@ async fn send_request(options: HttpRequestOptions) -> Result<HttpResponsePayload
         ));
     }
 
+    // reqwest 在 Android 上读不到系统代理（Wi-Fi 代理），不绕过代理时需要显式设置
+    #[cfg(target_os = "android")]
+    if !bypass_proxy {
+        if let Some(proxy) = super::android_service::system_proxy() {
+            match reqwest::Proxy::all(&proxy) {
+                Ok(proxy) => client_builder = client_builder.proxy(proxy),
+                Err(e) => eprintln!("[ChmlFrpLauncher] 系统代理无效: {e}"),
+            }
+        }
+    }
+
     let client = client_builder
         .build()
         .map_err(|e| format!("Failed to create client: {}", e))?;

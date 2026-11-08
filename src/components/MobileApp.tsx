@@ -62,6 +62,15 @@ import {
   ItemSeparator,
   ItemTitle,
 } from "@/components/ui/item";
+import { Select } from "@/components/ui/select";
+import {
+  getInitialBypassProxy,
+  getInitialFrpcLogLevel,
+  getInitialRestartOnEdit,
+  type FrpcLogLevel,
+} from "@/components/pages/Settings/utils";
+import { NetworkSection } from "@/components/pages/Settings/components/NetworkSection";
+import { useProxy } from "@/components/pages/Settings/hooks/useProxy";
 import { useAppTheme } from "@/components/App/hooks/useAppTheme";
 import { useAppThemeColor } from "@/components/App/hooks/useAppThemeColor";
 import { cn } from "@/lib/utils";
@@ -290,6 +299,12 @@ export function MobileApp() {
   const [editing, setEditing] = useState<Tunnel | null>(null);
   const [deleting, setDeleting] = useState<Tunnel | null>(null);
   const [themeMode, setThemeMode] = useState<ThemeMode>(getThemeMode);
+  const [frpcLogLevel, setFrpcLogLevel] = useState<FrpcLogLevel>(
+    getInitialFrpcLogLevel,
+  );
+  const [bypassProxy, setBypassProxy] = useState(getInitialBypassProxy);
+  const [restartOnEdit, setRestartOnEdit] = useState(getInitialRestartOnEdit);
+  const { proxyConfig, updateProxyConfig } = useProxy();
   const [batteryUnrestricted, setBatteryUnrestricted] = useState<
     boolean | null
   >(null);
@@ -499,6 +514,23 @@ export function MobileApp() {
     setError("");
   };
 
+  // 以下设置与电脑端使用相同的存储键
+  const changeBypassProxy = (value: boolean) => {
+    setBypassProxy(value);
+    localStorage.setItem("bypassProxy", String(value));
+  };
+
+  const changeRestartOnEdit = (value: boolean) => {
+    setRestartOnEdit(value);
+    localStorage.setItem("restartOnEdit", String(value));
+  };
+
+  // 启动隧道时写入配置的 log.level
+  const changeFrpcLogLevel = (level: FrpcLogLevel) => {
+    setFrpcLogLevel(level);
+    localStorage.setItem("frpcLogLevel", level);
+  };
+
   const changeThemeMode = (mode: ThemeMode) => {
     setThemeMode(mode);
     applyThemeMode(mode);
@@ -570,6 +602,11 @@ export function MobileApp() {
 
   return (
     <div className="mobile-app h-dvh bg-background text-foreground flex flex-col">
+      {/* 状态栏背景：页面滚动时内容不会显示在状态栏下方 */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none fixed inset-x-0 top-0 z-40 h-[env(safe-area-inset-top)] bg-background"
+      />
       <main
         className={cn(
           "flex-1 min-h-0 px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-4",
@@ -716,6 +753,13 @@ export function MobileApp() {
               </div>
             </div>
 
+            <NetworkSection
+              bypassProxy={bypassProxy}
+              setBypassProxy={changeBypassProxy}
+              proxyConfig={proxyConfig}
+              updateProxyConfig={updateProxyConfig}
+            />
+
             <div className="space-y-3">
               {sectionTitle(Palette, "外观")}
               <div className="rounded-lg bg-card overflow-hidden">
@@ -757,6 +801,62 @@ export function MobileApp() {
             <div className="space-y-3">
               {sectionTitle(Settings2, "隧道")}
               <div className="rounded-lg bg-card overflow-hidden">
+                <Item variant="outline" className="border-0">
+                  <ItemContent>
+                    <ItemTitle>Frpc 日志等级</ItemTitle>
+                    <ItemDescription className="text-xs">
+                      控制日志页显示的详细程度，重新启动隧道后生效
+                    </ItemDescription>
+                  </ItemContent>
+                  <ItemActions>
+                    <Select
+                      options={[
+                        { value: "trace", label: "trace" },
+                        { value: "debug", label: "debug" },
+                        { value: "info", label: "info" },
+                        { value: "warn", label: "warn" },
+                        { value: "error", label: "error" },
+                      ]}
+                      value={frpcLogLevel}
+                      onChange={(value) =>
+                        changeFrpcLogLevel(value as FrpcLogLevel)
+                      }
+                      size="sm"
+                      className="w-24"
+                    />
+                  </ItemActions>
+                </Item>
+                <ItemSeparator />
+                <Item variant="outline" className="border-0">
+                  <ItemContent>
+                    <ItemTitle>修改隧道后重启映射</ItemTitle>
+                    <ItemDescription className="text-xs">
+                      修改正在运行的隧道后自动重启以应用更改
+                    </ItemDescription>
+                  </ItemContent>
+                  <ItemActions>
+                    <button
+                      onClick={() => changeRestartOnEdit(!restartOnEdit)}
+                      className={cn(
+                        "relative inline-flex h-6 w-11 items-center rounded-full transition-colors",
+                        restartOnEdit
+                          ? "bg-primary"
+                          : "bg-muted dark:bg-foreground/12",
+                      )}
+                      role="switch"
+                      aria-checked={restartOnEdit}
+                      aria-label="修改隧道后重启映射"
+                    >
+                      <span
+                        className={cn(
+                          "inline-block h-4 w-4 transform rounded-full bg-background shadow-sm transition-transform",
+                          restartOnEdit ? "translate-x-6" : "translate-x-1",
+                        )}
+                      />
+                    </button>
+                  </ItemActions>
+                </Item>
+                <ItemSeparator />
                 <Item variant="outline" className="border-0">
                   <ItemContent>
                     <ItemTitle>前台服务保活</ItemTitle>
@@ -864,20 +964,14 @@ export function MobileApp() {
           if (!open) setEditing(null);
         }}
         onSuccess={() => {
-          const id = editing?.id;
-          if (id !== undefined && running.has(id)) {
-            void frpcManager
-              .stopTunnel(id)
-              .then(() => {
-                setRunning((current) => {
-                  const next = new Set(current);
-                  next.delete(id);
-                  return next;
-                });
-                toast.info("隧道配置已更新，请重新启动隧道");
-              })
-              .catch((err) => toast.error(`停止原隧道失败：${String(err)}`));
+          // 是否重启由对话框按“修改隧道后重启映射”设置处理，这里只刷新列表和状态
+          if (editing && running.has(editing.id) && !restartOnEdit) {
+            toast.info("隧道配置已更新，重新启动隧道后生效");
           }
+          void frpcManager
+            .getRunningTunnels()
+            .then((ids) => setRunning(new Set(ids)))
+            .catch(() => undefined);
           setRevision((v) => v + 1);
         }}
         tunnel={editing}

@@ -1,7 +1,7 @@
 //! 通过 JNI 调用 Kotlin 侧的 `ChmlBridge`，用于前台服务保活和电池优化设置。
 
 use jni::{
-    objects::{GlobalRef, JClass, JObject, JValue, JValueOwned},
+    objects::{GlobalRef, JClass, JObject, JString, JValue, JValueOwned},
     JNIEnv, JavaVM,
 };
 use std::sync::{
@@ -69,6 +69,24 @@ fn call(name: &str, sig: &str, args: &[JValue]) -> Result<JValueOwned<'static>, 
         return Err(format!("调用 {name} 失败"));
     }
     result.map_err(|e| e.to_string())
+}
+
+/// 读取 Android 当前网络的 HTTP 代理（`http://host:port`）。reqwest 在 Android 上读不到系统代理
+pub fn system_proxy() -> Option<String> {
+    let bridge = BRIDGE.get()?;
+    let mut env = bridge.vm.attach_current_thread_permanently().ok()?;
+    let class: &JClass = bridge.class.as_obj().into();
+    // 调用线程长期附着在 JVM 上，使用局部帧及时释放返回的字符串引用
+    let result = env.with_local_frame(4, |env| -> jni::errors::Result<String> {
+        let value = env
+            .call_static_method(class, "getSystemProxy", "()Ljava/lang/String;", &[])?
+            .l()?;
+        Ok(env.get_string(&JString::from(value))?.into())
+    });
+    if env.exception_check().unwrap_or(false) {
+        let _ = env.exception_clear();
+    }
+    result.ok().filter(|proxy| !proxy.is_empty())
 }
 
 /// 根据运行中的隧道数量启动、刷新或停止前台服务

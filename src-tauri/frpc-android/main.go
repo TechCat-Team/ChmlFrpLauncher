@@ -94,7 +94,43 @@ var logs = struct {
 	partial []byte
 	// 各隧道的令牌，用于在日志中脱敏；隧道停止后仍保留，以覆盖退出阶段的日志
 	secrets map[int][]string
-}{secrets: make(map[int][]string)}
+	// 运行中隧道配置的日志等级（log.level），用于按隧道过滤 FRP 日志
+	levels map[int]goliblog.Level
+}{secrets: make(map[int][]string), levels: make(map[int]goliblog.Level)}
+
+// 日志行格式：2026-01-02 15:04:05.000 [I] [file.go:1] ...
+var linePrefix = regexp.MustCompile(`^\S+ \S+ \[([TDIWE])\] `)
+
+var levelByLetter = map[string]goliblog.Level{
+	"T": goliblog.TraceLevel, "D": goliblog.DebugLevel, "I": goliblog.InfoLevel,
+	"W": goliblog.WarnLevel, "E": goliblog.ErrorLevel,
+}
+
+// configuredLevel 解析配置中的 log.level，无效时回退到 info
+func configuredLevel(text string) goliblog.Level {
+	if level, err := goliblog.ParseLevel(text); err == nil {
+		return level
+	}
+	return goliblog.InfoLevel
+}
+
+// logThreshold 在持有 logs 锁时调用：隧道日志使用该隧道配置的等级；
+// 无法归属到隧道的全局日志使用所有运行中隧道里最详细的等级
+func logThreshold(id int) goliblog.Level {
+	if level, ok := logs.levels[id]; ok {
+		return level
+	}
+	if id != 0 || len(logs.levels) == 0 {
+		return goliblog.InfoLevel
+	}
+	threshold := goliblog.ErrorLevel
+	for _, level := range logs.levels {
+		if level < threshold {
+			threshold = level
+		}
+	}
+	return threshold
+}
 
 var tunnelPrefix = regexp.MustCompile(`\[chml#(\d+)\] `)
 
@@ -139,6 +175,9 @@ func (logWriter) Write(p []byte) (int, error) {
 		if m := tunnelPrefix.FindStringSubmatch(line); m != nil {
 			id, _ = strconv.Atoi(m[1])
 			line = strings.Replace(line, m[0], "", 1)
+		}
+		if m := linePrefix.FindStringSubmatch(line); m != nil && levelByLetter[m[1]] < logThreshold(id) {
+			continue
 		}
 		if line != "" {
 			appendLog(id, line)
@@ -220,16 +259,24 @@ func start(id int, path string) error {
 	tunnels.Unlock()
 	logs.Lock()
 	logs.secrets[id] = item.secrets
+	logs.levels[id] = configuredLevel(result.Common.Log.Level)
 	logs.Unlock()
 	launcherLog(id, "I", fmt.Sprintf("隧道已启动，正在连接 %s:%d ...", result.Common.ServerAddr, result.Common.ServerPort))
 	go func() {
 		defer close(item.done)
 		defer func() {
 			tunnels.Lock()
-			if tunnels.active[id] == item {
+			current := tunnels.active[id] == item
+			if current {
 				delete(tunnels.active, id)
 			}
 			tunnels.Unlock()
+			// 同 ID 已被新隧道取代时保留新隧道的日志等级
+			if current {
+				logs.Lock()
+				delete(logs.levels, id)
+				logs.Unlock()
+			}
 		}()
 		err := service.Run(runCtx)
 		if err != nil && ctx.Err() == nil {
@@ -345,6 +392,11 @@ func ChmlLogs(after C.longlong) *C.char {
 
 func init() {
 	// FRP 日志可能包含用户 token：只写入脱敏后的内存缓冲区，不写入 Android logcat。
-	frplog.Logger = frplog.Logger.WithOptions(goliblog.WithOutput(logWriter{}))
+	// 全局放开到 trace，再由 logWriter 按各隧道配置的 log.level 过滤，
+	// 避免运行中替换全局 Logger 带来的数据竞争。
+	frplog.Logger = frplog.Logger.WithOptions(
+		goliblog.WithOutput(logWriter{}),
+		goliblog.WithLevel(goliblog.TraceLevel),
+	)
 }
 func main() {}
