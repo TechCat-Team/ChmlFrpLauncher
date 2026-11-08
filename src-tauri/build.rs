@@ -25,6 +25,12 @@ fn build_frpc() {
     let target = env::var("TARGET").unwrap();
     let (os, arch, compiler, archive) = match target.as_str() {
         "x86_64-pc-windows-msvc" => ("windows", "amd64", "gcc", "chmlfrpc.lib"),
+        "aarch64-pc-windows-msvc" => (
+            "windows",
+            "arm64",
+            "aarch64-w64-mingw32-clang",
+            "chmlfrpc.lib",
+        ),
         "x86_64-unknown-linux-gnu" => ("linux", "amd64", "cc", "libchmlfrpc.a"),
         "aarch64-unknown-linux-gnu" => ("linux", "arm64", "cc", "libchmlfrpc.a"),
         "x86_64-apple-darwin" => ("darwin", "amd64", "clang", "libchmlfrpc.a"),

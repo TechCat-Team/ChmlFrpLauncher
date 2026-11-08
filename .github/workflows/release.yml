@@ -7,19 +7,30 @@ on:
 
 jobs:
   release:
-    name: Tauri Build (${{ matrix.platform }})
+    name: Tauri Build (${{ matrix.name }})
     runs-on: ${{ matrix.platform }}
 
     strategy:
       fail-fast: false
       matrix:
         include:
-          - platform: macos-latest
+          - name: macos-universal
+            platform: macos-latest
             rust-targets: aarch64-apple-darwin,x86_64-apple-darwin
             tauri-args: --target universal-apple-darwin
-          - platform: ubuntu-latest
-          - platform: windows-latest
+          - name: linux-x64
+            platform: ubuntu-latest
+          - name: linux-arm64
+            platform: ubuntu-24.04-arm
+          - name: windows-x64
+            platform: windows-latest
             go-version: 1.27.x
+          - name: windows-arm64
+            platform: windows-latest
+            go-version: 1.27.x
+            rust-targets: aarch64-pc-windows-msvc
+            # Windows ARM64 暂不支持 WiX，仅打 NSIS 安装包
+            tauri-args: --target aarch64-pc-windows-msvc --bundles nsis
 
     steps:
       - name: Checkout
@@ -43,7 +54,7 @@ jobs:
           cache-dependency-path: frp-source/go.sum
 
       - name: Setup Windows Go C compiler
-        if: runner.os == 'Windows'
+        if: matrix.name == 'windows-x64'
         id: msys2
         uses: msys2/setup-msys2@v2
         with:
@@ -51,10 +62,20 @@ jobs:
           install: mingw-w64-ucrt-x86_64-gcc
 
       - name: Select Windows Go C compiler
-        if: runner.os == 'Windows'
+        if: matrix.name == 'windows-x64'
         shell: pwsh
         run: |
           Join-Path '${{ steps.msys2.outputs.msys2-location }}' 'ucrt64/bin' | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+      - name: Setup llvm-mingw for Windows ARM64
+        if: matrix.name == 'windows-arm64'
+        shell: pwsh
+        run: |
+          $version = '20261020'
+          $name = "llvm-mingw-$version-ucrt-x86_64"
+          Invoke-WebRequest -Uri "https://github.com/mstorsjo/llvm-mingw/releases/download/$version/$name.zip" -OutFile "$env:RUNNER_TEMP\llvm-mingw.zip"
+          Expand-Archive -Path "$env:RUNNER_TEMP\llvm-mingw.zip" -DestinationPath $env:RUNNER_TEMP
+          Join-Path $env:RUNNER_TEMP "$name\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
@@ -79,12 +100,12 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             src-tauri/target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          key: ${{ matrix.name }}-cargo-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
-            ${{ runner.os }}-cargo-
+            ${{ matrix.name }}-cargo-
 
       - name: Install Linux dependencies
-        if: matrix.platform == 'ubuntu-latest'
+        if: runner.os == 'Linux'
         run: |
           sudo apt-get update
           sudo apt-get install -y \

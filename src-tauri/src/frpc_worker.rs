@@ -9,8 +9,10 @@ extern "C" {
 
     // Go's Windows archive registers its initializer in .ctors, which MSVC
     // does not invoke. The worker calls it once before entering the Go code.
-    #[cfg(target_os = "windows")]
+    #[cfg(all(target_os = "windows", target_arch = "x86_64"))]
     fn _rt0_amd64_windows_lib();
+    #[cfg(all(target_os = "windows", target_arch = "aarch64"))]
+    fn _rt0_arm64_windows_lib();
 }
 
 pub fn run_if_requested() -> Option<ExitCode> {
@@ -36,8 +38,10 @@ pub fn run_if_requested() -> Option<ExitCode> {
     };
 
     unsafe {
-        #[cfg(target_os = "windows")]
+        #[cfg(all(target_os = "windows", target_arch = "x86_64"))]
         _rt0_amd64_windows_lib();
+        #[cfg(all(target_os = "windows", target_arch = "aarch64"))]
+        _rt0_arm64_windows_lib();
         chmlfrpRun(path.as_ptr());
     }
     Some(ExitCode::SUCCESS)
