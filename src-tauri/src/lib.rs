@@ -1,5 +1,6 @@
 #[cfg(not(target_os = "android"))]
 mod commands;
+mod frpc_config;
 mod models;
 #[cfg(not(target_os = "android"))]
 mod utils;

@@ -160,7 +160,7 @@ export function NodeSelector({
               </div>
             </AccordionTrigger>
             <AccordionContent className="pt-2">
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 {vipNodes.map((node) => renderNodeCard(node, true))}
               </div>
             </AccordionContent>
@@ -184,7 +184,7 @@ export function NodeSelector({
               </div>
             </AccordionTrigger>
             <AccordionContent className="pt-2">
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 {userNodes.map((node) => renderNodeCard(node, false))}
               </div>
             </AccordionContent>

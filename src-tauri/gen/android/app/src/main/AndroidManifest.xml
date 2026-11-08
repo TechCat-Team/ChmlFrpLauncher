@@ -1,6 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- 隧道前台服务：常驻通知、保持 CPU 唤醒、请求忽略电池优化 -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
 
     <!-- AndroidTV support -->
     <uses-feature android:name="android.software.leanback" android:required="false" />
@@ -26,6 +32,15 @@
             
             <!-- DEEP LINK PLUGIN. AUTO-GENERATED. DO NOT REMOVE. -->
         </activity>
+
+        <service
+            android:name=".TunnelService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="内网穿透隧道（FRP 客户端）需要在后台保持与节点的长连接并转发数据" />
+        </service>
 
         <provider
           android:name="androidx.core.content.FileProvider"

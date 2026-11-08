@@ -7,6 +7,8 @@ name = "ChmlFrpLauncher"
 version = "0.8.0"
 dependencies = [
  "chrono",
+ "jni 0.21.1",
+ "libc",
  "log",
  "reqwest 0.12.28",
  "serde",
