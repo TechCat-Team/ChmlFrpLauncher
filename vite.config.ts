@@ -11,6 +11,10 @@ export default defineConfig({
     host: true,
     port: 5173,
     strictPort: true,
+    watch: {
+      // 不监听 Rust 侧目录：Cargo 编译时会锁定 target 中的文件，监听会导致 EBUSY 崩溃
+      ignored: ["**/src-tauri/**"],
+    },
   },
   resolve: {
     alias: {
