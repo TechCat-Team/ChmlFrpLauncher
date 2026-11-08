@@ -1,5 +1,5 @@
 use crate::models::{FrpcProcesses, LogMessage, ProcessGuardState, TunnelConfig};
-use crate::frpc_config::generate_frpc_config;
+use crate::frpc_config::{api_config_file_name, generate_frpc_config, legacy_api_config_file_name};
 use crate::utils::{spawn_frpc_worker, sanitize_log};
 use std::io::{BufRead, BufReader};
 use std::thread;
@@ -92,8 +92,10 @@ pub async fn start_frpc(
             .map_err(|e| e.to_string())?;
         std::fs::create_dir_all(&app_dir).map_err(|e| format!("创建应用目录失败: {}", e))?;
 
-        let config_path = app_dir.join(format!("g_{}.ini", tunnel_id));
+        let config_path = app_dir.join(api_config_file_name(tunnel_id));
         let config_content = generate_frpc_config(&config)?;
+        // 清理升级前生成的 INI 配置
+        let _ = std::fs::remove_file(app_dir.join(legacy_api_config_file_name(tunnel_id)));
 
         std::fs::write(&config_path, config_content)
             .map_err(|e| format!("写入配置文件失败: {}", e))?;

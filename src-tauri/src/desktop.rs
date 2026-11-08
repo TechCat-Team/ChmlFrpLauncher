@@ -15,7 +15,9 @@ fn cleanup_official_tunnel_configs(app_handle: &tauri::AppHandle) {
     };
     for entry in entries.flatten() {
         if let Ok(file_name) = entry.file_name().into_string() {
-            if file_name.starts_with("g_") && file_name.ends_with(".ini") {
+            if file_name.starts_with("g_")
+                && (file_name.ends_with(".toml") || file_name.ends_with(".ini"))
+            {
                 let _ = std::fs::remove_file(entry.path());
             }
         }

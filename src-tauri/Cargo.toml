@@ -30,6 +30,7 @@ strip-ansi-escapes = "0.2"
 sysinfo = { version = "0.36", default-features = false, features = ["system"] }
 tauri-plugin-opener = "2"
 tauri-plugin-deep-link = "2"
+toml = { version = "0.9", features = ["preserve_order"] }
 
 [target.'cfg(target_os = "android")'.dependencies]
 jni = "0.21"

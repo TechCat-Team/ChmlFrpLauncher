@@ -85,7 +85,6 @@ pub struct TunnelConfig {
     pub http_proxy: Option<String>,
     pub log_level: String,
     pub force_tls: bool,
-    pub kcp_optimization: bool,
 
     #[serde(default)]
     pub extra_params: Option<String>,

@@ -227,50 +227,6 @@ export function NetworkSection({
           </ItemActions>
         </Item>
 
-        <ItemSeparator />
-
-        <Item variant="outline" className="border-0">
-          <ItemContent>
-            <ItemTitle className="flex items-center gap-1.5">
-              连接优化
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Info className="w-3.5 h-3.5 text-muted-foreground cursor-help" />
-                </TooltipTrigger>
-                <TooltipContent side="top" className="max-w-xs text-balance">
-                  此功能通过浪费1.2~1.5倍带宽和系统占用的代价以降低延迟，仅建议游戏联机、因为网络问题出现严重丢包/卡顿的情况下开启。其余情况开启可能反而造成负面效果
-                </TooltipContent>
-              </Tooltip>
-            </ItemTitle>
-            <ItemDescription className="text-xs">
-              使用 KCP 协议优化 TCP/UDP 隧道与节点的连接
-            </ItemDescription>
-          </ItemContent>
-          <ItemActions>
-            <button
-              onClick={() =>
-                updateProxyConfig({
-                  kcpOptimization: !proxyConfig.kcpOptimization,
-                })
-              }
-              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors outline-none outline-0 ${
-                proxyConfig.kcpOptimization
-                  ? "bg-primary"
-                  : "bg-muted dark:bg-foreground/12"
-              } cursor-pointer`}
-              role="switch"
-              aria-checked={proxyConfig.kcpOptimization}
-            >
-              <span
-                className={`inline-block h-4 w-4 transform rounded-full bg-background shadow-sm transition-transform ${
-                  proxyConfig.kcpOptimization
-                    ? "translate-x-6"
-                    : "translate-x-1"
-                }`}
-              />
-            </button>
-          </ItemActions>
-        </Item>
       </div>
     </div>
   );

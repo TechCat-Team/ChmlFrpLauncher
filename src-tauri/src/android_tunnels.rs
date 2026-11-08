@@ -1,5 +1,8 @@
 use super::android_service;
-use crate::{frpc_config::generate_frpc_config, models::TunnelConfig};
+use crate::{
+    frpc_config::{generate_frpc_config, CONFIG_EXT},
+    models::TunnelConfig,
+};
 use std::{
     ffi::{CStr, CString},
     os::raw::{c_char, c_int},
@@ -101,7 +104,7 @@ pub async fn start_frpc(app: tauri::AppHandle, config: TunnelConfig) -> Result<S
     let content = generate_frpc_config(&config)?;
     let dir = app.path().app_cache_dir().map_err(|e| e.to_string())?;
     std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
-    let path = dir.join(format!("frpc-{}.ini", config.tunnel_id));
+    let path = dir.join(format!("frpc-{}.{CONFIG_EXT}", config.tunnel_id));
     let mut file = std::fs::OpenOptions::new()
         .write(true)
         .create(true)

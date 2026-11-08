@@ -1,4 +1,5 @@
-use super::custom_tunnel::get_config_file_name;
+use super::custom_tunnel::config_file_names;
+use crate::frpc_config::{api_config_file_name, legacy_api_config_file_name};
 use crate::{models::FrpcProcesses, FRPC_WORKER_ARG};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -125,24 +126,31 @@ fn find_tunnel_process<'a>(
         return None;
     }
 
-    let file_name = match info.tunnel_type.as_str() {
-        "api" => format!("g_{}.ini", info.tunnel_id),
-        "custom" => get_config_file_name(info.original_id.as_deref()?),
+    // 当前版本使用 TOML 配置；升级前启动的进程仍可能使用 INI 配置，两者都需要识别
+    let file_names = match info.tunnel_type.as_str() {
+        "api" => vec![
+            api_config_file_name(info.tunnel_id),
+            legacy_api_config_file_name(info.tunnel_id),
+        ],
+        "custom" => config_file_names(info.original_id.as_deref()?).to_vec(),
         _ => return None,
     };
-    let config = app_dir.join(&file_name);
     let [_, mode, path] = process.cmd() else {
         return None;
     };
-    if mode == FRPC_WORKER_ARG && Path::new(path) == config {
+    let matches_config = |allow_relative: bool| {
+        file_names.iter().any(|name| {
+            Path::new(path) == app_dir.join(name) || (allow_relative && path == OsStr::new(name))
+        })
+    };
+    if mode == FRPC_WORKER_ARG && matches_config(false) {
         return Some(process);
     }
 
     // Recover a legacy child that was still running when the launcher was upgraded.
     let legacy_name = if cfg!(windows) { "frpc.exe" } else { "frpc" };
     let legacy_exe = process.exe().and_then(Path::file_name) == Some(OsStr::new(legacy_name));
-    (legacy_exe && mode == "-c" && (path == OsStr::new(&file_name) || Path::new(path) == config))
-        .then_some(process)
+    (legacy_exe && mode == "-c" && matches_config(true)).then_some(process)
 }
 
 fn running_tunnels(
@@ -259,7 +267,8 @@ pub(super) fn stop_tunnel_process(
     };
 
     if remove_generated_config {
-        let _ = std::fs::remove_file(path.with_file_name(format!("g_{tunnel_id}.ini")));
+        let _ = std::fs::remove_file(path.with_file_name(api_config_file_name(tunnel_id)));
+        let _ = std::fs::remove_file(path.with_file_name(legacy_api_config_file_name(tunnel_id)));
     }
     if info.is_some() {
         write_persisted_tunnels(&path, &tunnels)?;
