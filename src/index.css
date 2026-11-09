@@ -17,6 +17,7 @@
   --color-card-foreground: var(--card-foreground);
   --color-popover: var(--popover);
   --color-popover-foreground: var(--popover-foreground);
+  --color-dialog: var(--dialog);
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
   --color-secondary: var(--secondary);
@@ -46,38 +47,39 @@
 
 :root {
   --radius: 0.45rem;
-  --background: #eef0f4;
-  --foreground: #0b0d11;
+  --background: #f5f5f5;
+  --foreground: #212121;
   --card: #ffffff;
-  --card-foreground: #0b0d11;
+  --card-foreground: #212121;
   --popover: #ffffff;
-  --popover-foreground: #0b0d11;
-  --primary: #0b0d11;
-  --primary-foreground: #f9fafb;
-  --secondary: #e4e6ec;
-  --secondary-foreground: #1b1e26;
-  --muted: #e5e7ed;
-  --muted-foreground: #4d525d;
-  --accent: #dfe2e9;
-  --accent-foreground: #1b1e26;
+  --popover-foreground: #212121;
+  --dialog: var(--popover);
+  --primary: #212121;
+  --primary-foreground: #f9f9f9;
+  --secondary: #e6e6e6;
+  --secondary-foreground: #303030;
+  --muted: #e7e7e7;
+  --muted-foreground: #535353;
+  --accent: #dfdfdf;
+  --accent-foreground: #303030;
   --destructive: #ef4444;
-  --border: #d9dde4;
-  --input: #d9dde4;
-  --ring: #0b0d11;
-  --chart-1: #1f2937;
-  --chart-2: #4b5563;
-  --chart-3: #9ca3af;
-  --chart-4: #d1d5db;
-  --chart-5: #111827;
+  --border: #d6d6d6;
+  --input: #d6d6d6;
+  --ring: #212121;
+  --chart-1: #323232;
+  --chart-2: #5d5d5d;
+  --chart-3: #a5a5a5;
+  --chart-4: #d2d2d2;
+  --chart-5: #222222;
   --sidebar: #ffffff;
   --sidebar-rgb: 255 255 255;
-  --sidebar-foreground: #0b0d11;
-  --sidebar-primary: #0b0d11;
-  --sidebar-primary-foreground: #f9fafb;
-  --sidebar-accent: #eceef4;
-  --sidebar-accent-foreground: #1b1e26;
-  --sidebar-border: #d9dde4;
-  --sidebar-ring: #0b0d11;
+  --sidebar-foreground: #212121;
+  --sidebar-primary: #212121;
+  --sidebar-primary-foreground: #f9f9f9;
+  --sidebar-accent: #e9e9e9;
+  --sidebar-accent-foreground: #303030;
+  --sidebar-border: #d6d6d6;
+  --sidebar-ring: #212121;
 }
 
 .dark {
@@ -87,6 +89,7 @@
   --card-foreground: #f3f4f6;
   --popover: #20242c;
   --popover-foreground: #f3f4f6;
+  --dialog: var(--background);
   --primary: #f3f4f6;
   --primary-foreground: #0a0b0d;
   --secondary: #292d37;

@@ -3,7 +3,7 @@ import type { ThemeMode, SidebarMode, ThemeColor } from "./types";
 export type { ThemeMode, SidebarMode, ThemeColor };
 
 /** 取色器的初始值（默认主题色） */
-export const DEFAULT_THEME_COLOR = "#0b0d11";
+export const DEFAULT_THEME_COLOR = "#212121";
 
 interface Hsl {
   h: number;

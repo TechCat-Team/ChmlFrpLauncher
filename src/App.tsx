@@ -33,6 +33,10 @@ function App() {
 
   // 核心背景 Hook (现在处于顶层，计时器不会随页面切换停止)
   const bg = useBackground();
+  const hasVisibleBackground = bg.overlayOpacity < 100 && (
+    (bg.backgroundType === "image" && bg.imageSrc !== null) ||
+    (bg.backgroundType === "video" && bg.videoSrc !== null && !bg.videoLoadError)
+  );
 
   // 布局与系统环境判断
   const initialSidebarMode = getInitialSidebarMode();
@@ -121,8 +125,8 @@ function App() {
             ref={appContainerRef}
             className={cn(
               "flex flex-col h-screen w-screen overflow-hidden text-foreground relative",
-              bg.effectType === "frosted" && "frosted-glass-enabled",
-              bg.effectType === "translucent" && "translucent-enabled",
+              hasVisibleBackground && bg.effectType === "frosted" && "frosted-glass-enabled",
+              hasVisibleBackground && bg.effectType === "translucent" && "translucent-enabled",
             )}
             style={{
               // 如果没有背景图，应用默认背景色
