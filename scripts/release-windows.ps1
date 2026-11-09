@@ -16,7 +16,8 @@
   需要提前准备：
     - 工具：Node.js、pnpm、Rust(rustup)、Go、GitHub CLI(gh，并已 gh auth login)、
             signtool(Windows SDK)、MSVC 构建工具（含 ARM64 组件，用于 arm64）
-    - C 编译器：x64 需要 gcc(MSYS2 UCRT64)，arm64 需要 llvm-mingw 的 aarch64-w64-mingw32-clang
+    - Go 静态库：x64 需要 gcc(MSYS2 UCRT64)，arm64 需要 llvm-mingw 的 aarch64-w64-mingw32-clang
+    - Rust ARM64 依赖：需要 LLVM 的 clang.exe 和 clang-cl.exe，以及 MSVC ARM64 和 Windows SDK
     - 复制项目根目录的 .env.example 为 .env 并填写（脚本每次运行都会自动读取，.env 不会被提交）：
         CHMLFRP_SOURCE_DIR                  ChmlFrp 内核源码目录（私有仓库）
         WINDOWS_CERT_SHA1                   代码签名证书的 SHA1 指纹
@@ -92,10 +93,21 @@ function Write-Step([string]$Message) {
 }
 
 # 运行外部命令，失败（退出码非 0）时抛出错误
-function Invoke-Native([string]$File, [string[]]$Arguments) {
-  & $File @Arguments
-  if ($LASTEXITCODE -ne 0) {
-    throw "命令失败（退出码 $LASTEXITCODE）: $File $($Arguments -join ' ')"
+function Invoke-Native([string]$File, [string[]]$Arguments, [hashtable]$Environment = @{}) {
+  $previous = @{}
+  try {
+    foreach ($key in $Environment.Keys) {
+      $previous[$key] = [Environment]::GetEnvironmentVariable($key)
+      [Environment]::SetEnvironmentVariable($key, $Environment[$key])
+    }
+    & $File @Arguments
+    if ($LASTEXITCODE -ne 0) {
+      throw "命令失败（退出码 $LASTEXITCODE）: $File $($Arguments -join ' ')"
+    }
+  } finally {
+    foreach ($key in $previous.Keys) {
+      [Environment]::SetEnvironmentVariable($key, $previous[$key])
+    }
   }
 }
 
@@ -144,6 +156,44 @@ function Test-NativeSuccess([string]$File, [string[]]$Arguments) {
 
 function Test-Command([string]$Name) {
   return [bool](Get-Command $Name -ErrorAction SilentlyContinue)
+}
+
+function Get-Arm64BuildEnvironment {
+  $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer\vswhere.exe'
+  if (-not (Test-Path -LiteralPath $vswhere)) { throw '找不到 vswhere，请安装 Visual Studio Build Tools。' }
+  $vs = Invoke-Native $vswhere @('-latest', '-prerelease', '-products', '*', '-requires', 'Microsoft.VisualStudio.Component.VC.Tools.ARM64', '-property', 'installationPath')
+  if (-not $vs) { throw '找不到 MSVC ARM64 工具，请在 Visual Studio Installer 中安装 C++ ARM64 构建工具和 Windows SDK。' }
+
+  $llvmBins = @(
+    (Join-Path $vs 'VC\Tools\Llvm\x64\bin'),
+    (Join-Path $vs 'VC\Tools\Llvm\ARM64\bin'),
+    (Join-Path $env:ProgramFiles 'LLVM\bin')
+  )
+  $clang = Get-Command clang.exe -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
+  if ($clang) { $llvmBins += (Split-Path $clang.Source -Parent) }
+  $llvmBin = $llvmBins | Where-Object {
+    (Test-Path -LiteralPath (Join-Path $_ 'clang.exe')) -and (Test-Path -LiteralPath (Join-Path $_ 'clang-cl.exe'))
+  } | Select-Object -First 1
+  if (-not $llvmBin) { throw '找不到 LLVM 的 clang.exe 和 clang-cl.exe，请安装 LLVM 或 Visual Studio 的 C++ Clang 组件。' }
+
+  $vcvars = Join-Path $vs 'VC\Auxiliary\Build\vcvarsall.bat'
+  if (-not (Test-Path -LiteralPath $vcvars)) { throw "找不到 ARM64 环境脚本: $vcvars" }
+  $environment = @{}
+  $lines = Invoke-Native $env:ComSpec @('/d', '/c', ('call "' + $vcvars + '" x64_arm64 >nul && set'))
+  foreach ($line in $lines) {
+    if ($line -match '^(PATH|INCLUDE|LIB|LIBPATH|VCINSTALLDIR|VCToolsInstallDir|VCToolsVersion|WindowsSdkDir|WindowsSDKVersion|VSCMD_ARG_TGT_ARCH)=(.*)$') {
+      $environment[$Matches[1]] = $Matches[2]
+    }
+  }
+  if ($environment.VSCMD_ARG_TGT_ARCH -ne 'arm64' -or -not $environment.INCLUDE -or -not $environment.LIB) {
+    throw '无法初始化 ARM64 编译环境，请检查 MSVC ARM64 和 Windows SDK。'
+  }
+
+  # ring 需要 clang，aws-lc-sys 需要能编译 ARM64 汇编的 clang-cl。
+  $environment['CC_aarch64-pc-windows-msvc'] = $null
+  $environment['CC_aarch64_pc_windows_msvc'] = Join-Path $llvmBin 'clang.exe'
+  $environment['AWS_LC_SYS_TARGET_CC_aarch64_pc_windows_msvc'] = Join-Path $llvmBin 'clang-cl.exe'
+  return $environment
 }
 
 function Find-SignTool {
@@ -227,6 +277,8 @@ foreach ($name in $Targets) {
     throw "找不到 C 编译器 $compiler（构建 $name 的 Go 静态库需要），请安装并加入 PATH，或用 -Cc$(if ($name -eq 'x64') { 'X64' } else { 'Arm64' }) 指定"
   }
 }
+
+$arm64Environment = if ($Targets -contains 'arm64') { Get-Arm64BuildEnvironment }
 
 $cargoOutput = Get-CargoOutputDirectories
 $cargoTargetDir = $cargoOutput.target_directory
@@ -330,14 +382,15 @@ foreach ($name in $Targets) {
   Write-Step "构建 Windows $name ($($info.Triple))"
 
   Invoke-Native rustup @('target', 'add', $info.Triple)
-  $env:CHMLFRP_CC = $info.Compiler
+  $buildEnvironment = @{ CHMLFRP_CC = $info.Compiler }
+  if ($name -eq 'arm64') { $buildEnvironment += $arm64Environment }
 
   $bundleDir = Join-Path $cargoTargetDir "$($info.Triple)\release\bundle"
   Remove-OutputDirectory $cargoTargetDir $bundleDir
 
   $buildArgs = @('exec', 'tauri', 'build', '--target', $info.Triple, '--bundles', $info.Bundles)
   if ($signConfig) { $buildArgs += @('--config', $signConfig) }
-  Invoke-Native pnpm $buildArgs
+  Invoke-Native pnpm $buildArgs $buildEnvironment
 
   $outputs = @(Get-ChildItem $bundleDir -Recurse -File |
     Where-Object { $_.Name -like "*_$($Version)_*" -and $_.Extension -in '.exe', '.msi', '.sig' })

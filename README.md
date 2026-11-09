@@ -115,7 +115,7 @@ pnpm release:windows
 
 运行前需要：
 
-- 安装 Node.js、pnpm、Rust、Go、GitHub CLI（`gh auth login`）、Windows SDK（`signtool`）；x64 需要 `gcc`（MSYS2 UCRT64），arm64 需要 llvm-mingw 的 `aarch64-w64-mingw32-clang`
+- 安装 Node.js、pnpm、Rust、Go、GitHub CLI（`gh auth login`）、Windows SDK（`signtool`）。x64 需要 `gcc`（MSYS2 UCRT64）。ARM64 的 Go 核心需要 llvm-mingw 的 `aarch64-w64-mingw32-clang`，Rust 依赖需要 Visual Studio 的 C++ ARM64 构建工具和 LLVM 的 `clang.exe`、`clang-cl.exe`
 - 复制 `.env.example` 为 `.env` 并填写，脚本每次运行都会自动读取（`.env` 已加入 `.gitignore`，不会被提交）：`CHMLFRP_SOURCE_DIR`（ChmlFrp 内核源码）、`WINDOWS_CERT_SHA1`（代码签名证书的 SHA1 指纹）、`TAURI_SIGNING_PRIVATE_KEY_PATH`（更新密钥文件，有密码时再填 `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`）
 
 常用参数：`-Targets x64`（只构建一个架构）、`-SkipUpload`（只构建签名，不上传）、`-SkipSign`（仅测试流程，产物不能发布）、`-Force`（`latest.json` 缺少 macOS / Linux 条目时仍继续）。
