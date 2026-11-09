@@ -60,12 +60,6 @@ export function CreateTunnelDialog({
   const [portStatus, setPortStatus] = useState<PortStatus | null>(null);
   const [portStatusError, setPortStatusError] = useState<string | null>(null);
 
-  const [showPortOccupiedConfirm, setShowPortOccupiedConfirm] = useState(false);
-  const [portOccupiedWarning, setPortOccupiedWarning] = useState<{
-    localPort: string;
-    processLabel: string;
-  } | null>(null);
-
   const [formData, setFormData] = useState<TunnelFormData>({
     tunnelName: "",
     localIp: "127.0.0.1",
@@ -228,7 +222,9 @@ export function CreateTunnelDialog({
     loadNodeInfo(node.name);
   };
 
-  const submitTunnel = async (forceWhenPortOccupied: boolean) => {
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
     if (!selectedNode) {
       toast.error("请选择节点");
       return;
@@ -254,27 +250,6 @@ export function CreateTunnelDialog({
     if (localPortNumber < 1 || localPortNumber > 65535) {
       toast.error("端口范围必须在 1-65535 之间");
       return;
-    }
-
-    if (portStatusError) {
-      toast.error(portStatusError);
-      return;
-    }
-
-    if (portStatus?.checking && portStatus.checkedPort === localPort) {
-      toast.error("端口占用检查尚未完成");
-      return;
-    }
-
-    if (portStatus?.checkedPort === localPort && !portStatus.checking && portStatus.occupied) {
-      const processLabel = portStatus.process
-          ? `${portStatus.process} (PID ${portStatus.pid || "未知"})`
-          : "当前进程";
-      setPortOccupiedWarning({ localPort, processLabel });
-      if (!forceWhenPortOccupied) {
-        setShowPortOccupiedConfirm(true);
-        return;
-      }
     }
 
     const isHttpProtocol = formData.portType === "HTTP" || formData.portType === "HTTPS";
@@ -323,16 +298,6 @@ export function CreateTunnelDialog({
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    await submitTunnel(false);
-  };
-
-  const handlePortOccupiedContinue = async () => {
-    setShowPortOccupiedConfirm(false);
-    await submitTunnel(true);
-  };
-
   const handleClose = () => {
     setTunnelType("standard");
     setStep(1);
@@ -344,9 +309,6 @@ export function CreateTunnelDialog({
 
     setPortStatus(null);
     setPortStatusError(null);
-
-    setShowPortOccupiedConfirm(false);
-    setPortOccupiedWarning(null);
 
     setFormData({
       tunnelName: "",
@@ -387,7 +349,6 @@ export function CreateTunnelDialog({
   }
 
   return (
-      <>
         <Dialog open={open} onOpenChange={handleClose}>
           <DialogContent
               className={cn(
@@ -526,32 +487,5 @@ export function CreateTunnelDialog({
             )}
           </DialogContent>
         </Dialog>
-
-        <Dialog open={showPortOccupiedConfirm} onOpenChange={setShowPortOccupiedConfirm}>
-          <DialogContent className="max-w-md">
-            <DialogHeader>
-              <DialogTitle>端口占用确认</DialogTitle>
-              <DialogDescription>
-                {portOccupiedWarning
-                    ? `检测到本地端口 ${portOccupiedWarning.localPort} 已被 ${portOccupiedWarning.processLabel} 占用。确定继续创建隧道吗？`
-                    : "检测到本地端口已被占用。确定继续创建隧道吗？"}
-              </DialogDescription>
-            </DialogHeader>
-            <DialogFooter>
-              <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setShowPortOccupiedConfirm(false)}
-                  disabled={loading}
-              >
-                取消
-              </Button>
-              <Button type="button" onClick={handlePortOccupiedContinue} disabled={loading}>
-                继续创建
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      </>
   );
 }
