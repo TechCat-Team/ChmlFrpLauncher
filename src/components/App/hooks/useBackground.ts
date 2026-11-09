@@ -545,7 +545,7 @@ export function useBackground(): UseBackgroundReturn {
   const getBackgroundColorWithOpacity = useCallback(
     (opacity: number): string => {
       if (typeof window === "undefined")
-        return `rgba(246, 247, 249, ${opacity / 100})`;
+        return `rgba(245, 245, 245, ${opacity / 100})`;
       const root = document.documentElement;
       const bgColor = getComputedStyle(root)
         .getPropertyValue("--background")
@@ -564,7 +564,7 @@ export function useBackground(): UseBackgroundReturn {
         return `rgba(${rgbMatch[0]}, ${rgbMatch[1]}, ${rgbMatch[2]}, ${opacity / 100})`;
       }
 
-      return `rgba(246, 247, 249, ${opacity / 100})`;
+      return `rgba(245, 245, 245, ${opacity / 100})`;
     },
     [],
   );

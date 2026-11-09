@@ -1,6 +1,13 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn, type Event } from "@tauri-apps/api/event";
+import { toast } from "sonner";
 import { toBoolean, type Tunnel } from "./api";
+import {
+  classifyFrpLoginError,
+  isFrpProxyReady,
+  isFrpStartError,
+  isFrpStarting,
+} from "./frpLog";
 
 export interface LogMessage {
   tunnel_id: number;
@@ -37,8 +44,18 @@ export interface PersistedTunnelInfo {
   started_at: string;
 }
 
+interface StartupAttempt {
+  config: TunnelConfig;
+  operation: Promise<string>;
+  phase: "initial" | "stopping" | "retry";
+  sawStart: boolean;
+  timeout?: ReturnType<typeof setTimeout>;
+}
+
 export class FrpcManager {
-  private unlisten?: UnlistenFn;
+  private logListener?: Promise<UnlistenFn>;
+  private startups = new Map<number, StartupAttempt>();
+  private stops = new Map<number, Promise<string>>();
 
   private parseRemotePort(rawPort?: string): number | undefined {
     if (!rawPort) return undefined;
@@ -50,6 +67,11 @@ export class FrpcManager {
   }
 
   async startTunnel(tunnel: Tunnel, userToken: string): Promise<string> {
+    const stop = this.stops.get(tunnel.id);
+    if (stop) await stop;
+    const pending = this.startups.get(tunnel.id);
+    if (pending) return pending.operation;
+
     // 获取代理配置
     let httpProxy: string | undefined;
     let forceTls = false;
@@ -101,12 +123,114 @@ export class FrpcManager {
       compression: toBoolean(tunnel.compression),
     };
 
-    return invoke<string>("start_frpc", { config });
+    const operation = Promise.resolve(this.logListener)
+      .catch(() => undefined)
+      .then(() => invoke<string>("start_frpc", { config }));
+    const attempt: StartupAttempt = {
+      config,
+      operation,
+      phase: "initial",
+      sawStart: false,
+    };
+    this.startups.set(tunnel.id, attempt);
+    this.watchStartup(attempt);
+
+    try {
+      return await attempt.operation;
+    } catch (error) {
+      this.finishStartup(attempt);
+      throw error;
+    }
   }
 
   async stopTunnel(tunnelId: number): Promise<string> {
-    return await invoke<string>("stop_frpc", {
-      tunnelId,
+    const pending = this.stops.get(tunnelId);
+    if (pending) return pending;
+
+    const attempt = this.startups.get(tunnelId);
+    if (attempt) this.finishStartup(attempt);
+    const stop = (async () => {
+      await attempt?.operation.catch(() => undefined);
+      return invoke<string>("stop_frpc", { tunnelId });
+    })();
+    this.stops.set(tunnelId, stop);
+    try {
+      return await stop;
+    } finally {
+      this.stops.delete(tunnelId);
+    }
+  }
+
+  private watchStartup(attempt: StartupAttempt) {
+    attempt.timeout = setTimeout(() => {
+      this.finishStartup(
+        attempt,
+        attempt.phase === "retry" ? "timeout" : undefined,
+      );
+    }, 30000);
+  }
+
+  private finishStartup(
+    attempt: StartupAttempt,
+    result?: "ready" | "error" | "timeout",
+  ) {
+    const tunnelId = attempt.config.tunnel_id;
+    if (this.startups.get(tunnelId) !== attempt) return;
+    clearTimeout(attempt.timeout);
+    this.startups.delete(tunnelId);
+
+    if (result === "ready") {
+      toast.success("TLS 自动修复成功，隧道已启动");
+    } else if (result === "error") {
+      toast.error("启用 TLS 后隧道仍未启动，请查看日志");
+    } else if (result === "timeout") {
+      toast.warning("已启用 TLS 重试，暂未确认隧道启动，请查看日志");
+    }
+  }
+
+  private handleStartupLog({ tunnel_id: tunnelId, message }: LogMessage) {
+    const attempt = this.startups.get(tunnelId);
+    if (!attempt || attempt.phase === "stopping") return;
+    if (isFrpStarting(message)) {
+      attempt.sawStart = true;
+      return;
+    }
+    if (!attempt.sawStart) return;
+
+    if (isFrpProxyReady(message)) {
+      this.finishStartup(attempt, attempt.phase === "retry" ? "ready" : undefined);
+      return;
+    }
+
+    const loginError = classifyFrpLoginError(message);
+    if (
+      loginError === "tls-retry" &&
+      attempt.phase === "initial" &&
+      !attempt.config.force_tls
+    ) {
+      clearTimeout(attempt.timeout);
+      attempt.phase = "stopping";
+      attempt.sawStart = false;
+      toast.info("连接节点失败，正在启用 TLS 重试…");
+      attempt.operation = this.retryWithTls(attempt);
+      void attempt.operation.catch(() => this.finishStartup(attempt, "error"));
+    } else if (loginError || isFrpStartError(message)) {
+      this.finishStartup(attempt, attempt.phase === "retry" ? "error" : undefined);
+    }
+  }
+
+  private async retryWithTls(attempt: StartupAttempt): Promise<string> {
+    const tunnelId = attempt.config.tunnel_id;
+    const firstLaunch = await attempt.operation;
+    if (this.startups.get(tunnelId) !== attempt) return firstLaunch;
+
+    await invoke<string>("stop_frpc", { tunnelId });
+    if (this.startups.get(tunnelId) !== attempt) return firstLaunch;
+
+    attempt.phase = "retry";
+    this.watchStartup(attempt);
+    return invoke<string>("start_frpc", {
+      config: { ...attempt.config, force_tls: true },
     });
   }
 
@@ -149,23 +273,20 @@ export class FrpcManager {
   }
 
   async listenToLogs(onLog: (log: LogMessage) => void): Promise<void> {
-    if (this.unlisten) {
-      this.unlisten();
-    }
-
-    this.unlisten = await listen<LogMessage>(
+    this.stopListening();
+    this.logListener = listen<LogMessage>(
       "frpc-log",
       (event: Event<LogMessage>) => {
+        this.handleStartupLog(event.payload);
         onLog(event.payload);
       },
     );
+    await this.logListener;
   }
 
   stopListening() {
-    if (this.unlisten) {
-      this.unlisten();
-      this.unlisten = undefined;
-    }
+    void this.logListener?.then((unlisten) => unlisten(), () => undefined);
+    this.logListener = undefined;
   }
 
   async resolveDomainToIp(domain: string): Promise<string | null> {

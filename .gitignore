@@ -31,3 +31,7 @@ package-lock.json
 .env
 .env.*
 !.env.example
+
+# 签名密钥库，绝不能提交
+*.jks
+*.keystore

@@ -108,14 +108,6 @@ export function TunnelForm({
     ? "text-destructive"
     : "text-emerald-600";
 
-  const normalizeProtocol = useCallback((protocol?: string) => {
-    if (!protocol) return "-";
-    const normalized = protocol.toUpperCase();
-    if (normalized.includes("TCP")) return "TCP";
-    if (normalized.includes("UDP")) return "UDP";
-    return normalized;
-  }, []);
-
   const fetchPortUsageList = useCallback(async () => {
     try {
       setPortQueryLoading(true);
@@ -140,34 +132,23 @@ export function TunnelForm({
 
   const handleSelectPort = useCallback(
     (item: PortUsage) => {
-      const normalized = normalizeProtocol(item.protocol);
-      const updates: Partial<TunnelFormData> = {
-        localPort: String(item.port),
-      };
-
-      if (normalized === "TCP" || normalized === "UDP") {
-        updates.portType = normalized;
-      }
-
-      onChange(updates);
+      onChange({ localPort: item.port, portType: item.protocol });
       setPortQueryOpen(false);
     },
-    [normalizeProtocol, onChange],
+    [onChange],
   );
 
   const normalizedQueryKeyword = queryKeyword.trim().toLowerCase();
   const filteredPortUsageList = useMemo(() => {
     if (!portUsageList) return [];
-    return portUsageList.filter((item) => {
-      if (!normalizedQueryKeyword) return true;
-      const processText = (item.process || "").toLowerCase();
-      const pidText = String(item.pid || "");
-      const portText = String(item.port || "");
-      return (
-        processText.includes(normalizedQueryKeyword) ||
-        pidText.includes(normalizedQueryKeyword) ||
-        portText.includes(normalizedQueryKeyword)
+    return portUsageList.flatMap((item) => {
+      const owner = item.owners.find(
+        ({ pid, process }) =>
+          pid.includes(normalizedQueryKeyword) ||
+          process.toLowerCase().includes(normalizedQueryKeyword),
       );
+      if (!owner && !item.port.includes(normalizedQueryKeyword)) return [];
+      return [{ ...item, owner: owner ?? item.owners[0] }];
     });
   }, [normalizedQueryKeyword, portUsageList]);
 
@@ -402,7 +383,7 @@ export function TunnelForm({
           <DialogHeader>
             <DialogTitle>选择本地端口</DialogTitle>
             <DialogDescription>
-              查询本机端口占用，点击任一进程即可自动填入本地端口
+              查询本机端口占用，选择一行即可填入本地端口和协议
             </DialogDescription>
           </DialogHeader>
 
@@ -468,14 +449,25 @@ export function TunnelForm({
                   <TableBody>
                     {filteredPortUsageList.map((item) => (
                       <TableRow
-                        key={`${item.port}-${item.pid}-${item.protocol || ""}`}
+                        key={`${item.port}-${item.protocol}`}
                         className="cursor-pointer"
                         onClick={() => handleSelectPort(item)}
                       >
                         <TableCell className="font-medium">{item.port}</TableCell>
-                        <TableCell>{item.pid}</TableCell>
-                        <TableCell>{item.process || "-"}</TableCell>
-                        <TableCell>{normalizeProtocol(item.protocol)}</TableCell>
+                        <TableCell>{item.owner.pid || "-"}</TableCell>
+                        <TableCell
+                          title={item.owners
+                            .map(({ pid, process }) => `${process || "未知进程"} (PID ${pid || "未知"})`)
+                            .join("\n")}
+                        >
+                          {item.owner.process || "-"}
+                          {item.owners.length > 1 && (
+                            <span className="ml-1 text-xs text-muted-foreground">
+                              +{item.owners.length - 1}
+                            </span>
+                          )}
+                        </TableCell>
+                        <TableCell>{item.protocol}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
