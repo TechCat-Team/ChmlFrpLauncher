@@ -99,6 +99,37 @@ function Invoke-Native([string]$File, [string[]]$Arguments) {
   }
 }
 
+function Get-CargoOutputDirectories {
+  # Tauri 从 src-tauri 运行 Cargo。相对路径和 .cargo/config 必须以同一目录解析。
+  Push-Location (Join-Path $RepoRoot 'src-tauri')
+  $encoding = [Console]::OutputEncoding
+  try {
+    [Console]::OutputEncoding = [Text.Encoding]::UTF8
+    Invoke-Native cargo @('metadata', '--format-version', '1', '--no-deps', '--locked') | ConvertFrom-Json
+  } finally {
+    [Console]::OutputEncoding = $encoding
+    Pop-Location
+  }
+}
+
+function Remove-OutputDirectory([string]$Root, [string]$Path) {
+  if (-not (Test-Path -LiteralPath $Path)) { return }
+
+  $rootPath = (Resolve-Path -LiteralPath $Root).ProviderPath.TrimEnd('\')
+  $resolvedPath = (Resolve-Path -LiteralPath $Path).ProviderPath
+  if (-not $resolvedPath.StartsWith("$rootPath\", [StringComparison]::OrdinalIgnoreCase)) {
+    throw "输出目录不在 $Root 下: $resolvedPath"
+  }
+
+  for ($dir = Get-Item -LiteralPath $resolvedPath; $dir.FullName.TrimEnd('\') -ne $rootPath; $dir = $dir.Parent) {
+    if ($dir.Attributes -band [IO.FileAttributes]::ReparsePoint) {
+      throw "输出目录包含链接: $($dir.FullName)"
+    }
+  }
+
+  Remove-Item -LiteralPath $resolvedPath -Recurse -Force
+}
+
 # 只关心成功与否的命令；输出丢弃，stderr 不会被当成错误
 function Test-NativeSuccess([string]$File, [string[]]$Arguments) {
   $previous = $ErrorActionPreference
@@ -197,6 +228,28 @@ foreach ($name in $Targets) {
   }
 }
 
+$cargoOutput = Get-CargoOutputDirectories
+$cargoTargetDir = $cargoOutput.target_directory
+if ($cargoTargetDir -match '[^\x20-\x7e]') {
+  # NASM 可能无法写入带非 ASCII 字符的路径。每个检出目录使用独立的缓存。
+  $sha256 = [Security.Cryptography.SHA256]::Create()
+  try {
+    $hash = $sha256.ComputeHash([Text.Encoding]::UTF8.GetBytes($RepoRoot.ToUpperInvariant()))
+    $cacheId = [BitConverter]::ToString($hash, 0, 8).Replace('-', '').ToLowerInvariant()
+  } finally {
+    $sha256.Dispose()
+  }
+  $cargoTargetDir = Join-Path ([IO.Path]::GetTempPath()) "chmlfrp-windows-target-$cacheId"
+  if ($cargoTargetDir -match '[^\x20-\x7e]') {
+    throw 'Cargo 输出路径包含非 ASCII 字符。请将 CARGO_TARGET_DIR 设置为纯英文的绝对路径。'
+  }
+}
+$env:CARGO_TARGET_DIR = $cargoTargetDir
+if ($cargoOutput.build_directory -match '[^\x20-\x7e]') {
+  $env:CARGO_BUILD_BUILD_DIR = $cargoTargetDir
+}
+Write-Host "Cargo 输出目录: $cargoTargetDir"
+
 if (-not (Test-NativeSuccess gh @('auth', 'status'))) { throw 'gh 尚未登录，请先运行 gh auth login（需要对该仓库有 Release 写权限）' }
 
 if (-not $SourceDir) { throw '请在 .env 里设置 CHMLFRP_SOURCE_DIR（或用 -SourceDir 指定）ChmlFrp 内核源码目录' }
@@ -228,7 +281,7 @@ if (-not $SkipSign) {
 
 $Work = Join-Path $RepoRoot 'dist-windows'
 $Stage = Join-Path $Work $Tag
-if (Test-Path $Stage) { Remove-Item $Stage -Recurse -Force }
+Remove-OutputDirectory $RepoRoot $Stage
 New-Item -ItemType Directory -Path $Stage -Force | Out-Null
 
 # 先下载一次 latest.json，Release 不存在或 CI 没跑完时尽早失败，不必等构建结束
@@ -279,8 +332,8 @@ foreach ($name in $Targets) {
   Invoke-Native rustup @('target', 'add', $info.Triple)
   $env:CHMLFRP_CC = $info.Compiler
 
-  $bundleDir = Join-Path $RepoRoot "src-tauri\target\$($info.Triple)\release\bundle"
-  if (Test-Path $bundleDir) { Remove-Item $bundleDir -Recurse -Force }
+  $bundleDir = Join-Path $cargoTargetDir "$($info.Triple)\release\bundle"
+  Remove-OutputDirectory $cargoTargetDir $bundleDir
 
   $buildArgs = @('exec', 'tauri', 'build', '--target', $info.Triple, '--bundles', $info.Bundles)
   if ($signConfig) { $buildArgs += @('--config', $signConfig) }
