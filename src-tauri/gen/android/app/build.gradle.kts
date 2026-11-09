@@ -13,6 +13,25 @@ val tauriProperties = Properties().apply {
     }
 }
 
+// 发布签名：优先读取 gen/android/keystore.properties（已在 .gitignore 中，不会提交），
+// 其次读取环境变量，方便以后在 CI 里使用。字段说明见 keystore.properties.example
+val keystoreProperties = Properties().apply {
+    val propFile = rootProject.file("keystore.properties")
+    if (propFile.exists()) {
+        propFile.inputStream().use { load(it) }
+    }
+}
+
+fun signingValue(key: String, envName: String): String? =
+    keystoreProperties.getProperty(key)?.takeIf { it.isNotBlank() }
+        ?: System.getenv(envName)?.takeIf { it.isNotBlank() }
+
+val releaseStoreFile = signingValue("storeFile", "ANDROID_KEYSTORE_PATH")
+val releaseStorePassword = signingValue("storePassword", "ANDROID_KEYSTORE_PASSWORD")
+val releaseKeyAlias = signingValue("keyAlias", "ANDROID_KEY_ALIAS")
+val releaseKeyPassword = signingValue("keyPassword", "ANDROID_KEY_PASSWORD") ?: releaseStorePassword
+val hasReleaseSigning = releaseStoreFile != null && releaseStorePassword != null && releaseKeyAlias != null
+
 android {
     compileSdk = 36
     namespace = "net.chmlfrp.launcher"
@@ -23,6 +42,16 @@ android {
         targetSdk = 36
         versionCode = tauriProperties.getProperty("tauri.android.versionCode", "1").toInt()
         versionName = tauriProperties.getProperty("tauri.android.versionName", "1.0")
+    }
+    signingConfigs {
+        if (hasReleaseSigning) {
+            create("release") {
+                storeFile = file(releaseStoreFile!!)
+                storePassword = releaseStorePassword
+                keyAlias = releaseKeyAlias
+                keyPassword = releaseKeyPassword
+            }
+        }
     }
     buildTypes {
         getByName("debug") {
@@ -37,6 +66,11 @@ android {
             }
         }
         getByName("release") {
+            if (hasReleaseSigning) {
+                signingConfig = signingConfigs.getByName("release")
+            } else {
+                logger.warn("未配置发布签名（keystore.properties），release 包将不会被签名")
+            }
             isMinifyEnabled = true
             proguardFiles(
                 *fileTree(".") { include("**/*.pro") }
