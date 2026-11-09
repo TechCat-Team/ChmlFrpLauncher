@@ -8,7 +8,6 @@ export interface ProxyConfig {
   username: string;
   password: string;
   forceTls: boolean;
-  kcpOptimization: boolean;
 }
 
 const DEFAULT_PROXY_CONFIG: ProxyConfig = {
@@ -19,8 +18,16 @@ const DEFAULT_PROXY_CONFIG: ProxyConfig = {
   username: "",
   password: "",
   forceTls: false,
-  kcpOptimization: false,
 };
+
+// 已移除的 KCP 连接优化曾使用的节点 UDP 支持缓存
+if (typeof window !== "undefined") {
+  try {
+    localStorage.removeItem("node_udp_cache");
+  } catch {
+    // 忽略存储不可用的情况
+  }
+}
 
 export function useProxy() {
   const [proxyConfig, setProxyConfig] = useState<ProxyConfig>(() => {
@@ -28,10 +35,12 @@ export function useProxy() {
     const saved = localStorage.getItem("frpc_proxy_config");
     if (!saved) return DEFAULT_PROXY_CONFIG;
     try {
-      const config = JSON.parse(saved) as ProxyConfig;
+      // 丢弃已移除的旧字段（如 kcpOptimization），避免继续写回本地存储
+      const config = JSON.parse(saved) as Record<string, unknown>;
+      delete config.kcpOptimization;
       return {
         ...DEFAULT_PROXY_CONFIG,
-        ...config,
+        ...(config as Partial<ProxyConfig>),
       };
     } catch {
       return DEFAULT_PROXY_CONFIG;

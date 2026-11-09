@@ -1,8 +1,8 @@
-import type { Tunnel } from "@/services/api";
-import type { TunnelProgress } from "./types";
+import type { TunnelProgress, UnifiedTunnel } from "./types";
 
 export const tunnelListCache = {
-  tunnels: [] as Tunnel[],
+  tunnels: [] as UnifiedTunnel[],
+  hasLoaded: false,
 };
 
 export const tunnelProgressCache = new Map<number, TunnelProgress>();

@@ -1,3 +1,4 @@
+import { invoke } from "@tauri-apps/api/core";
 import { check, type DownloadEvent } from "@tauri-apps/plugin-updater";
 import { getVersion } from "@tauri-apps/api/app";
 import { flushSync } from "react-dom";
@@ -55,19 +56,29 @@ export class UpdateService {
         let contentLength = 0;
         let downloadedBytes = 0;
 
-        await update.downloadAndInstall((progressEvent: DownloadEvent) => {
-          if (progressEvent.event === "Started") {
-            contentLength = progressEvent.data.contentLength || 0;
-          } else if (progressEvent.event === "Progress" && onProgress) {
-            downloadedBytes += progressEvent.data.chunkLength;
-            if (contentLength > 0) {
-              const percentage = (downloadedBytes / contentLength) * 100;
-              flushSync(() => {
-                onProgress(Math.min(percentage, 100));
-              });
+        try {
+          await update.download((progressEvent: DownloadEvent) => {
+            if (progressEvent.event === "Started") {
+              contentLength = progressEvent.data.contentLength || 0;
+            } else if (progressEvent.event === "Progress" && onProgress) {
+              downloadedBytes += progressEvent.data.chunkLength;
+              if (contentLength > 0) {
+                const percentage = (downloadedBytes / contentLength) * 100;
+                flushSync(() => {
+                  onProgress(Math.min(percentage, 100));
+                });
+              }
             }
+          });
+          await invoke("set_update_installing", { installing: true });
+          try {
+            await update.install();
+          } finally {
+            await invoke("set_update_installing", { installing: false });
           }
-        });
+        } finally {
+          await update.close().catch((error) => console.error("释放更新资源失败", error));
+        }
       } else {
         throw new Error("没有可用的更新");
       }

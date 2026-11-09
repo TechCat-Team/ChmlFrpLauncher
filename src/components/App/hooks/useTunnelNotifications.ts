@@ -1,3 +1,4 @@
+import { isFrpProxyReady } from "@/services/frpLog";
 import { useEffect, useRef } from "react";
 import { toast } from "sonner";
 import { fetchTunnels, type Tunnel } from "@/services/api";
@@ -66,7 +67,7 @@ export function useTunnelNotifications(activeTab: string) {
           successLogAddedRef.current.delete(tunnelId);
         }
 
-        if (message.includes("映射启动成功")) {
+        if (isFrpProxyReady(message)) {
           if (
             !hasLauncherSuccessLog &&
             !successLogAddedRef.current.has(tunnelId)
@@ -115,7 +116,7 @@ export function useTunnelNotifications(activeTab: string) {
           continue;
         }
 
-        if (message.includes("映射启动成功")) {
+        if (isFrpProxyReady(message)) {
           if (!notifiedSuccessRef.current.has(tunnelId)) {
             notifiedSuccessRef.current.add(tunnelId);
             const soundEnabled =

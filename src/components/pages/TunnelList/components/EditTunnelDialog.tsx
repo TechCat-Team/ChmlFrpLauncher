@@ -12,8 +12,10 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import {
   fetchNodeInfo,
+  fetchTunnels,
   updateTunnel,
   getStoredUser,
+  toBoolean,
   type Tunnel,
   type Node,
   type NodeInfo,
@@ -47,7 +49,7 @@ export function EditTunnelDialog({
   preloadedNodes,
   user,
 }: EditTunnelDialogProps) {
-  const [step, setStep] = useState<1 | 2 | 3>(3); // 编辑隧道默认从步骤3开始
+  const [step, setStep] = useState<1 | 2 | 3>(3);
   const [loading, setLoading] = useState(false);
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
   const [nodeInfo, setNodeInfo] = useState<NodeInfo | null>(null);
@@ -87,9 +89,9 @@ export function EditTunnelDialog({
         localPort: tunnel.nport.toString(),
         remotePort: isHttpProtocol ? "" : tunnel.dorp,
         domain: isHttpProtocol ? tunnel.dorp : "",
-        encryption: false,
-        compression: false,
-        extraParams: "",
+        encryption: toBoolean(tunnel.encryption),
+        compression: toBoolean(tunnel.compression),
+        extraParams: tunnel.ap ?? "",
       });
 
       // 加载当前节点信息用于显示 CNAME 提示
@@ -142,7 +144,8 @@ export function EditTunnelDialog({
         }
       } catch (error) {
         if (!cancelled) {
-          const message = error instanceof Error ? error.message : "端口检查失败";
+          const message =
+            error instanceof Error ? error.message : "端口检查失败";
           setPortStatus(null);
           setPortStatusError(message);
         }
@@ -301,11 +304,30 @@ export function EditTunnelDialog({
             await new Promise((resolve) => setTimeout(resolve, 500));
             const user = getStoredUser();
             if (user?.usertoken) {
-              await frpcManager.startTunnel(tunnel, user.usertoken);
+              // tunnel 是打开弹窗时的快照：优先重新获取保存后的隧道（本地端口、节点等都可能已变化），
+              // 获取失败时退回到在快照上覆盖本次修改的字段
+              let latestTunnel: Tunnel = {
+                ...tunnel,
+                encryption: formData.encryption,
+                compression: formData.compression,
+                ap: formData.extraParams,
+              };
+              try {
+                const fresh = (await fetchTunnels()).find(
+                  (t) => t.id === tunnel.id,
+                );
+                if (fresh) latestTunnel = fresh;
+              } catch (error) {
+                console.error("获取最新隧道信息失败:", error);
+              }
+              await frpcManager.startTunnel(latestTunnel, user.usertoken);
               toast.success("隧道已自动重启");
             }
           } catch (error) {
             console.error("自动重启隧道失败:", error);
+            toast.error(
+              `自动重启隧道失败：${error instanceof Error ? error.message : String(error)}`,
+            );
           }
         }
       }

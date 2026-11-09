@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { Download, Clock, Sparkles } from "lucide-react";
 import {
   Dialog,
@@ -22,11 +23,28 @@ interface UpdateDialogProps {
   downloadProgress?: number;
 }
 
-function renderMarkdown(text: string): string {
-  if (!text) return "";
+function renderInlineMarkdown(text: string): ReactNode[] {
+  const parts = text.split(/(\*\*.*?\*\*)/g);
+
+  return parts
+    .filter(Boolean)
+    .map((part, index) =>
+      part.startsWith("**") && part.endsWith("**") ? (
+        <strong key={`${part}-${index}`} className="font-semibold text-foreground">
+          {part.slice(2, -2)}
+        </strong>
+      ) : (
+        part
+      ),
+    );
+}
+
+function renderMarkdown(text: string): ReactNode {
+  if (!text) return null;
 
   const lines = text.split("\n");
-  const result: string[] = [];
+  const result: ReactNode[] = [];
+  let listItems: ReactNode[] = [];
   let inList = false;
 
   for (let i = 0; i < lines.length; i++) {
@@ -35,7 +53,12 @@ function renderMarkdown(text: string): string {
 
     if (trimmedLine === "") {
       if (inList) {
-        result.push("</ul>");
+        result.push(
+          <ul key={`list-${i}`} className="list-none space-y-1.5 my-2">
+            {listItems}
+          </ul>,
+        );
+        listItems = [];
         inList = false;
       }
       continue;
@@ -43,7 +66,12 @@ function renderMarkdown(text: string): string {
 
     if (trimmedLine.startsWith("### ")) {
       if (inList) {
-        result.push("</ul>");
+        result.push(
+          <ul key={`list-${i}`} className="list-none space-y-1.5 my-2">
+            {listItems}
+          </ul>,
+        );
+        listItems = [];
         inList = false;
       }
       const content = trimmedLine.substring(4);
@@ -53,11 +81,22 @@ function renderMarkdown(text: string): string {
       const emoji = emojiMatch ? emojiMatch[0] : "";
       const text = emoji ? content.substring(emoji.length).trim() : content;
       result.push(
-        `<h3 class='text-sm font-semibold mt-3 mb-2 text-foreground flex items-center gap-2'><span>${emoji}</span><span>${text}</span></h3>`,
+        <h3
+          key={`h3-${i}`}
+          className="text-sm font-semibold mt-3 mb-2 text-foreground flex items-center gap-2"
+        >
+          <span>{emoji}</span>
+          <span>{text}</span>
+        </h3>,
       );
     } else if (trimmedLine.startsWith("## ")) {
       if (inList) {
-        result.push("</ul>");
+        result.push(
+          <ul key={`list-${i}`} className="list-none space-y-1.5 my-2">
+            {listItems}
+          </ul>,
+        );
+        listItems = [];
         inList = false;
       }
       const content = trimmedLine.substring(3);
@@ -67,50 +106,71 @@ function renderMarkdown(text: string): string {
       const emoji = emojiMatch ? emojiMatch[0] : "";
       const text = emoji ? content.substring(emoji.length).trim() : content;
       result.push(
-        `<h2 class='text-base font-semibold mt-3 mb-2 text-foreground flex items-center gap-2'><span>${emoji}</span><span>${text}</span></h2>`,
+        <h2
+          key={`h2-${i}`}
+          className="text-base font-semibold mt-3 mb-2 text-foreground flex items-center gap-2"
+        >
+          <span>{emoji}</span>
+          <span>{text}</span>
+        </h2>,
       );
     } else if (trimmedLine.startsWith("# ")) {
       if (inList) {
-        result.push("</ul>");
+        result.push(
+          <ul key={`list-${i}`} className="list-none space-y-1.5 my-2">
+            {listItems}
+          </ul>,
+        );
+        listItems = [];
         inList = false;
       }
       const content = trimmedLine.substring(2);
       result.push(
-        `<h1 class='text-lg font-semibold mt-3 mb-2 text-foreground'>${content}</h1>`,
+        <h1 key={`h1-${i}`} className="text-lg font-semibold mt-3 mb-2 text-foreground">
+          {content}
+        </h1>,
       );
     } else if (trimmedLine.startsWith("- ") || trimmedLine.startsWith("* ")) {
       if (!inList) {
-        result.push("<ul class='list-none space-y-1.5 my-2'>");
         inList = true;
       }
       const content = trimmedLine.substring(2);
-      const processedContent = content.replace(
-        /\*\*(.*?)\*\*/g,
-        "<strong class='font-semibold text-foreground'>$1</strong>",
-      );
-      result.push(
-        `<li class='text-sm text-muted-foreground leading-relaxed flex items-start gap-2'><span class='text-primary mt-0.5'>•</span><span class='flex-1'>${processedContent}</span></li>`,
+      listItems.push(
+        <li
+          key={`li-${i}`}
+          className="text-sm text-muted-foreground leading-relaxed flex items-start gap-2"
+        >
+          <span className="text-primary mt-0.5">•</span>
+          <span className="flex-1">{renderInlineMarkdown(content)}</span>
+        </li>,
       );
     } else {
       if (inList) {
-        result.push("</ul>");
+        result.push(
+          <ul key={`list-${i}`} className="list-none space-y-1.5 my-2">
+            {listItems}
+          </ul>,
+        );
+        listItems = [];
         inList = false;
       }
-      const processedLine = trimmedLine.replace(
-        /\*\*(.*?)\*\*/g,
-        "<strong class='font-semibold text-foreground'>$1</strong>",
-      );
       result.push(
-        `<p class='text-sm text-muted-foreground mb-1 leading-relaxed'>${processedLine}</p>`,
+        <p key={`p-${i}`} className="text-sm text-muted-foreground mb-1 leading-relaxed">
+          {renderInlineMarkdown(trimmedLine)}
+        </p>,
       );
     }
   }
 
   if (inList) {
-    result.push("</ul>");
+    result.push(
+      <ul key="list-final" className="list-none space-y-1.5 my-2">
+        {listItems}
+      </ul>,
+    );
   }
 
-  return result.join("");
+  return <>{result}</>;
 }
 
 export function UpdateDialog({
@@ -143,7 +203,8 @@ export function UpdateDialog({
                     <Sparkles className="w-5 h-5 text-primary" />
                     <span>发现新版本</span>
                   </DialogTitle>
-                  <DialogDescription className="space-y-2">
+                  <div className="space-y-2">
+                    <DialogDescription>新版本已准备好安装。Windows 安装更新时会停止正在运行的隧道。</DialogDescription>
                     <div className="flex items-center gap-2 flex-wrap">
                       <Badge
                         variant="secondary"
@@ -164,7 +225,7 @@ export function UpdateDialog({
                         </div>
                       )}
                     </div>
-                  </DialogDescription>
+                  </div>
                 </div>
               </div>
             </DialogHeader>
@@ -173,10 +234,9 @@ export function UpdateDialog({
           {markdownContent && (
             <div className="px-6 py-4 flex-1 min-h-0 overflow-hidden">
               <ScrollArea className="h-full pr-4">
-                <div
-                  className="prose prose-sm dark:prose-invert max-w-none update-content"
-                  dangerouslySetInnerHTML={{ __html: markdownContent }}
-                />
+                <div className="prose prose-sm dark:prose-invert max-w-none update-content">
+                  {markdownContent}
+                </div>
               </ScrollArea>
             </div>
           )}

@@ -6,17 +6,16 @@ import { TunnelList } from "@/components/pages/TunnelList";
 import { Logs } from "@/components/pages/Logs";
 import { Settings } from "@/components/pages/Settings";
 import { getStoredUser, fetchUserInfo, type StoredUser, type UserInfo } from "@/services/api";
-import { AntivirusWarningDialog } from "@/components/dialogs/AntivirusWarningDialog";
 import { CloseConfirmDialog } from "@/components/dialogs/CloseConfirmDialog";
 import { UpdateDialog } from "@/components/dialogs/UpdateDialog";
 import { useAppTheme } from "@/components/App/hooks/useAppTheme";
+import { useAppThemeColor } from "@/components/App/hooks/useAppThemeColor";
 import { useWindowEvents } from "@/components/App/hooks/useWindowEvents";
 import { useAppInitialization } from "@/components/App/hooks/useAppInitialization";
 import { useTunnelNotifications } from "@/components/App/hooks/useTunnelNotifications";
 import { useTitleBar } from "@/components/App/hooks/useTitleBar";
 import { useBackground } from "@/components/App/hooks/useBackground";
 import { useDeepLink } from "@/components/App/hooks/useDeepLink";
-import { useFrpcDownload } from "@/components/App/hooks/useFrpcDownload";
 import { useUpdateCheck } from "@/components/App/hooks/useUpdateCheck";
 import { useAutoStartTunnels } from "@/components/App/hooks/useAutoStartTunnels";
 import { updateService } from "@/services/updateService";
@@ -45,14 +44,14 @@ function App() {
 
   // 其他功能 Hooks
   useAppTheme();
+  useAppThemeColor();
   useAppInitialization();
   useAutoStartTunnels(user);
-  useDeepLink(user, setUser);
+  useDeepLink(user);
   useTunnelNotifications(activeTab);
   const { showCloseConfirmDialog, setShowCloseConfirmDialog } = useWindowEvents();
   const { showTitleBar } = useTitleBar();
   const { updateInfo, setUpdateInfo } = useUpdateCheck();
-  const { showAntivirusWarning, setShowAntivirusWarning } = useFrpcDownload();
 
   // 常量计算
   const shouldShowTitleBar = isMacOS ? showTitleBar : isWindows ? showTitleBar : true;
@@ -209,7 +208,6 @@ function App() {
           )}
         </div>
 
-        <AntivirusWarningDialog isOpen={showAntivirusWarning} onClose={() => setShowAntivirusWarning(false)} onConfirm={() => setActiveTab("settings")} />
         <CloseConfirmDialog
             isOpen={showCloseConfirmDialog}
             onClose={() => setShowCloseConfirmDialog(false)}

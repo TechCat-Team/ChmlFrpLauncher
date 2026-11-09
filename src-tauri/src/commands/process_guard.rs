@@ -271,7 +271,9 @@ pub fn start_guard_monitor(app_handle: tauri::AppHandle) {
             let guard_state = app_handle.state::<ProcessGuardState>();
             let processes = app_handle.state::<FrpcProcesses>();
 
-            if !guard_state.enabled.load(Ordering::SeqCst) {
+            if !guard_state.enabled.load(Ordering::SeqCst)
+                || processes.update_installing.load(Ordering::SeqCst)
+            {
                 continue;
             }
 

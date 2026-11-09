@@ -1,19 +1,14 @@
 use crate::models::{FrpcProcesses, LogMessage, ProcessGuardState};
-use crate::utils::resolve_frpc_path;
+use crate::utils::spawn_frpc_worker;
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::io::{BufRead, BufReader};
-use std::path::PathBuf;
-use std::process::{Command as StdCommand, Stdio};
+use std::path::{Path, PathBuf};
 use std::thread;
 use tauri::{Emitter, Manager, State};
 
-#[cfg(target_os = "windows")]
-use std::os::windows::process::CommandExt;
-
 const CUSTOM_TUNNEL_PREFIX: &str = "custom_";
 const CONFIG_FILE_PREFIX: &str = "z_";
-const CONFIG_FILE_EXT: &str = ".ini";
 const TUNNELS_LIST_FILE: &str = "custom_tunnels.json";
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -46,8 +41,82 @@ fn get_custom_tunnel_hash(tunnel_id: &str) -> i32 {
     string_to_i32(&format!("{}{}", CUSTOM_TUNNEL_PREFIX, tunnel_id))
 }
 
-fn get_config_file_name(tunnel_id: &str) -> String {
-    format!("{}{}{}", CONFIG_FILE_PREFIX, tunnel_id, CONFIG_FILE_EXT)
+/// 自定义隧道配置格式。FRP 按扩展名判断格式，因此文件扩展名必须与内容一致
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+enum ConfigFormat {
+    Toml,
+    Ini,
+}
+
+impl ConfigFormat {
+    fn ext(self) -> &'static str {
+        match self {
+            ConfigFormat::Toml => "toml",
+            ConfigFormat::Ini => "ini",
+        }
+    }
+
+    /// 能按 TOML 解析且包含 v1 字段时视为 TOML，否则按旧版 INI 处理
+    fn detect(content: &str) -> Self {
+        match toml::from_str::<toml::Table>(content) {
+            Ok(table)
+                if ["proxies", "visitors", "serverAddr"]
+                    .iter()
+                    .any(|key| table.contains_key(*key)) =>
+            {
+                ConfigFormat::Toml
+            }
+            _ => ConfigFormat::Ini,
+        }
+    }
+}
+
+fn config_file_name(tunnel_id: &str, format: ConfigFormat) -> String {
+    format!("{}{}.{}", CONFIG_FILE_PREFIX, tunnel_id, format.ext())
+}
+
+/// 自定义隧道可能使用的配置文件名（TOML 优先）
+pub(super) fn config_file_names(tunnel_id: &str) -> [String; 2] {
+    [
+        config_file_name(tunnel_id, ConfigFormat::Toml),
+        config_file_name(tunnel_id, ConfigFormat::Ini),
+    ]
+}
+
+/// 查找自定义隧道当前使用的配置文件
+fn find_config_file(app_dir: &Path, tunnel_id: &str) -> Option<(String, PathBuf)> {
+    config_file_names(tunnel_id)
+        .into_iter()
+        .map(|name| {
+            let path = app_dir.join(&name);
+            (name, path)
+        })
+        .find(|(_, path)| path.is_file())
+}
+
+/// 写入配置文件，并删除另一种格式的旧文件
+fn write_config_file(
+    app_dir: &Path,
+    tunnel_id: &str,
+    content: &str,
+    format: ConfigFormat,
+) -> Result<String, String> {
+    let file_name = config_file_name(tunnel_id, format);
+    fs::write(app_dir.join(&file_name), content)
+        .map_err(|e| format!("写入配置文件失败: {}", e))?;
+    for other in config_file_names(tunnel_id) {
+        if other != file_name {
+            let _ = fs::remove_file(app_dir.join(other));
+        }
+    }
+    Ok(file_name)
+}
+
+fn parse_config(content: &str) -> Result<ParsedInfo, String> {
+    match ConfigFormat::detect(content) {
+        ConfigFormat::Toml => parse_toml_config(content),
+        ConfigFormat::Ini => parse_ini_config(content),
+    }
 }
 
 fn spawn_log_reader(
@@ -106,18 +175,36 @@ pub async fn save_custom_tunnel(
     _tunnel_name: String,
     config_content: String,
 ) -> Result<Vec<CustomTunnel>, String> {
-    let split = split_ini_config(&config_content)?;
+    let format = ConfigFormat::detect(&config_content);
+    let tunnels: Vec<(String, String)> = match format {
+        ConfigFormat::Toml => split_toml_config(&config_content)?,
+        ConfigFormat::Ini => {
+            let split = split_ini_config(&config_content)?;
+            split
+                .tunnels
+                .into_iter()
+                .map(|(name, block)| {
+                    let single = if split.common.trim().is_empty() {
+                        block
+                    } else {
+                        format!("{}\n\n{}", split.common, block)
+                    };
+                    (name, single)
+                })
+                .collect()
+        }
+    };
 
-    if split.tunnels.is_empty() {
+    if tunnels.is_empty() {
         return Err("配置文件中未找到隧道名称".to_string());
     }
 
     let app_dir = get_app_dir(&app_handle)?;
     fs::create_dir_all(&app_dir).map_err(|e| format!("创建目录失败: {}", e))?;
 
-    let mut created = Vec::with_capacity(split.tunnels.len());
+    let mut created = Vec::with_capacity(tunnels.len());
 
-    for (tunnel_name, tunnel_block) in split.tunnels {
+    for (tunnel_name, single_config) in tunnels {
         if !tunnel_name
             .chars()
             .all(|c| c.is_alphanumeric() || c == '_' || c == '-')
@@ -125,19 +212,8 @@ pub async fn save_custom_tunnel(
             return Err("配置文件中的隧道名称只能包含字母、数字、下划线和连字符".to_string());
         }
 
-        let single_ini = if split.common.trim().is_empty() {
-            tunnel_block
-        } else {
-            format!("{}\n\n{}", split.common, tunnel_block)
-        };
-
-        let parsed_info = parse_ini_config(&single_ini)?;
-
-        let config_file_name = get_config_file_name(&tunnel_name);
-        let config_file_path = app_dir.join(&config_file_name);
-
-        fs::write(&config_file_path, &single_ini)
-            .map_err(|e| format!("写入配置文件失败: {}", e))?;
+        let parsed_info = parse_config(&single_config)?;
+        let config_file_name = write_config_file(&app_dir, &tunnel_name, &single_config, format)?;
 
         let custom_tunnel = CustomTunnel {
             id: tunnel_name.clone(),
@@ -181,9 +257,12 @@ pub async fn get_custom_tunnels(app_handle: tauri::AppHandle) -> Result<Vec<Cust
     let updated = tunnels
         .into_iter()
         .map(|mut t| {
+            if let Some((file_name, _)) = find_config_file(&app_dir, &t.id) {
+                t.config_file = file_name;
+            }
             let config_path = app_dir.join(&t.config_file);
             if let Ok(cfg) = fs::read_to_string(&config_path) {
-                if let Ok(parsed) = parse_ini_config(&cfg) {
+                if let Ok(parsed) = parse_config(&cfg) {
                     t.server_addr = parsed.server_addr.or(t.server_addr);
                     t.server_port = parsed.server_port.or(t.server_port);
                     if !parsed.tunnel_names.is_empty() {
@@ -267,11 +346,8 @@ pub async fn get_custom_tunnel_config(
     tunnel_id: String,
 ) -> Result<String, String> {
     let app_dir = get_app_dir(&app_handle)?;
-    let config_file_path = app_dir.join(get_config_file_name(&tunnel_id));
-
-    if !config_file_path.exists() {
-        return Err("配置文件不存在".to_string());
-    }
+    let (_, config_file_path) =
+        find_config_file(&app_dir, &tunnel_id).ok_or("配置文件不存在")?;
 
     fs::read_to_string(&config_file_path).map_err(|e| format!("读取配置文件失败: {}", e))
 }
@@ -283,13 +359,13 @@ pub async fn update_custom_tunnel(
     config_content: String,
 ) -> Result<CustomTunnel, String> {
     let app_dir = get_app_dir(&app_handle)?;
-    let parsed_info = parse_ini_config(&config_content)?;
-
-    let config_file_name = get_config_file_name(&tunnel_id);
-    let config_file_path = app_dir.join(&config_file_name);
-
-    fs::write(&config_file_path, &config_content)
-        .map_err(|e| format!("写入配置文件失败: {}", e))?;
+    let parsed_info = parse_config(&config_content)?;
+    let config_file_name = write_config_file(
+        &app_dir,
+        &tunnel_id,
+        &config_content,
+        ConfigFormat::detect(&config_content),
+    )?;
 
     let list_file = app_dir.join(TUNNELS_LIST_FILE);
     let existing_tunnels: Vec<CustomTunnel> = if list_file.exists() {
@@ -333,31 +409,17 @@ pub async fn delete_custom_tunnel(
     app_handle: tauri::AppHandle,
     tunnel_id: String,
     processes: State<'_, FrpcProcesses>,
+    guard_state: State<'_, ProcessGuardState>,
 ) -> Result<(), String> {
-    let tunnel_id_hash = get_custom_tunnel_hash(&tunnel_id);
-
-    {
-        let mut procs = processes
-            .processes
-            .lock()
-            .map_err(|e| format!("获取进程锁失败: {}", e))?;
-
-        if let Some(mut child) = procs.remove(&tunnel_id_hash) {
-            let _ = child.kill();
-            let _ = child.wait();
-        }
-
-        // 记录pid
-        let _ = crate::commands::process_persistence::remove_running_tunnel(
-            &app_handle, tunnel_id_hash,
-        );
-    }
+    stop_custom_tunnel(app_handle.clone(), tunnel_id.clone(), processes, guard_state).await?;
 
     let app_dir = get_app_dir(&app_handle)?;
 
-    let config_file = app_dir.join(get_config_file_name(&tunnel_id));
-    if config_file.exists() {
-        fs::remove_file(&config_file).map_err(|e| format!("删除配置文件失败: {}", e))?;
+    for name in config_file_names(&tunnel_id) {
+        let config_file = app_dir.join(name);
+        if config_file.exists() {
+            fs::remove_file(&config_file).map_err(|e| format!("删除配置文件失败: {}", e))?;
+        }
     }
 
     let list_file = app_dir.join(TUNNELS_LIST_FILE);
@@ -388,56 +450,34 @@ pub async fn start_custom_tunnel(
 ) -> Result<String, String> {
     let tunnel_id_hash = get_custom_tunnel_hash(&tunnel_id);
 
-    {
-        let procs = processes
-            .processes
-            .lock()
-            .map_err(|e| format!("获取进程锁失败: {}", e))?;
-        if procs.contains_key(&tunnel_id_hash) {
-            return Err("该隧道已在运行中".to_string());
+    let (pid, stdout, stderr) = {
+        let mut procs = super::process_persistence::lock_for_start(&app_handle, &processes, tunnel_id_hash)?;
+        let app_dir = get_app_dir(&app_handle)?;
+        let (_, config_path) =
+            find_config_file(&app_dir, &tunnel_id).ok_or("配置文件不存在")?;
+
+        let mut child = spawn_frpc_worker(&app_dir, &config_path)?;
+        let pid = child.id();
+
+        let stdout = child.stdout.take();
+        let stderr = child.stderr.take();
+        if let Err(error) = crate::commands::process_persistence::save_running_tunnel(
+            &app_handle, tunnel_id_hash, pid, "custom", Some(tunnel_id.clone()),
+        ) {
+            let _ = child.kill();
+            let _ = child.wait();
+            return Err(error);
         }
-    }
+        procs.insert(tunnel_id_hash, child);
+        (pid, stdout, stderr)
+    };
 
-    let app_dir = get_app_dir(&app_handle)?;
-    let frpc_path = resolve_frpc_path(&app_handle)?;
-
-    if !frpc_path.exists() {
-        return Err("frpc 未找到，请先下载".to_string());
-    }
-
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        let metadata = fs::metadata(&frpc_path).map_err(|e| e.to_string())?;
-        let mut perms = metadata.permissions();
-        if perms.mode() & 0o111 == 0 {
-            perms.set_mode(0o755);
-            fs::set_permissions(&frpc_path, perms).map_err(|e| e.to_string())?;
-        }
-    }
-
-    let config_file = get_config_file_name(&tunnel_id);
-    let config_path = app_dir.join(&config_file);
-
-    if !config_path.exists() {
-        return Err("配置文件不存在".to_string());
-    }
-
-    let mut cmd = StdCommand::new(&frpc_path);
-    cmd.current_dir(&app_dir)
-        .arg("-c")
-        .arg(&config_file)
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped());
-
-    #[cfg(target_os = "windows")]
-    {
-        cmd.creation_flags(0x08000000);
-    }
-
-    let mut child = cmd.spawn().map_err(|e| format!("启动 frpc 失败: {}", e))?;
-
-    let pid = child.id();
+    let _ = crate::commands::process_guard::add_guarded_custom_tunnel(
+        tunnel_id_hash,
+        tunnel_id.clone(),
+        guard_state,
+    )
+    .await;
 
     let timestamp = chrono::Local::now().format("%Y/%m/%d %H:%M:%S").to_string();
     let _ = app_handle.emit(
@@ -452,7 +492,7 @@ pub async fn start_custom_tunnel(
         },
     );
 
-    if let Some(stdout) = child.stdout.take() {
+    if let Some(stdout) = stdout {
         spawn_log_reader(
             app_handle.clone(),
             Box::new(BufReader::new(stdout)),
@@ -462,7 +502,7 @@ pub async fn start_custom_tunnel(
         );
     }
 
-    if let Some(stderr) = child.stderr.take() {
+    if let Some(stderr) = stderr {
         spawn_log_reader(
             app_handle.clone(),
             Box::new(BufReader::new(stderr)),
@@ -471,26 +511,6 @@ pub async fn start_custom_tunnel(
             true,
         );
     }
-
-    {
-        let mut procs = processes
-            .processes
-            .lock()
-            .map_err(|e| format!("获取进程锁失败: {}", e))?;
-        procs.insert(tunnel_id_hash, child);
-    }
-
-    // 记录pid
-    let _ = crate::commands::process_persistence::save_running_tunnel(
-        &app_handle, tunnel_id_hash, pid, "custom", Some(tunnel_id.clone()),
-    );
-
-    let _ = crate::commands::process_guard::add_guarded_custom_tunnel(
-        tunnel_id_hash,
-        tunnel_id.clone(),
-        guard_state,
-    )
-    .await;
 
     Ok(format!("自定义隧道已启动 (PID: {})", pid))
 }
@@ -508,45 +528,8 @@ pub async fn stop_custom_tunnel(
         crate::commands::process_guard::remove_guarded_process(tunnel_id_hash, guard_state, true)
             .await;
 
-    let found_in_manager = {
-        let mut procs = processes
-            .processes
-            .lock()
-            .map_err(|e| format!("获取进程锁失败: {}", e))?;
-
-        if let Some(mut child) = procs.remove(&tunnel_id_hash) {
-            let result = match child.kill() {
-                Ok(_) => {
-                    let _ = child.wait();
-                    Ok("自定义隧道已停止".to_string())
-                }
-                Err(e) => {
-                    let _ = child.wait();
-                    Err(format!("停止进程失败: {}", e))
-                }
-            };
-
-            let _ = crate::commands::process_persistence::remove_running_tunnel(
-                &app_handle, tunnel_id_hash,
-            );
-
-            return result;
-        }
-
-        false
-    };
-
-    if !found_in_manager {
-        let _ = crate::commands::process_persistence::stop_orphan_process(
-            app_handle, tunnel_id_hash, processes,
-        )
-        .await
-        .ok();
-
-        Ok("自定义隧道已停止".to_string())
-    } else {
-        Ok("自定义隧道已停止".to_string())
-    }
+    super::process_persistence::stop_tunnel_process(&app_handle, tunnel_id_hash, &processes, false)?;
+    Ok("自定义隧道已停止".to_string())
 }
 
 #[tauri::command]
@@ -557,46 +540,10 @@ pub async fn is_custom_tunnel_running(
 ) -> Result<bool, String> {
     let tunnel_id_hash = get_custom_tunnel_hash(&tunnel_id);
 
-    let in_process_manager = {
-        let mut procs = processes
-            .processes
-            .lock()
-            .map_err(|e| format!("获取进程锁失败: {}", e))?;
-
-        if let Some(child) = procs.get_mut(&tunnel_id_hash) {
-            match child.try_wait() {
-                Ok(Some(_)) => {
-                    procs.remove(&tunnel_id_hash);
-                    let _ = crate::commands::process_persistence::remove_running_tunnel(
-                        &app_handle, tunnel_id_hash,
-                    );
-                    Some(false)
-                }
-                Ok(None) => Some(true),
-                Err(_) => {
-                    procs.remove(&tunnel_id_hash);
-                    let _ = crate::commands::process_persistence::remove_running_tunnel(
-                        &app_handle, tunnel_id_hash,
-                    );
-                    Some(false)
-                }
-            }
-        } else {
-            None
-        }
-    };
-
-    if let Some(running) = in_process_manager {
-        return Ok(running);
-    }
-
-    crate::commands::process_persistence::is_tunnel_process_alive(
-        app_handle, tunnel_id_hash, processes,
-    )
-    .await
+    super::process_persistence::is_tunnel_process_alive(app_handle, tunnel_id_hash, processes).await
 }
 
-struct IniParsedInfo {
+struct ParsedInfo {
     server_addr: Option<String>,
     server_port: Option<u16>,
     tunnel_names: Vec<String>,
@@ -608,8 +555,8 @@ struct IniParsedInfo {
     remote_port: Option<u16>,
 }
 
-fn parse_ini_config(content: &str) -> Result<IniParsedInfo, String> {
-    let mut info = IniParsedInfo {
+fn parse_ini_config(content: &str) -> Result<ParsedInfo, String> {
+    let mut info = ParsedInfo {
         server_addr: None,
         server_port: None,
         tunnel_names: Vec::new(),
@@ -660,6 +607,152 @@ fn parse_ini_config(content: &str) -> Result<IniParsedInfo, String> {
     }
 
     Ok(info)
+}
+
+/// 将包含多个隧道的 TOML 配置拆分为每个隧道一份配置，公共字段复制到每一份中。
+/// 只有一个隧道时保留原文（包括注释）
+fn split_toml_config(content: &str) -> Result<Vec<(String, String)>, String> {
+    let table: toml::Table =
+        toml::from_str(content).map_err(|e| format!("解析 TOML 配置失败: {}", e))?;
+    let mut common = table.clone();
+    let mut entries = Vec::new();
+    for kind in ["proxies", "visitors"] {
+        common.remove(kind);
+        if let Some(items) = table.get(kind) {
+            let items = items
+                .as_array()
+                .ok_or_else(|| format!("配置中的 {kind} 必须是数组"))?;
+            for item in items {
+                let item = item
+                    .as_table()
+                    .ok_or_else(|| format!("配置中的 {kind} 格式无效"))?;
+                let name = item
+                    .get("name")
+                    .and_then(|v| v.as_str())
+                    .ok_or("配置中存在未命名的隧道")?;
+                entries.push((kind, name.to_string(), item.clone()));
+            }
+        }
+    }
+    if entries.len() == 1 {
+        let (_, name, _) = entries.remove(0);
+        return Ok(vec![(name, content.to_string())]);
+    }
+    entries
+        .into_iter()
+        .map(|(kind, name, item)| {
+            let mut single = common.clone();
+            single.insert(kind.into(), toml::Value::Array(vec![item.into()]));
+            toml::to_string(&single)
+                .map(|text| (name, text))
+                .map_err(|e| format!("生成配置失败: {}", e))
+        })
+        .collect()
+}
+
+fn parse_toml_config(content: &str) -> Result<ParsedInfo, String> {
+    let table: toml::Table =
+        toml::from_str(content).map_err(|e| format!("解析 TOML 配置失败: {}", e))?;
+    let str_of =
+        |t: &toml::Table, k: &str| t.get(k).and_then(|v| v.as_str()).map(str::to_string);
+    let port_of = |t: &toml::Table, k: &str| {
+        t.get(k)
+            .and_then(|v| v.as_integer())
+            .and_then(|v| u16::try_from(v).ok())
+    };
+
+    let mut info = ParsedInfo {
+        server_addr: str_of(&table, "serverAddr"),
+        server_port: port_of(&table, "serverPort"),
+        tunnel_names: Vec::new(),
+        tunnel_type: None,
+        custom_domains: None,
+        subdomain: None,
+        local_ip: None,
+        local_port: None,
+        remote_port: None,
+    };
+
+    let items = ["proxies", "visitors"]
+        .iter()
+        .filter_map(|kind| table.get(*kind).and_then(|v| v.as_array()))
+        .flatten()
+        .filter_map(|v| v.as_table());
+    for item in items {
+        if let Some(name) = str_of(item, "name") {
+            info.tunnel_names.push(name);
+        }
+        // 与 INI 解析保持一致：后出现的隧道覆盖前面的信息
+        info.tunnel_type = str_of(item, "type").or(info.tunnel_type);
+        info.custom_domains = item
+            .get("customDomains")
+            .and_then(|v| v.as_array())
+            .map(|domains| {
+                domains
+                    .iter()
+                    .filter_map(|d| d.as_str())
+                    .collect::<Vec<_>>()
+                    .join(",")
+            })
+            .or(info.custom_domains);
+        info.subdomain = str_of(item, "subdomain").or(info.subdomain);
+        info.local_ip = str_of(item, "localIP").or(info.local_ip);
+        info.local_port = port_of(item, "localPort").or(info.local_port);
+        info.remote_port = port_of(item, "remotePort").or(info.remote_port);
+    }
+
+    Ok(info)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const TOML_TWO: &str = r#"serverAddr = "node.example.com"
+serverPort = 7000
+auth.token = "t"
+
+[[proxies]]
+name = "mc"
+type = "tcp"
+localPort = 25565
+remotePort = 42651
+
+[[proxies]]
+name = "web"
+type = "http"
+localPort = 80
+customDomains = ["a.example.com", "b.example.com"]
+"#;
+
+    #[test]
+    fn detects_formats() {
+        assert_eq!(ConfigFormat::detect(TOML_TWO), ConfigFormat::Toml);
+        assert_eq!(
+            ConfigFormat::detect("[common]\nserver_addr = 1.2.3.4\n\n[mc]\ntype = tcp"),
+            ConfigFormat::Ini
+        );
+    }
+
+    #[test]
+    fn splits_toml_and_keeps_common() {
+        let parts = split_toml_config(TOML_TWO).unwrap();
+        assert_eq!(parts.len(), 2);
+        assert_eq!(parts[1].0, "web");
+        let info = parse_toml_config(&parts[1].1).unwrap();
+        assert_eq!(info.server_addr.as_deref(), Some("node.example.com"));
+        assert_eq!(info.tunnel_names, vec!["web".to_string()]);
+        assert_eq!(info.custom_domains.as_deref(), Some("a.example.com,b.example.com"));
+        assert!(parts[1].1.contains("token"));
+        assert!(!parts[1].1.contains("\"mc\""));
+    }
+
+    #[test]
+    fn single_toml_keeps_original_text() {
+        let text = "# 注释\nserverAddr = \"x\"\n[[proxies]]\nname = \"a\"\ntype = \"tcp\"\nremotePort = 1\n";
+        let parts = split_toml_config(text).unwrap();
+        assert_eq!(parts, vec![("a".to_string(), text.to_string())]);
+    }
 }
 
 fn save_custom_tunnel_list(

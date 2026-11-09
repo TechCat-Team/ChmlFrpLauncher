@@ -24,3 +24,10 @@ src-tauri/frpc.ini
 *.sln
 *.sw?
 package-lock.json
+/frp-source/
+/dist-windows/
+
+# 本地构建密钥配置
+.env
+.env.*
+!.env.example

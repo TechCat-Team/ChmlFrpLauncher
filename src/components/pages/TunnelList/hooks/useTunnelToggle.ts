@@ -5,6 +5,7 @@ import { getStoredUser } from "@/services/api";
 import { frpcManager } from "@/services/frpcManager";
 import { customTunnelService } from "@/services/customTunnelService";
 import { logStore } from "@/services/logStore";
+import { playTunnelSound } from "@/lib/sound";
 import type { TunnelProgress, UnifiedTunnel } from "../types";
 
 interface UseTunnelToggleProps {
@@ -107,6 +108,9 @@ export function useTunnelToggle({
         }
 
         toast.success(message || `隧道 ${tunnelName} 已停止`);
+        const soundEnabled =
+          localStorage.getItem("tunnelSoundEnabled") !== "false";
+        playTunnelSound("stop", soundEnabled);
         setRunningTunnels((prev) => {
           const next = new Set(prev);
           next.delete(tunnelKey);
@@ -131,19 +135,13 @@ export function useTunnelToggle({
         }
       }
     } catch (err) {
-      const message =
-        err instanceof Error ? err.message : `${enabled ? "启动" : "停止"}失败`;
+      const message = err instanceof Error ? err.message : String(err);
       toast.error(message);
 
       if (enabled) {
-        const errorProgress = {
-          progress: 100,
-          isError: true,
-          isSuccess: false,
-        };
         setTunnelProgress((prev) => {
           const next = new Map(prev);
-          next.set(tunnelKey, errorProgress);
+          next.set(tunnelKey, { progress: 100, isError: true, isSuccess: false });
           return next;
         });
       }
@@ -156,8 +154,5 @@ export function useTunnelToggle({
     }
   };
 
-  return {
-    togglingTunnels,
-    handleToggle,
-  };
+  return { togglingTunnels, handleToggle };
 }

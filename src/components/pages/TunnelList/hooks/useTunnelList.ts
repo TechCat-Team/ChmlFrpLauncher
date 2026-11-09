@@ -5,16 +5,14 @@ import { customTunnelService } from "@/services/customTunnelService";
 import { tunnelListCache } from "../cache";
 import type { UnifiedTunnel } from "../types";
 
-export function useTunnelList() {
-  const [tunnels, setTunnels] = useState<UnifiedTunnel[]>(() => {
-    return tunnelListCache.tunnels.map((t) => ({
-      type: "api" as const,
-      data: t,
-    }));
-  });
-  const [loading, setLoading] = useState(() => {
-    return tunnelListCache.tunnels.length === 0;
-  });
+export function useTunnelList(authKey?: string) {
+  const [tunnels, setTunnels] = useState<UnifiedTunnel[]>(
+    () => tunnelListCache.tunnels,
+  );
+  const [loading, setLoading] = useState(true);
+  const [initialLoading, setInitialLoading] = useState(
+    () => !tunnelListCache.hasLoaded,
+  );
   const [error, setError] = useState("");
   const [runningTunnels, setRunningTunnels] = useState<Set<string>>(new Set());
 
@@ -67,26 +65,49 @@ export function useTunnelList() {
     setRunningTunnels(running);
   }, []);
 
-  const loadTunnels = async () => {
+  const loadTunnels = useCallback(async () => {
     setLoading(true);
     setError("");
 
     try {
-      const [apiTunnels, customTunnels] = await Promise.all([
-        fetchTunnels().catch(() => [] as Tunnel[]),
-        customTunnelService.getCustomTunnels().catch(() => []),
+      const [apiResult, customResult] = await Promise.allSettled([
+        fetchTunnels(),
+        customTunnelService.getCustomTunnels(),
       ]);
+      const cachedApiTunnels = tunnelListCache.tunnels.filter(
+        (tunnel) => tunnel.type === "api",
+      );
+      const cachedCustomTunnels = tunnelListCache.tunnels.filter(
+        (tunnel) => tunnel.type === "custom",
+      );
+      const apiTunnels: UnifiedTunnel[] =
+        apiResult.status === "fulfilled"
+          ? apiResult.value.map((t: Tunnel) => ({ type: "api", data: t }))
+          : cachedApiTunnels;
+      const customTunnels: UnifiedTunnel[] =
+        customResult.status === "fulfilled"
+          ? customResult.value.map((t) => ({ type: "custom", data: t }))
+          : cachedCustomTunnels;
+      const allTunnels = [...apiTunnels, ...customTunnels];
 
-      const allTunnels: UnifiedTunnel[] = [
-        ...apiTunnels.map((t) => ({ type: "api" as const, data: t })),
-        ...customTunnels.map((t) => ({ type: "custom" as const, data: t })),
-      ];
+      if (apiResult.status === "rejected") {
+        const message =
+          apiResult.reason instanceof Error ? apiResult.reason.message : "";
+        if (
+          message.includes("登录") ||
+          message.includes("token") ||
+          message.includes("令牌")
+        ) {
+          setError(message);
+        }
+      }
 
       setTunnels(allTunnels);
-      tunnelListCache.tunnels = apiTunnels;
+      tunnelListCache.tunnels = allTunnels;
+      tunnelListCache.hasLoaded = true;
+      setInitialLoading(false);
 
       await checkRunningStatus(allTunnels);
-      setLoading(false);
     } catch (err) {
       const message = err instanceof Error ? err.message : "获取隧道列表失败";
       if (
@@ -98,13 +119,14 @@ export function useTunnelList() {
       }
       console.error("获取隧道列表失败", err);
     } finally {
+      setInitialLoading(false);
       setLoading(false);
     }
-  };
+  }, [checkRunningStatus]);
 
   useEffect(() => {
     loadTunnels();
-  }, []);
+  }, [authKey, loadTunnels]);
 
   // 监听守护进程自动重启事件
   useEffect(() => {
@@ -183,6 +205,7 @@ export function useTunnelList() {
   return {
     tunnels,
     loading,
+    initialLoading,
     error,
     runningTunnels,
     setRunningTunnels,

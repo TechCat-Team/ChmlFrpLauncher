@@ -69,7 +69,7 @@ export function CustomTunnelDialog({
         <DialogHeader>
           <DialogTitle>创建自定义隧道</DialogTitle>
           <DialogDescription>
-            填写 .ini 配置文件内容创建自定义隧道
+            填写 frpc 配置文件内容创建自定义隧道
           </DialogDescription>
         </DialogHeader>
 
@@ -82,13 +82,13 @@ export function CustomTunnelDialog({
               id="configContent"
               value={configContent}
               onChange={(e) => setConfigContent(e.target.value)}
-              placeholder="粘贴您的 frpc 配置文件内容...&#10;"
+              placeholder="粘贴您的 frpc 配置文件内容...&#10;&#10;例如：&#10;serverAddr = &quot;example.com&quot;&#10;serverPort = 7000&#10;&#10;[[proxies]]&#10;name = &quot;ssh&quot;&#10;type = &quot;tcp&quot;&#10;localIP = &quot;127.0.0.1&quot;&#10;localPort = 22&#10;remotePort = 6000"
               className="w-full min-h-[200px] p-3 bg-muted/30 rounded-lg border border-border/40 text-xs font-mono resize-none focus:outline-none focus:ring-2 focus:ring-ring"
               disabled={loading}
               required
             />
             <p className="text-xs text-muted-foreground">
-              直接粘贴完整的 frpc INI 配置内容
+              直接粘贴完整的 frpc 配置内容，支持 TOML（推荐）和旧版 INI 格式
             </p>
           </div>
 

@@ -26,11 +26,6 @@ interface CommunityGroupsProps {
 
 const defaultQQGroups: QQGroup[] = [
   {
-    name: "QQ一群",
-    url: "https://qm.qq.com/q/x2OFaogI2k",
-    number: "992067118",
-  },
-  {
     name: "QQ二群",
     url: "https://qm.qq.com/q/sEZl1fea40",
     number: "592908249",
@@ -39,6 +34,11 @@ const defaultQQGroups: QQGroup[] = [
     name: "QQ三群",
     url: "https://qm.qq.com/q/RGALEU5cA0",
     number: "838521529",
+  },
+  {
+    name: "QQ四群",
+    url: "https://qm.qq.com/q/x2DZHEgvEQ",
+    number: "978677895",
   },
 ];
 

@@ -15,6 +15,14 @@ export function CloseConfirmDialog({
 }: CloseConfirmDialogProps) {
   if (!isOpen) return null;
 
+  const rememberAndRun = (
+    behavior: "minimize_to_tray" | "close_app",
+    action: () => void,
+  ) => {
+    localStorage.setItem("closeBehavior", behavior);
+    action();
+  };
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in duration-200"
@@ -37,7 +45,7 @@ export function CloseConfirmDialog({
         {/* 内容 */}
         <div className="grid gap-3 mb-6">
           <button
-            onClick={onMinimizeToTray}
+            onClick={() => rememberAndRun("minimize_to_tray", onMinimizeToTray)}
             className="flex items-start gap-4 p-4 rounded-lg border border-border/60 bg-card hover:bg-accent/50 transition-colors text-left group"
           >
             <div className="flex items-center justify-center w-10 h-10 rounded-full bg-primary/10 group-hover:bg-primary/20 transition-colors flex-shrink-0">
@@ -52,7 +60,7 @@ export function CloseConfirmDialog({
           </button>
 
           <button
-            onClick={onCloseApp}
+            onClick={() => rememberAndRun("close_app", onCloseApp)}
             className="flex items-start gap-4 p-4 rounded-lg border border-border/60 bg-card hover:bg-accent/50 transition-colors text-left group"
           >
             <div className="flex items-center justify-center w-10 h-10 rounded-full bg-destructive/10 group-hover:bg-destructive/20 transition-colors flex-shrink-0">

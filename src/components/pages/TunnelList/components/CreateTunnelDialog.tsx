@@ -31,6 +31,7 @@ interface CreateTunnelDialogProps {
   onSuccess: () => void;
   preloadedNodes: Node[] | null;
   user?: StoredUser | null;
+  mobile?: boolean;
 }
 
 type PortStatus = PortCheckResult & {
@@ -44,6 +45,7 @@ export function CreateTunnelDialog({
                                      onSuccess,
                                      preloadedNodes,
                                      user,
+                                     mobile = false,
                                    }: CreateTunnelDialogProps) {
   const [tunnelType, setTunnelType] = useState<"standard" | "custom">("standard");
   const [step, setStep] = useState<1 | 2 | 3>(1);
@@ -428,7 +430,7 @@ export function CreateTunnelDialog({
                     key="step1"
                     className="animate-in slide-in-from-bottom-2 fade-in flex min-h-0 flex-1 flex-col py-4 duration-300"
                 >
-                  {user && (
+                  {user && !mobile && (
                       <Tabs
                           value={tunnelType}
                           onValueChange={(value) => setTunnelType(value as "standard" | "custom")}

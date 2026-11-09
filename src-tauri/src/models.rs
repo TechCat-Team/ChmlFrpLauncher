@@ -4,53 +4,9 @@ use std::process::Child;
 use std::sync::atomic::AtomicBool;
 use std::sync::{Arc, Mutex};
 
-// 下载进度结构
-#[derive(Serialize, Clone)]
-pub struct DownloadProgress {
-    pub downloaded: u64,
-    pub total: u64,
-    pub percentage: f64,
-}
-
-// API 响应数据结构
-#[derive(Deserialize, Debug)]
-pub struct FrpcInfoResponse {
-    pub msg: String,
-    pub state: String,
-    pub code: u32,
-    pub data: FrpcInfoData,
-}
-
-#[derive(Deserialize, Debug)]
-pub struct FrpcInfoData {
-    pub downloads: Vec<FrpcDownload>,
-    #[allow(dead_code)]
-    pub version: String,
-    #[allow(dead_code)]
-    pub release_notes: Vec<String>,
-}
-
-#[derive(Deserialize, Debug, Clone)]
-pub struct FrpcDownload {
-    pub hash: String,
-    pub os: String,
-    #[allow(dead_code)]
-    pub hash_type: String,
-    pub platform: String,
-    pub link: String,
-    pub arch: String,
-    pub size: u64,
-}
-
-// 下载信息结构
-pub struct DownloadInfo {
-    pub url: String,
-    pub hash: String,
-    pub size: u64,
-}
-
 // 存储运行中的frpc进程
 pub struct FrpcProcesses {
+    pub update_installing: AtomicBool,
     pub processes: Mutex<HashMap<i32, Child>>,
 }
 
@@ -58,6 +14,7 @@ impl FrpcProcesses {
     pub fn new() -> Self {
         Self {
             processes: Mutex::new(HashMap::new()),
+            update_installing: AtomicBool::new(false),
         }
     }
 }
@@ -128,5 +85,11 @@ pub struct TunnelConfig {
     pub http_proxy: Option<String>,
     pub log_level: String,
     pub force_tls: bool,
-    pub kcp_optimization: bool,
+
+    #[serde(default)]
+    pub extra_params: Option<String>,
+    #[serde(default)]
+    pub encryption: bool,
+    #[serde(default)]
+    pub compression: bool,
 }

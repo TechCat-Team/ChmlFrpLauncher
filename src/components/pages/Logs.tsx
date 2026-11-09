@@ -13,6 +13,28 @@ import {
   type CustomTunnel,
 } from "@/services/customTunnelService";
 
+const isAndroid =
+  typeof navigator !== "undefined" && /Android/i.test(navigator.userAgent);
+
+// Android WebView 不一定支持 Clipboard API，失败时回退到 execCommand
+async function copyText(text: string) {
+  try {
+    await navigator.clipboard.writeText(text);
+    return;
+  } catch {
+    const textarea = document.createElement("textarea");
+    textarea.value = text;
+    textarea.style.position = "fixed";
+    textarea.style.opacity = "0";
+    document.body.appendChild(textarea);
+    textarea.focus();
+    textarea.select();
+    const ok = document.execCommand("copy");
+    textarea.remove();
+    if (!ok) throw new Error("无法访问剪贴板");
+  }
+}
+
 type LogLevel = "software" | "error" | "warning" | "info" | "debug";
 
 function getLogLevel(message: string): LogLevel {
@@ -65,8 +87,10 @@ export function Logs() {
         const data = await fetchTunnels();
         setTunnels(data);
 
-        const customData = await customTunnelService.getCustomTunnels();
-        setCustomTunnels(customData);
+        if (!isAndroid) {
+          const customData = await customTunnelService.getCustomTunnels();
+          setCustomTunnels(customData);
+        }
 
         const runningTunnels = await frpcManager.getRunningTunnels();
         if (runningTunnels.length > 0) {
@@ -120,15 +144,17 @@ export function Logs() {
     }
 
     try {
-      const filePath = await save({
-        defaultPath: `frpc-logs-${selectedTunnelId || "all"}-${new Date().toISOString().slice(0, 10)}.txt`,
-        filters: [
-          {
-            name: "Text",
-            extensions: ["txt"],
-          },
-        ],
-      });
+      const filePath = isAndroid
+        ? "clipboard"
+        : await save({
+            defaultPath: `frpc-logs-${selectedTunnelId || "all"}-${new Date().toISOString().slice(0, 10)}.txt`,
+            filters: [
+              {
+                name: "Text",
+                extensions: ["txt"],
+              },
+            ],
+          });
 
       if (filePath) {
         // 生成日志头部信息
@@ -236,8 +262,13 @@ export function Logs() {
 
         const fullContent = header + logContent;
 
-        await writeTextFile(filePath, fullContent);
-        toast.success("日志已保存");
+        if (isAndroid) {
+          await copyText(fullContent);
+          toast.success("日志已复制到剪贴板");
+        } else {
+          await writeTextFile(filePath, fullContent);
+          toast.success("日志已保存");
+        }
       }
     } catch (error) {
       console.error("Failed to save logs:", error);
@@ -257,52 +288,77 @@ export function Logs() {
     ...tunnels.map((t) => ({ value: t.id, label: t.name })),
   ];
 
+  const tunnelSelect = (
+    <Select
+      options={tunnelOptions}
+      value={selectedTunnelId || 0}
+      onChange={(value) =>
+        setSelectedTunnelId(value === 0 ? null : Number(value))
+      }
+      placeholder="选择隧道"
+      className={isAndroid ? "flex-1 min-w-0" : "w-48"}
+    />
+  );
+
+  const autoScrollToggle = (
+    <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer flex-shrink-0">
+      <input
+        type="checkbox"
+        checked={autoScroll}
+        onChange={(e) => setAutoScroll(e.target.checked)}
+        className="w-4 h-4"
+      />
+      自动滚动
+    </label>
+  );
+
+  const actionButtons = (
+    <>
+      <button
+        onClick={handleClearLogs}
+        className="px-3 py-1.5 text-sm bg-card rounded-lg hover:bg-accent/50 transition-colors"
+      >
+        清空
+      </button>
+
+      <button
+        onClick={handleSaveLogs}
+        className="px-3 py-1.5 text-sm bg-foreground text-background rounded-lg hover:opacity-90 transition-opacity"
+      >
+        {isAndroid ? "复制日志" : "保存日志"}
+      </button>
+    </>
+  );
+
   return (
     <div className="flex flex-col h-full gap-4">
-      <div className="flex items-center justify-between gap-4">
-        <h1 className="text-xl font-medium text-foreground">日志</h1>
-
-        <div className="flex items-center gap-2">
-          <Select
-            options={tunnelOptions}
-            value={selectedTunnelId || 0}
-            onChange={(value) =>
-              setSelectedTunnelId(value === 0 ? null : Number(value))
-            }
-            placeholder="选择隧道"
-            className="w-48"
-          />
-
-          <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer">
-            <input
-              type="checkbox"
-              checked={autoScroll}
-              onChange={(e) => setAutoScroll(e.target.checked)}
-              className="w-4 h-4"
-            />
-            自动滚动
-          </label>
-
-          <button
-            onClick={handleClearLogs}
-            className="px-3 py-1.5 text-sm bg-card rounded-lg hover:bg-accent/50 transition-colors"
-          >
-            清空
-          </button>
-
-          <button
-            onClick={handleSaveLogs}
-            className="px-3 py-1.5 text-sm bg-foreground text-background rounded-lg hover:opacity-90 transition-opacity"
-          >
-            保存日志
-          </button>
+      {isAndroid ? (
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center justify-between gap-3">
+            <h1 className="text-xl font-medium text-foreground">日志</h1>
+            <div className="flex items-center gap-2">{actionButtons}</div>
+          </div>
+          <div className="flex items-center gap-3">
+            {tunnelSelect}
+            {autoScrollToggle}
+          </div>
         </div>
-      </div>
+      ) : (
+        <div className="flex items-center justify-between gap-4">
+          <h1 className="text-xl font-medium text-foreground">日志</h1>
+
+          <div className="flex items-center gap-2">
+            {tunnelSelect}
+            {autoScrollToggle}
+            {actionButtons}
+          </div>
+        </div>
+      )}
 
       <div className="flex-1 rounded-lg overflow-hidden bg-card">
         <ScrollArea className="h-full" ref={scrollRef}>
           <div
-            className="p-4 font-mono text-[13px] space-y-1"
+            className={`p-4 font-mono space-y-1 ${isAndroid ? "text-[11px] break-all" : "text-[13px]"}`}
             data-allow-copy="true"
           >
             {filteredLogs.length === 0 ? (

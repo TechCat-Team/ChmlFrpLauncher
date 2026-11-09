@@ -4,6 +4,7 @@ import "@/index.css";
 import "@/App.css";
 import "@/frosted-glass.css";
 import App from "@/App.tsx";
+import { MobileApp } from "@/components/MobileApp";
 import { Toaster } from "@/components/ui/sonner";
 
 const preventTextSelection = () => {
@@ -86,7 +87,7 @@ preventTextSelection();
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <App />
+    {/Android/i.test(navigator.userAgent) ? <MobileApp /> : <App />}
     <Toaster />
   </StrictMode>,
 );

@@ -1,6 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn, type Event } from "@tauri-apps/api/event";
-import { getNodeUdpSupport, type Tunnel } from "./api";
+import { toBoolean, type Tunnel } from "./api";
 
 export interface LogMessage {
   tunnel_id: number;
@@ -23,7 +23,10 @@ export interface TunnelConfig {
   http_proxy?: string;
   log_level: string;
   force_tls: boolean;
-  kcp_optimization: boolean;
+  /** frp 额外参数（对应 API 的 ap 字段） */
+  extra_params?: string;
+  encryption: boolean;
+  compression: boolean;
 }
 
 export interface PersistedTunnelInfo {
@@ -50,7 +53,6 @@ export class FrpcManager {
     // 获取代理配置
     let httpProxy: string | undefined;
     let forceTls = false;
-    let kcpOptimization = false;
 
     try {
       const proxyConfigStr = localStorage.getItem("frpc_proxy_config");
@@ -68,17 +70,9 @@ export class FrpcManager {
 
         // 其他配置
         forceTls = proxyConfig.forceTls || false;
-        kcpOptimization = proxyConfig.kcpOptimization || false;
       }
     } catch (error) {
       console.error("解析代理配置失败:", error);
-    }
-
-    if (kcpOptimization) {
-      const udpSupport = await getNodeUdpSupport(tunnel.node, userToken);
-      if (udpSupport !== true) {
-        kcpOptimization = false;
-      }
     }
 
     const config: TunnelConfig = {
@@ -102,10 +96,12 @@ export class FrpcManager {
       http_proxy: httpProxy,
       log_level: localStorage.getItem("frpcLogLevel") || "info",
       force_tls: forceTls,
-      kcp_optimization: kcpOptimization,
+      extra_params: tunnel.ap ?? undefined,
+      encryption: toBoolean(tunnel.encryption),
+      compression: toBoolean(tunnel.compression),
     };
 
-    return await invoke<string>("start_frpc", { config });
+    return invoke<string>("start_frpc", { config });
   }
 
   async stopTunnel(tunnelId: number): Promise<string> {
@@ -150,10 +146,6 @@ export class FrpcManager {
     } catch {
       return false;
     }
-  }
-
-  async fixFrpcIniTls(): Promise<string> {
-    return await invoke<string>("fix_frpc_ini_tls");
   }
 
   async listenToLogs(onLog: (log: LogMessage) => void): Promise<void> {

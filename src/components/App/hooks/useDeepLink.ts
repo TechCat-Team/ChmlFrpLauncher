@@ -1,20 +1,11 @@
+import { isFrpProxyReady } from "@/services/frpLog";
 import { useEffect, useRef, useCallback } from "react";
 import { toast } from "sonner";
 import { deepLinkService, type DeepLinkData } from "@/services/deepLinkService";
-import {
-  getStoredUser,
-  type StoredUser,
-  fetchTunnels,
-  fetchUserInfo,
-  saveStoredUser,
-} from "@/services/api";
-import { frpcDownloader } from "@/services/frpcDownloader.ts";
+import { getStoredUser, type StoredUser, fetchTunnels } from "@/services/api";
 import { frpcManager } from "@/services/frpcManager";
 import { logStore } from "@/services/logStore";
 import {
-  createDownloadInitialToast,
-  createDownloadProgressToast,
-  createDownloadErrorToast,
   createTunnelSuccessToast,
 } from "../utils/toastHelpers";
 
@@ -22,10 +13,7 @@ import {
  * Deep Link 处理 hook
  * 处理深度链接启动隧道的逻辑
  */
-export function useDeepLink(
-  user: StoredUser | null,
-  setUser: (user: StoredUser | null) => void,
-) {
+export function useDeepLink(user: StoredUser | null) {
   const pendingDeepLinkRef = useRef<DeepLinkData | null>(null);
   const isAppReady = true;
 
@@ -33,42 +21,7 @@ export function useDeepLink(
     async (data: DeepLinkData) => {
       try {
         const currentUser = getStoredUser();
-        let tokenToUse = data.usertoken || currentUser?.usertoken;
-
-        if (data.usertoken && !currentUser?.usertoken) {
-          toast.loading("正在使用 token 登录...", {
-            duration: Infinity,
-          });
-
-          try {
-            const userInfo = await fetchUserInfo(data.usertoken);
-
-            const newUser: StoredUser = {
-              username: userInfo.username,
-              usergroup: userInfo.usergroup,
-              userimg: userInfo.userimg || null,
-              usertoken: data.usertoken,
-              tunnelCount: userInfo.tunnelCount,
-              tunnel: userInfo.tunnel,
-            };
-
-            saveStoredUser(newUser);
-            setUser(newUser);
-            tokenToUse = data.usertoken;
-
-            toast.dismiss();
-            toast.success("登录成功");
-
-            await new Promise((resolve) => setTimeout(resolve, 300));
-          } catch (error) {
-            toast.dismiss();
-            const errorMsg =
-              error instanceof Error ? error.message : "登录失败";
-            toast.error(`使用 token 登录失败: ${errorMsg}`);
-            console.error("Deep-link 登录失败:", error);
-            return;
-          }
-        }
+        const tokenToUse = currentUser?.usertoken;
 
         if (!tokenToUse) {
           toast.error("请先登录账户");
@@ -91,46 +44,11 @@ export function useDeepLink(
           return;
         }
 
-        const frpcExists = await frpcDownloader.checkFrpcExists();
-        if (!frpcExists) {
-          toast.dismiss();
-          toast.loading(createDownloadInitialToast(), {
-            duration: Infinity,
-          });
-
-          try {
-            await frpcDownloader.downloadFrpc((progress) => {
-              toast.loading(
-                createDownloadProgressToast(
-                  progress.percentage,
-                  progress.downloaded,
-                  progress.total,
-                ),
-                {
-                  duration: Infinity,
-                },
-              );
-            });
-
-            toast.dismiss();
-            toast.success("frpc 客户端下载成功", {
-              duration: 2000,
-            });
-          } catch (error) {
-            toast.dismiss();
-            const errorMsg =
-              error instanceof Error ? error.message : String(error);
-            toast.error(createDownloadErrorToast(errorMsg), {
-              duration: 10000,
-            });
-            return;
-          }
-        }
-
         toast.loading(`正在启动隧道 ${tunnel.name}...`, {
           duration: Infinity,
         });
 
+        const priorLogs = new Set(logStore.getLogs());
         await frpcManager.startTunnel(tunnel, tokenToUse);
 
         const isHttpType =
@@ -141,15 +59,19 @@ export function useDeepLink(
           : `${tunnel.ip}:${tunnel.dorp}`;
 
         let hasHandledSuccess = false;
-        const unsubscribe = logStore.subscribe((logs) => {
+        let unsubscribe: (() => void) | undefined;
+        // subscribe 会同步调用监听器，监听器内要访问 unsubscribe，所以必须用 let 先声明
+        // eslint-disable-next-line prefer-const
+        unsubscribe = logStore.subscribe((logs) => {
           if (hasHandledSuccess) {
             return;
           }
 
           const successLog = logs.find(
             (log) =>
+              !priorLogs.has(log) &&
               log.tunnel_id === data.tunnelId &&
-              log.message.includes("映射启动成功"),
+              isFrpProxyReady(log.message),
           );
 
           if (successLog) {
@@ -170,13 +92,18 @@ export function useDeepLink(
               },
             );
 
-            unsubscribe();
+            unsubscribe?.();
           }
         });
 
+        if (hasHandledSuccess) {
+          unsubscribe();
+          return;
+        }
+
         setTimeout(() => {
           if (!hasHandledSuccess) {
-            unsubscribe();
+            unsubscribe?.();
             toast.dismiss();
             toast.error(`隧道 ${tunnel.name} 启动超时，请检查日志`);
           }
@@ -184,12 +111,12 @@ export function useDeepLink(
       } catch (error) {
         toast.dismiss();
         const errorMsg =
-          error instanceof Error ? error.message : "启动隧道失败";
+          error instanceof Error ? error.message : String(error);
         toast.error(errorMsg);
         console.error("Deep-link 启动隧道失败:", error);
       }
     },
-    [setUser],
+    [],
   );
 
   useEffect(() => {

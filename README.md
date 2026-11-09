@@ -3,6 +3,7 @@
 ChmlFrp 官方启动器，基于 Tauri + React + TypeScript 构建的跨平台桌面应用程序。
 
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
+[![GitHub release downloads](https://img.shields.io/github/downloads/TechCat-Team/ChmlFrpLauncher/total.svg)](https://github.com/TechCat-Team/ChmlFrpLauncher/releases)
 
 ## 特性
 
@@ -54,15 +55,25 @@ ChmlFrp 官方启动器，基于 Tauri + React + TypeScript 构建的跨平台�
 - **UI 组件**: shadcn/ui
 - **样式**: Tailwind CSS 4
 - **状态管理**: React Hooks
-- **后端语言**: Rust
+- **后端**使用 Rust，并静态链接 ChmlFrp Go 客户端。
 
 ## 系统要求
 
-- **macOS**: 需要 macOS 10.13 或更高版本
-- **Windows**: Windows 10 或更高版本
-- **Linux**: 支持的主流 Linux 发行版
+- **macOS** 需要 macOS 12 Monterey 或更高版本，支持 Apple Silicon 和 Intel。
+- **Windows** 需要 Windows 10 或更高版本（x64）。
+- **Linux** 需要支持 WebKitGTK 4.1 的发行版（发布包为 x64）。
 
 ## 快速开始
+
+### 构建前准备
+
+启动器在编译时将 ChmlFrp 核心链接进主程序。每条隧道由主程序的 worker 模式运行，安装和启动时无需独立的 frpc 可执行文件。
+
+开发和构建需要 Rust、Node.js、pnpm、Go 以及各平台的 Tauri 构建依赖。Windows 需要 Go 1.27.1 或更新版本、MSVC 和支持 DWARF 5 的 MinGW-w64 GCC（如 MSYS2 UCRT64），Linux 使用 Go 1.26.x、GCC 和 WebKitGTK 4.1，macOS 使用 Go 1.26.x 和 Xcode Command Line Tools。
+
+将 ChmlFrp 的 `TechCat-Team/frp` 仓库检出到启动器同级的 `frp` 目录，或将环境变量 `CHMLFRP_SOURCE_DIR` 设为源码目录的绝对路径。发布工作流固定检出 `7b3062521c5e971a87c9cfc3e9e8e30d4eac988b`，需要在启动器仓库配置有权读取该源码仓库的 `CHMLFRP_SOURCE_TOKEN` secret。
+
+如需从自定义配置启用 FRP 管理页面，先在 FRP 源码的 `web` 目录运行 `npm ci` 和 `npm run build --workspace frpc`。构建会将页面资源一起编入主程序，发布工作流也会执行这一步。
 
 ### 安装依赖
 
@@ -87,6 +98,27 @@ pnpm tauri dev
 ```bash
 pnpm tauri build
 ```
+
+macOS 通用包使用 `pnpm tauri build --target universal-apple-darwin`，需要安装 `aarch64-apple-darwin` 和 `x86_64-apple-darwin` 两个 Rust 目标。
+
+### 发布版本
+
+macOS 和 Linux 由 GitHub Actions 在推送 `v*` tag 后自动构建，并生成 `latest.json`。
+
+Windows 不在 CI 中构建，需要在持有代码签名证书的 Windows 机器上手动完成，等 CI 跑完之后执行：
+
+```powershell
+pnpm release:windows
+```
+
+脚本会依次完成：构建 Windows 安装包（x64、arm64）→ 用 `signtool` 签名 → 重新生成自动更新签名(`.sig`) → 从该版本的 Release 下载 `latest.json` 并写入 Windows 条目 → 把安装包、`.sig` 和 `latest.json` 上传回 Release。
+
+运行前需要：
+
+- 安装 Node.js、pnpm、Rust、Go、GitHub CLI（`gh auth login`）、Windows SDK（`signtool`）；x64 需要 `gcc`（MSYS2 UCRT64），arm64 需要 llvm-mingw 的 `aarch64-w64-mingw32-clang`
+- 复制 `.env.example` 为 `.env` 并填写，脚本每次运行都会自动读取（`.env` 已加入 `.gitignore`，不会被提交）：`CHMLFRP_SOURCE_DIR`（ChmlFrp 内核源码）、`WINDOWS_CERT_SHA1`（代码签名证书的 SHA1 指纹）、`TAURI_SIGNING_PRIVATE_KEY_PATH`（更新密钥文件，有密码时再填 `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`）
+
+常用参数：`-Targets x64`（只构建一个架构）、`-SkipUpload`（只构建签名，不上传）、`-SkipSign`（仅测试流程，产物不能发布）、`-Force`（`latest.json` 缺少 macOS / Linux 条目时仍继续）。
 
 ## 深链接使用
 

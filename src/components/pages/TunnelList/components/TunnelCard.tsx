@@ -276,7 +276,7 @@ export function TunnelCard({
                     <div
                       className={`w-9 h-5 rounded-full peer transition-colors duration-300 ${
                         isRunning
-                          ? "bg-foreground"
+                          ? "bg-primary"
                           : "bg-muted dark:bg-foreground/12"
                       } ${isToggling || isNodeOffline ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
                     ></div>
