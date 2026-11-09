@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "android:dev": "node scripts/android-dev.mjs",
+    "release:windows": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/release-windows.ps1",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",

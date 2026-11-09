@@ -101,6 +101,25 @@ pnpm tauri build
 
 macOS 通用包使用 `pnpm tauri build --target universal-apple-darwin`，需要安装 `aarch64-apple-darwin` 和 `x86_64-apple-darwin` 两个 Rust 目标。
 
+### 发布版本
+
+macOS 和 Linux 由 GitHub Actions 在推送 `v*` tag 后自动构建，并生成 `latest.json`。
+
+Windows 不在 CI 中构建，需要在持有代码签名证书的 Windows 机器上手动完成，等 CI 跑完之后执行：
+
+```powershell
+pnpm release:windows
+```
+
+脚本会依次完成：构建 Windows 安装包（x64、arm64）→ 用 `signtool` 签名 → 重新生成自动更新签名(`.sig`) → 从该版本的 Release 下载 `latest.json` 并写入 Windows 条目 → 把安装包、`.sig` 和 `latest.json` 上传回 Release。
+
+运行前需要：
+
+- 安装 Node.js、pnpm、Rust、Go、GitHub CLI（`gh auth login`）、Windows SDK（`signtool`）；x64 需要 `gcc`（MSYS2 UCRT64），arm64 需要 llvm-mingw 的 `aarch64-w64-mingw32-clang`
+- 复制 `.env.example` 为 `.env` 并填写，脚本每次运行都会自动读取（`.env` 已加入 `.gitignore`，不会被提交）：`CHMLFRP_SOURCE_DIR`（ChmlFrp 内核源码）、`WINDOWS_CERT_SHA1`（代码签名证书的 SHA1 指纹）、`TAURI_SIGNING_PRIVATE_KEY_PATH`（更新密钥文件，有密码时再填 `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`）
+
+常用参数：`-Targets x64`（只构建一个架构）、`-SkipUpload`（只构建签名，不上传）、`-SkipSign`（仅测试流程，产物不能发布）、`-Force`（`latest.json` 缺少 macOS / Linux 条目时仍继续）。
+
 ## 深链接使用
 
 支持通过 `chmlfrp://` 协议在浏览器中启动隧道：
