@@ -16,6 +16,11 @@ struct Bridge {
 }
 
 static BRIDGE: OnceLock<Bridge> = OnceLock::new();
+static TLS_READY: AtomicBool = AtomicBool::new(false);
+
+pub fn tls_ready() -> bool {
+    TLS_READY.load(Ordering::Acquire)
+}
 
 /// 应用句柄，用于 Activity 重建后恢复主窗口
 pub static APP: OnceLock<tauri::AppHandle> = OnceLock::new();
@@ -27,11 +32,21 @@ pub static WINDOW_DESTROYED: AtomicBool = AtomicBool::new(false);
 #[no_mangle]
 pub extern "system" fn Java_net_chmlfrp_launcher_MainActivity_nativeInit<'local>(
     mut env: EnvUnowned<'local>,
-    _this: JObject<'local>,
+    this: JObject<'local>,
     bridge: JClass<'local>,
 ) {
     if BRIDGE.get().is_none() {
         env.with_env(|env| -> jni::errors::Result<()> {
+            let context = env
+                .call_method(
+                    &this,
+                    jni_str!("getApplicationContext"),
+                    jni_sig!("()Landroid/content/Context;"),
+                    &[],
+                )?
+                .l()?;
+            rustls_platform_verifier::android::init_with_env(env, context)?;
+            TLS_READY.store(true, Ordering::Release);
             let class = env.new_global_ref(&bridge)?;
             let _ = BRIDGE.set(Bridge { class });
             Ok(())
@@ -54,7 +69,8 @@ fn recreate_main_window(app: &tauri::AppHandle) {
     let Some(config) = app.config().app.windows.first() else {
         return;
     };
-    if let Err(err) = tauri::WebviewWindowBuilder::from_config(app, config).and_then(|b| b.build()) {
+    if let Err(err) = tauri::WebviewWindowBuilder::from_config(app, config).and_then(|b| b.build())
+    {
         eprintln!("[ChmlFrpLauncher] 重建主窗口失败: {err}");
     }
 }

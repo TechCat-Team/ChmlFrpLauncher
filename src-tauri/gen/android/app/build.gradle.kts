@@ -31,6 +31,9 @@ val releaseStorePassword = signingValue("storePassword", "ANDROID_KEYSTORE_PASSW
 val releaseKeyAlias = signingValue("keyAlias", "ANDROID_KEY_ALIAS")
 val releaseKeyPassword = signingValue("keyPassword", "ANDROID_KEY_PASSWORD") ?: releaseStorePassword
 val hasReleaseSigning = releaseStoreFile != null && releaseStorePassword != null && releaseKeyAlias != null
+val rustlsVerifierVersion = Regex("(?m)^name = \"rustls-platform-verifier-android\"\\s*\\nversion = \"([^\"]+)\"")
+    .find(file("../../../Cargo.lock").readText())?.groupValues?.get(1)
+    ?: error("Cargo.lock 中未找到 rustls-platform-verifier-android")
 
 android {
     compileSdk = 36
@@ -92,6 +95,7 @@ rust {
 }
 
 dependencies {
+    implementation("org.rustls:rustls-platform-verifier:$rustlsVerifierVersion")
     implementation("androidx.webkit:webkit:1.14.0")
     implementation("androidx.appcompat:appcompat:1.7.1")
     implementation("androidx.activity:activity-ktx:1.10.1")

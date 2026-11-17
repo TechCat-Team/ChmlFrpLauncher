@@ -1,4 +1,7 @@
 # Add project specific ProGuard rules here.
+# Rust 通过 JNI 按名称调用这些方法，R8 无法识别这些调用。
+-keep class net.chmlfrp.launcher.ChmlBridge { public static *; }
+-keep,includedescriptorclasses class org.rustls.platformverifier.** { *; }
 # You can control the set of applied configuration files using the
 # proguardFiles setting in build.gradle.
 #

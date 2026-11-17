@@ -310,6 +310,7 @@ export function MobileApp() {
   const [batteryUnrestricted, setBatteryUnrestricted] = useState<
     boolean | null
   >(null);
+  const [batteryCheckFailed, setBatteryCheckFailed] = useState(false);
   const usertoken = user?.usertoken;
 
   useEffect(() => {
@@ -329,8 +330,15 @@ export function MobileApp() {
   useEffect(() => {
     const check = () =>
       void invoke<boolean>("is_ignoring_battery_optimizations")
-        .then(setBatteryUnrestricted)
-        .catch(() => setBatteryUnrestricted(null));
+        .then((allowed) => {
+          setBatteryUnrestricted(allowed);
+          setBatteryCheckFailed(false);
+        })
+        .catch((error) => {
+          console.error("检查电池优化状态失败:", error);
+          setBatteryUnrestricted(null);
+          setBatteryCheckFailed(true);
+        });
     check();
     const onVisible = () => {
       if (document.visibilityState === "visible") check();
@@ -504,7 +512,7 @@ export function MobileApp() {
       setSession(next);
       await openUrl(next.verification_uri_complete || next.verification_uri);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "无法打开授权页面");
+      setError(errorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -886,11 +894,13 @@ export function MobileApp() {
                   <ItemContent>
                     <ItemTitle>忽略电池优化</ItemTitle>
                     <ItemDescription className="text-xs">
-                      {batteryUnrestricted === null
-                        ? "正在检查…"
-                        : batteryUnrestricted
-                          ? "已允许，锁屏后隧道可持续运行"
-                          : "未允许，锁屏或省电时隧道可能被系统暂停"}
+                      {batteryCheckFailed
+                        ? "检查失败，请重新打开应用后重试"
+                        : batteryUnrestricted === null
+                          ? "正在检查…"
+                          : batteryUnrestricted
+                            ? "已允许，锁屏后隧道可持续运行"
+                            : "未允许，锁屏或省电时隧道可能被系统暂停"}
                     </ItemDescription>
                   </ItemContent>
                   {batteryUnrestricted === false && (

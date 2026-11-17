@@ -16,9 +16,7 @@ fn validate_request_url(raw_url: &str) -> Result<Url, String> {
     if !url.username().is_empty() || url.password().is_some() {
         return Err("URL 不允许包含凭据".to_string());
     }
-    let host = url
-        .host_str()
-        .ok_or_else(|| "URL 缺少 host".to_string())?;
+    let host = url.host_str().ok_or_else(|| "URL 缺少 host".to_string())?;
     if !is_allowed_host(host) {
         return Err("URL 不在允许列表".to_string());
     }
@@ -35,6 +33,10 @@ fn is_allowed_host(host: &str) -> bool {
 }
 
 async fn send_request(options: HttpRequestOptions) -> Result<HttpResponsePayload, String> {
+    #[cfg(target_os = "android")]
+    if !super::android_service::tls_ready() {
+        return Err("Android 网络服务尚未初始化，请稍后重试".to_string());
+    }
     let bypass_proxy = options.bypass_proxy.unwrap_or(true);
     let url = validate_request_url(&options.url)?;
 
