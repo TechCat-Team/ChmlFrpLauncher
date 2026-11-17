@@ -103,6 +103,22 @@ macOS 通用包使用 `pnpm tauri build --target universal-apple-darwin`，需�
 
 ### 发布版本
 
+#### 手动构建 Android APK
+
+在仓库的 **Actions → Android Build → Run workflow** 中选择分支并运行，完成后在该次运行的 Artifacts 中下载签名 APK。此流程不会自动发布到 Release 或应用商店。GitHub 要求默认分支上存在此工作流，才能在页面上手动触发。
+
+在仓库 **Settings → Secrets and variables → Actions** 中配置以下 secrets：
+
+- `CHMLFRP_SOURCE_TOKEN`：有权读取 `TechCat-Team/frp` 的令牌，与桌面发布流程共用。
+- `ANDROID_KEYSTORE_BASE64`：正式签名 keystore 文件的 Base64 内容，例如通过 `base64 < release.jks | tr -d '\n'` 生成。
+- `ANDROID_KEYSTORE_PASSWORD`：keystore 密码。
+- `ANDROID_KEY_ALIAS`：签名密钥别名。
+- `ANDROID_KEY_PASSWORD`：签名密钥密码；与 keystore 密码相同时可不设置。
+
+请安全备份 keystore 和密码，并在后续版本中使用相同签名。应用版本使用 `src-tauri/tauri.conf.json` 中的版本号，发布更新时需确保 Android 的 versionCode 递增。构建流程会验证 APK 签名。
+
+#### 桌面版
+
 macOS 和 Linux 由 GitHub Actions 在推送 `v*` tag 后自动构建，并生成 `latest.json`。
 
 Windows 不在 CI 中构建，需要在持有代码签名证书的 Windows 机器上手动完成，等 CI 跑完之后执行：
