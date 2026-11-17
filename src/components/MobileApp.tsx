@@ -16,6 +16,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { openUrl } from "@tauri-apps/plugin-opener";
+import { getVersion } from "@tauri-apps/api/app";
 import { invoke } from "@tauri-apps/api/core";
 import {
   clearStoredUser,
@@ -291,6 +292,7 @@ export function MobileApp() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [revision, setRevision] = useState(0);
+  const [currentVersion, setCurrentVersion] = useState("");
   const [statuses, setStatuses] = useState<Record<number, TunnelStatus>>({});
   const [running, setRunning] = useState<Set<number>>(new Set());
   const [busy, setBusy] = useState<number | null>(null);
@@ -312,6 +314,15 @@ export function MobileApp() {
 
   useEffect(() => {
     void logStore.startListening();
+  }, []);
+
+  useEffect(() => {
+    void getVersion()
+      .then(setCurrentVersion)
+      .catch((error) => {
+        console.error("获取版本失败:", error);
+        setCurrentVersion("未知");
+      });
   }, []);
 
   // 从系统设置返回应用时重新检查电池优化状态
@@ -940,7 +951,28 @@ export function MobileApp() {
                   <ItemContent>
                     <ItemTitle>ChmlFrp Launcher</ItemTitle>
                     <ItemDescription className="text-xs">
-                      Android 预览版
+                      {currentVersion
+                        ? `当前版本: ${currentVersion === "未知" ? currentVersion : `v${currentVersion}`}`
+                        : "获取版本中..."}
+                    </ItemDescription>
+                  </ItemContent>
+                </Item>
+                <ItemSeparator />
+                <Item variant="outline" className="border-0">
+                  <ItemContent>
+                    <ItemTitle>应用备案号</ItemTitle>
+                    <ItemDescription className="text-xs">
+                      <button
+                        type="button"
+                        className="text-primary underline underline-offset-2"
+                        onClick={() =>
+                          void openUrl("https://beian.miit.gov.cn/").catch(() =>
+                            toast.error("无法打开备案查询页面"),
+                          )
+                        }
+                      >
+                        蜀ICP备2025175860号-5A
+                      </button>
                     </ItemDescription>
                   </ItemContent>
                 </Item>
