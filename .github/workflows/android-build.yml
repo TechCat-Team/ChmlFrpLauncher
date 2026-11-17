@@ -12,7 +12,6 @@ jobs:
     runs-on: ubuntu-latest
     env:
       CHMLFRP_SOURCE_DIR: ${{ github.workspace }}/frp-source
-      ANDROID_KEYSTORE_PATH: ${{ runner.temp }}/chmlfrp-release.jks
       ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
       ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
       ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
@@ -29,7 +28,9 @@ jobs:
               exit 1
             fi
           done
-          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$ANDROID_KEYSTORE_PATH"
+          keystore_path="$RUNNER_TEMP/chmlfrp-release.jks"
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$keystore_path"
+          echo "ANDROID_KEYSTORE_PATH=$keystore_path" >> "$GITHUB_ENV"
 
       - name: Checkout launcher
         uses: actions/checkout@v4
@@ -108,4 +109,4 @@ jobs:
 
       - name: Remove signing key
         if: always()
-        run: rm -f "$ANDROID_KEYSTORE_PATH"
+        run: rm -f "$RUNNER_TEMP/chmlfrp-release.jks"
