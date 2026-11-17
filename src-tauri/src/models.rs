@@ -1,15 +1,22 @@
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
+#[cfg(not(target_os = "android"))]
+use serde::Serialize;
 use std::collections::HashMap;
+#[cfg(not(target_os = "android"))]
 use std::process::Child;
+#[cfg(not(target_os = "android"))]
 use std::sync::atomic::AtomicBool;
+#[cfg(not(target_os = "android"))]
 use std::sync::{Arc, Mutex};
 
 // 存储运行中的frpc进程
+#[cfg(not(target_os = "android"))]
 pub struct FrpcProcesses {
     pub update_installing: AtomicBool,
     pub processes: Mutex<HashMap<i32, Child>>,
 }
 
+#[cfg(not(target_os = "android"))]
 impl FrpcProcesses {
     pub fn new() -> Self {
         Self {
@@ -20,6 +27,7 @@ impl FrpcProcesses {
 }
 
 // 隧道类型
+#[cfg(not(target_os = "android"))]
 #[derive(Clone, Debug)]
 pub enum TunnelType {
     Api { config: TunnelConfig },
@@ -27,6 +35,7 @@ pub enum TunnelType {
 }
 
 // 进程守护信息
+#[cfg(not(target_os = "android"))]
 #[derive(Clone)]
 pub struct ProcessGuardInfo {
     pub tunnel_id: i32,
@@ -34,12 +43,14 @@ pub struct ProcessGuardInfo {
 }
 
 // 守护进程状态管理
+#[cfg(not(target_os = "android"))]
 pub struct ProcessGuardState {
     pub enabled: Arc<AtomicBool>,
     pub guarded_processes: Arc<Mutex<HashMap<i32, ProcessGuardInfo>>>,
     pub manually_stopped: Arc<Mutex<std::collections::HashSet<i32>>>,
 }
 
+#[cfg(not(target_os = "android"))]
 impl ProcessGuardState {
     pub fn new() -> Self {
         Self {
@@ -51,6 +62,7 @@ impl ProcessGuardState {
 }
 
 // 日志消息结构
+#[cfg(not(target_os = "android"))]
 #[derive(Serialize, Clone)]
 pub struct LogMessage {
     pub tunnel_id: i32,
